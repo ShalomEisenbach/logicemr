@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <compactLayoutAssignment>Patient_Compact</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>EMR patient record. All clinical and demographic data lives on custom fields; Contact lookup is optional.</description>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>Patient</label>
+    <nameField>
+        <displayFormat>PT-{00000000}</displayFormat>
+        <label>Patient ID</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Patients</pluralLabel>
+    <sharingModel>Private</sharingModel>
+</CustomObject>

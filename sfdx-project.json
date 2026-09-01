@@ -1,0 +1,16 @@
+{
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true,
+      "package": "LogicEMR",
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "definitionFile": "config/project-scratch-def.json"
+    }
+  ],
+  "name": "LogicEMR",
+  "namespace": "lfemr",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "61.0"
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Care Team</label>
+    <nameField>
+        <displayFormat>CT-{00000000}</displayFormat>
+        <label>Care Team ID</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Care Teams</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+</CustomObject>

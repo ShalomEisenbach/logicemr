@@ -1,0 +1,10 @@
+PROJECT: Managed 2GP Salesforce EMR, namespace "lfemr". Distributable to any Salesforce org.
+
+RULES:
+- All data in CUSTOM objects/fields. Every object gets two External ID + Unique text fields: FHIR_Id__c (64) and Source_System_Id__c (255).
+- Links to standard objects (Contact, User) are OPTIONAL Lookups only. Never hardcode references to standard fields, record types, or org config that may not exist in a subscriber org.
+- All UI is Lightning Web Components. NEVER build Screen Flows for user-facing screens.
+- Access ships as Permission Sets only. Never edit profiles.
+- Naming: Objects PascalCase + __c; fields PascalCase + __c; LWC camelCase prefixed "emr".
+- Apex: "with sharing" by default, bulkified, no SOQL/DML in loops; every class has a matching test >90% coverage with meaningful System.assert checks.
+- Only build what the prompt specifies. Don't invent fields — add a TODO comment if unsure.
