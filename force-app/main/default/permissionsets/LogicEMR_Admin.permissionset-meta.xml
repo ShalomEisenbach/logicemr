@@ -4,6 +4,18 @@
         <application>LogicEMR</application>
         <visible>true</visible>
     </applicationVisibilities>
+    <classAccesses>
+        <apexClass>CareTeamManagementController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EncounterPanelController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>PatientSearchController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <description>Full CRUD on all LogicEMR objects and access to the LogicEMR app.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Admin</label>
@@ -120,6 +132,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Patient__c.Last_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Patient__c.MRN__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

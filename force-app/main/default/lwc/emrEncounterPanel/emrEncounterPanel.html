@@ -1,0 +1,23 @@
+<template>
+    <c-emr-chart-panel
+        title="Encounters"
+        view-all-label="View All"
+        onviewall={handleViewAll}
+    >
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:elseif={hasEncounters}>
+            <lightning-datatable
+                key-field="Id"
+                data={encounters}
+                columns={columns}
+                hide-checkbox-column
+                onrowaction={handleRowAction}
+            ></lightning-datatable>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No encounters.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

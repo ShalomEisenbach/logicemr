@@ -1,0 +1,29 @@
+<template>
+    <lightning-card>
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:elseif={hasPatient}>
+                <div class="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-center">
+                    <div class="slds-col slds-grow">
+                        <p class="slds-text-heading_medium">{patientName}</p>
+                        <template lwc:if={ageLabel}>
+                            <p class="slds-text-body_regular slds-text-color_weak">{ageLabel}</p>
+                        </template>
+                    </div>
+                    <div class="slds-col">
+                        <p class="slds-text-title_caps">MRN</p>
+                        <p class="slds-text-body_regular">{mrn}</p>
+                    </div>
+                    <div class="slds-col">
+                        <p class="slds-text-title_caps">Status</p>
+                        <template lwc:if={status}>
+                            <lightning-badge label={status}></lightning-badge>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

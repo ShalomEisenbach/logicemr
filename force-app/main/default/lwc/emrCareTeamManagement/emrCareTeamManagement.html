@@ -1,0 +1,57 @@
+<template>
+    <c-emr-chart-panel title="Care Team">
+        <p class="slds-text-body_regular slds-m-bottom_small" role="note">
+            Care team membership controls who can see this patient. Adding a
+            member grants access; deactivating or removing a member revokes it.
+        </p>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+                {errorMessage}
+            </div>
+        </template>
+        <template lwc:if={isLoading}>
+            <lightning-spinner alternative-text="Loading care team" size="small"></lightning-spinner>
+        </template>
+        <template lwc:if={teamLabel}>
+            <p class="slds-text-title_caps slds-m-bottom_small">{teamLabel}</p>
+        </template>
+        <template lwc:if={hasMembers}>
+            <lightning-datatable
+                key-field="id"
+                data={members}
+                columns={columns}
+                hide-checkbox-column
+                onrowaction={handleRowAction}
+            ></lightning-datatable>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular slds-m-bottom_small">No care team members.</p>
+        </template>
+        <template lwc:if={showForm}>
+            <h3 class="slds-text-heading_small slds-m-top_medium slds-m-bottom_small">
+                Add a member
+            </h3>
+            <lightning-record-edit-form
+                object-api-name={memberObjectApiName}
+                onsubmit={handleAddSubmit}
+            >
+                <lightning-input-field
+                    field-name={practitionerFieldApiName}
+                    required
+                ></lightning-input-field>
+                <lightning-input-field field-name={roleFieldApiName}></lightning-input-field>
+                <lightning-input-field
+                    field-name={accessLevelFieldApiName}
+                ></lightning-input-field>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        type="submit"
+                        label="Add member"
+                        variant="brand"
+                        disabled={isSaving}
+                    ></lightning-button>
+                </div>
+            </lightning-record-edit-form>
+        </template>
+    </c-emr-chart-panel>
+</template>

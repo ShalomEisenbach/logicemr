@@ -1,0 +1,31 @@
+<template>
+    <lightning-card title="Patient Search" icon-name="standard:people">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <lightning-input
+                type="search"
+                label="Search patients"
+                placeholder="Last name, first name, or MRN"
+                onchange={handleSearchChange}
+            ></lightning-input>
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-p-top_small" role="alert">
+                    {errorMessage}
+                </div>
+            </template>
+            <template lwc:if={hasResults}>
+                <div class="slds-p-top_small">
+                    <lightning-datatable
+                        key-field="Id"
+                        data={patients}
+                        columns={columns}
+                        hide-checkbox-column
+                        onrowaction={handleRowAction}
+                    ></lightning-datatable>
+                </div>
+            </template>
+            <template lwc:elseif={showNoResults}>
+                <p class="slds-p-top_small slds-text-body_regular">No matching patients.</p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

@@ -1,0 +1,25 @@
+<template>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">
+                        <span class="slds-truncate">{title}</span>
+                    </h2>
+                </div>
+                <div class="slds-no-flex">
+                    <template lwc:if={showViewAll}>
+                        <lightning-button
+                            variant="base"
+                            label={viewAllLabel}
+                            onclick={handleViewAll}
+                        ></lightning-button>
+                    </template>
+                </div>
+            </header>
+        </div>
+        <div class="slds-card__body slds-card__body_inner">
+            <slot></slot>
+        </div>
+    </article>
+</template>
