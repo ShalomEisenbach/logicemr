@@ -1,6 +1,7 @@
 /**
- * Idempotent clinical seed for the objects added after the core demo.
- * Requires seedDemoData.apex patients/encounters/practitioners.
+ * Idempotent clinical seed for medication requests, statements, and administrations.
+ * Requires seedDemoData.apex. Run seedCatalog.apex first for Medication_Ref__c.
+ * Do not set Name — composed from medication display, dose, and related request.
  */
 Map<String, Id> ptIds = new Map<String, Id>();
 for (lfemr__Patient__c row : [
@@ -28,6 +29,15 @@ for (lfemr__Practitioner__c row : [
 }
 if (ptIds.size() < 10 || encIds.isEmpty()) {
     throw new AuraHandledException('Run scripts/apex/seedDemoData.apex first.');
+}
+
+Map<String, Id> cat = new Map<String, Id>();
+for (lfemr__Code_Reference__c row : [
+    SELECT Id, lfemr__Code_System__c, lfemr__Code__c
+    FROM lfemr__Code_Reference__c
+    WHERE lfemr__Active__c = true
+]) {
+    cat.put(row.lfemr__Code_System__c + '::' + row.lfemr__Code__c, row.Id);
 }
 
 Id maya = ptIds.get('seed-pt-maya-chen');
@@ -214,6 +224,11 @@ List<lfemr__MedicationRequest__c> medRequests = new List<lfemr__MedicationReques
         lfemr__Authored_On__c = Datetime.newInstance(2026, 5, 6, 11, 20, 0)
     )
 };
+for (lfemr__MedicationRequest__c row : medRequests) {
+    row.lfemr__Medication_Ref__c = cat.get(
+        row.lfemr__Medication_Code_System__c + '::' + row.lfemr__Medication_Code__c
+    );
+}
 upsert medRequests lfemr__Source_System_Id__c;
 Map<String, Id> medReqIds = new Map<String, Id>();
 for (lfemr__MedicationRequest__c row : medRequests) {
@@ -270,6 +285,11 @@ List<lfemr__MedicationStatement__c> medStatements = new List<lfemr__MedicationSt
         lfemr__Effective_Start__c = Date.newInstance(2019, 1, 7)
     )
 };
+for (lfemr__MedicationStatement__c row : medStatements) {
+    row.lfemr__Medication_Ref__c = cat.get(
+        row.lfemr__Medication_Code_System__c + '::' + row.lfemr__Medication_Code__c
+    );
+}
 upsert medStatements lfemr__Source_System_Id__c;
 
 List<lfemr__MedicationAdministration__c> medAdmins = new List<lfemr__MedicationAdministration__c>{

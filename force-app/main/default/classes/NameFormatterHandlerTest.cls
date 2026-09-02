@@ -226,6 +226,12 @@ private class NameFormatterHandlerTest {
             Status__c = 'Draft',
             Body__c = 'Note body'
         );
+        insert new Procedure__c(
+            Patient__c = patient.Id,
+            Procedure_Display__c = 'ECG',
+            Performed_DateTime__c = Datetime.newInstance(2026, 9, 2, 9, 0, 0),
+            Status__c = 'Completed'
+        );
         insert new CareTeam__c(Patient__c = patient.Id, Status__c = 'Active');
         Test.stopTest();
 
@@ -272,6 +278,16 @@ private class NameFormatterHandlerTest {
             'Aspirin',
             [SELECT Name FROM MedicationStatement__c WHERE Patient__c = :patient.Id].Name,
             'Medication Statement Name should use the medication display'
+        );
+        Procedure__c procedureRow = [
+            SELECT Name
+            FROM Procedure__c
+            WHERE Patient__c = :patient.Id
+            LIMIT 1
+        ];
+        System.assert(
+            procedureRow.Name.startsWith('ECG'),
+            'Procedure Name should compose display and performed datetime. Actual: ' + procedureRow.Name
         );
     }
 

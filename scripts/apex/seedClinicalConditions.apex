@@ -1,6 +1,8 @@
 /**
- * Idempotent clinical seed for the objects added after the core demo.
- * Requires seedDemoData.apex patients/encounters/practitioners.
+ * Idempotent clinical seed for conditions and encounter diagnoses.
+ * Requires seedDemoData.apex. Run seedCatalog.apex first for Diagnosis_Ref__c.
+ * Do not set Name — composed from Diagnosis_Display + Diagnosis_Code
+ * (and Condition.Name + Type on EncounterDiagnosis).
  */
 Map<String, Id> ptIds = new Map<String, Id>();
 for (lfemr__Patient__c row : [
@@ -28,6 +30,15 @@ for (lfemr__Practitioner__c row : [
 }
 if (ptIds.size() < 10 || encIds.isEmpty()) {
     throw new AuraHandledException('Run scripts/apex/seedDemoData.apex first.');
+}
+
+Map<String, Id> cat = new Map<String, Id>();
+for (lfemr__Code_Reference__c row : [
+    SELECT Id, lfemr__Code_System__c, lfemr__Code__c
+    FROM lfemr__Code_Reference__c
+    WHERE lfemr__Active__c = true
+]) {
+    cat.put(row.lfemr__Code_System__c + '::' + row.lfemr__Code__c, row.Id);
 }
 
 Id maya = ptIds.get('seed-pt-maya-chen');
@@ -187,7 +198,7 @@ List<lfemr__Condition__c> conditions = new List<lfemr__Condition__c>{
         lfemr__Severity__c = 'Moderate',
         lfemr__Diagnosis_Code_System__c = 'ICD-10',
         lfemr__Diagnosis_Code__c = 'K80.20',
-        lfemr__Diagnosis_Display__c = 'Calculus of gallbladder without cholecystitis',
+        lfemr__Diagnosis_Display__c = 'Cholelithiasis',
         lfemr__Onset_Date__c = Date.newInstance(2026, 5, 1)
     ),
     new lfemr__Condition__c(
@@ -211,7 +222,7 @@ List<lfemr__Condition__c> conditions = new List<lfemr__Condition__c>{
         lfemr__Severity__c = 'Severe',
         lfemr__Diagnosis_Code_System__c = 'ICD-10',
         lfemr__Diagnosis_Code__c = 'S72.001A',
-        lfemr__Diagnosis_Display__c = 'Fracture of unspecified part of neck of right femur, initial',
+        lfemr__Diagnosis_Display__c = 'Right femoral neck fracture',
         lfemr__Onset_Date__c = Date.newInstance(2026, 8, 2)
     ),
     new lfemr__Condition__c(
@@ -223,7 +234,7 @@ List<lfemr__Condition__c> conditions = new List<lfemr__Condition__c>{
         lfemr__Severity__c = 'Moderate',
         lfemr__Diagnosis_Code_System__c = 'ICD-10',
         lfemr__Diagnosis_Code__c = 'M81.0',
-        lfemr__Diagnosis_Display__c = 'Age-related osteoporosis without current pathological fracture',
+        lfemr__Diagnosis_Display__c = 'Age-related osteoporosis',
         lfemr__Onset_Date__c = Date.newInstance(2018, 11, 1)
     ),
     new lfemr__Condition__c(
@@ -273,6 +284,11 @@ List<lfemr__Condition__c> conditions = new List<lfemr__Condition__c>{
         lfemr__Onset_Date__c = Date.newInstance(2019, 5, 6)
     )
 };
+for (lfemr__Condition__c row : conditions) {
+    row.lfemr__Diagnosis_Ref__c = cat.get(
+        row.lfemr__Diagnosis_Code_System__c + '::' + row.lfemr__Diagnosis_Code__c
+    );
+}
 upsert conditions lfemr__Source_System_Id__c;
 Map<String, Id> condIds = new Map<String, Id>();
 for (lfemr__Condition__c row : conditions) {

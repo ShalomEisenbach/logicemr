@@ -1,6 +1,7 @@
 /**
- * Idempotent clinical seed for the objects added after the core demo.
- * Requires seedDemoData.apex patients/encounters/practitioners.
+ * Idempotent clinical seed for allergies and immunizations.
+ * Requires seedDemoData.apex. Run seedCatalog.apex first for catalog lookups.
+ * Do not set Name — composed from allergen/vaccine display tokens.
  */
 Map<String, Id> ptIds = new Map<String, Id>();
 for (lfemr__Patient__c row : [
@@ -28,6 +29,15 @@ for (lfemr__Practitioner__c row : [
 }
 if (ptIds.size() < 10 || encIds.isEmpty()) {
     throw new AuraHandledException('Run scripts/apex/seedDemoData.apex first.');
+}
+
+Map<String, Id> cat = new Map<String, Id>();
+for (lfemr__Code_Reference__c row : [
+    SELECT Id, lfemr__Code_System__c, lfemr__Code__c
+    FROM lfemr__Code_Reference__c
+    WHERE lfemr__Active__c = true
+]) {
+    cat.put(row.lfemr__Code_System__c + '::' + row.lfemr__Code__c, row.Id);
 }
 
 Id maya = ptIds.get('seed-pt-maya-chen');
@@ -139,17 +149,26 @@ List<lfemr__AllergyIntolerance__c> allergies = new List<lfemr__AllergyIntoleranc
         lfemr__Reaction__c = 'Nausea'
     ),
     new lfemr__AllergyIntolerance__c(
-        lfemr__Source_System_Id__c = 'seed-alg-olivia-nkda',
-        lfemr__FHIR_Id__c = 'seed-alg-olivia-nkda',
+        lfemr__Source_System_Id__c = 'seed-alg-olivia-shellfish',
+        lfemr__FHIR_Id__c = 'seed-alg-olivia-shellfish',
         lfemr__Patient__c = olivia,
+        lfemr__Allergen_Code_System__c = 'SNOMED',
+        lfemr__Allergen_Code__c = '300913001',
         lfemr__Allergen_Display__c = 'Shellfish',
         lfemr__Type__c = 'Allergy',
         lfemr__Category__c = 'Food',
-        lfemr__Criticality__c = 'Unable to Assess',
-        lfemr__Clinical_Status__c = 'Resolved',
+        lfemr__Criticality__c = 'High',
+        lfemr__Clinical_Status__c = 'Active',
         lfemr__Reaction__c = 'Itching, self-resolved'
     )
 };
+for (lfemr__AllergyIntolerance__c row : allergies) {
+    if (String.isNotBlank(row.lfemr__Allergen_Code_System__c) && String.isNotBlank(row.lfemr__Allergen_Code__c)) {
+        row.lfemr__Allergen_Ref__c = cat.get(
+            row.lfemr__Allergen_Code_System__c + '::' + row.lfemr__Allergen_Code__c
+        );
+    }
+}
 upsert allergies lfemr__Source_System_Id__c;
 
 List<lfemr__Immunization__c> immunizations = new List<lfemr__Immunization__c>{
@@ -265,4 +284,9 @@ List<lfemr__Immunization__c> immunizations = new List<lfemr__Immunization__c>{
         lfemr__Occurrence_Date__c = Date.newInstance(2025, 10, 1)
     )
 };
+for (lfemr__Immunization__c row : immunizations) {
+    row.lfemr__Vaccine_Ref__c = cat.get(
+        row.lfemr__Vaccine_Code_System__c + '::' + row.lfemr__Vaccine_Code__c
+    );
+}
 upsert immunizations lfemr__Source_System_Id__c;

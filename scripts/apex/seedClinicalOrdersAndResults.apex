@@ -1,6 +1,7 @@
 /**
- * Idempotent clinical seed for the objects added after the core demo.
- * Requires seedDemoData.apex patients/encounters/practitioners.
+ * Idempotent clinical seed for service requests, diagnostic reports, and observations.
+ * Requires seedDemoData.apex. Run seedCatalog.apex first for catalog lookups.
+ * Do not set Name — composed from display, category, value, and datetime tokens.
  */
 Map<String, Id> ptIds = new Map<String, Id>();
 for (lfemr__Patient__c row : [
@@ -28,6 +29,15 @@ for (lfemr__Practitioner__c row : [
 }
 if (ptIds.size() < 10 || encIds.isEmpty()) {
     throw new AuraHandledException('Run scripts/apex/seedDemoData.apex first.');
+}
+
+Map<String, Id> cat = new Map<String, Id>();
+for (lfemr__Code_Reference__c row : [
+    SELECT Id, lfemr__Code_System__c, lfemr__Code__c
+    FROM lfemr__Code_Reference__c
+    WHERE lfemr__Active__c = true
+]) {
+    cat.put(row.lfemr__Code_System__c + '::' + row.lfemr__Code__c, row.Id);
 }
 
 Id maya = ptIds.get('seed-pt-maya-chen');
@@ -162,6 +172,11 @@ List<lfemr__ServiceRequest__c> serviceRequests = new List<lfemr__ServiceRequest_
         lfemr__Authored_On__c = Datetime.newInstance(2026, 5, 1, 9, 0, 0)
     )
 };
+for (lfemr__ServiceRequest__c row : serviceRequests) {
+    row.lfemr__Service_Ref__c = cat.get(
+        row.lfemr__Service_Code_System__c + '::' + row.lfemr__Service_Code__c
+    );
+}
 upsert serviceRequests lfemr__Source_System_Id__c;
 Map<String, Id> srIds = new Map<String, Id>();
 for (lfemr__ServiceRequest__c row : serviceRequests) {
@@ -258,6 +273,11 @@ List<lfemr__DiagnosticReport__c> reports = new List<lfemr__DiagnosticReport__c>{
         lfemr__Effective_DateTime__c = Datetime.newInstance(2026, 9, 2, 10, 0, 0)
     )
 };
+for (lfemr__DiagnosticReport__c row : reports) {
+    row.lfemr__Report_Ref__c = cat.get(
+        row.lfemr__Report_Code_System__c + '::' + row.lfemr__Report_Code__c
+    );
+}
 upsert reports lfemr__Source_System_Id__c;
 Map<String, Id> drIds = new Map<String, Id>();
 for (lfemr__DiagnosticReport__c row : reports) {
@@ -564,6 +584,11 @@ List<lfemr__Observation__c> observations = new List<lfemr__Observation__c>{
         lfemr__Effective_DateTime__c = Datetime.newInstance(2026, 9, 1, 15, 35, 0)
     )
 };
+for (lfemr__Observation__c row : observations) {
+    row.lfemr__Observation_Ref__c = cat.get(
+        row.lfemr__Observation_Code_System__c + '::' + row.lfemr__Observation_Code__c
+    );
+}
 upsert observations lfemr__Source_System_Id__c;
 System.debug(
     'Seeded ' +
