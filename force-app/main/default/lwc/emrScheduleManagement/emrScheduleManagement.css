@@ -1,0 +1,20 @@
+:host {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.section {
+    padding: 0.75rem 0 1rem;
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.section_last {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.slot-table {
+    max-height: 28rem;
+    overflow: auto;
+}

@@ -21,6 +21,9 @@
     <tabs>Patient_Search</tabs>
     <tabs>Patient__c</tabs>
     <tabs>Encounter__c</tabs>
+    <tabs>Scheduling</tabs>
+    <tabs>Appointment__c</tabs>
+    <tabs>Schedule__c</tabs>
     <tabs>Practitioner__c</tabs>
     <tabs>Condition__c</tabs>
     <tabs>Observation__c</tabs>

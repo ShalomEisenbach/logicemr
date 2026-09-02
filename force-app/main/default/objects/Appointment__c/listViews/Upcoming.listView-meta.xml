@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Upcoming</fullName>
+    <columns>NAME</columns>
+    <columns>Patient__c</columns>
+    <columns>Practitioner__c</columns>
+    <columns>Start__c</columns>
+    <columns>End__c</columns>
+    <columns>Status__c</columns>
+    <columns>Appointment_Type__c</columns>
+    <columns>Location_Name__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Start__c</field>
+        <operation>greaterOrEqual</operation>
+        <value>TODAY</value>
+    </filters>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Booked,Arrived</value>
+    </filters>
+    <label>Upcoming</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

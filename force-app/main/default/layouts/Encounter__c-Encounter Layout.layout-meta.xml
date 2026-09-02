@@ -85,6 +85,15 @@
     </relatedLists>
     <relatedLists>
         <fields>NAME</fields>
+        <fields>Patient__c</fields>
+        <fields>Status__c</fields>
+        <fields>Start__c</fields>
+        <fields>End__c</fields>
+        <fields>Practitioner__c</fields>
+        <relatedList>Appointment__c.Encounter__c</relatedList>
+    </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
         <fields>Diagnosis_Display__c</fields>
         <fields>Clinical_Status__c</fields>
         <fields>Category__c</fields>

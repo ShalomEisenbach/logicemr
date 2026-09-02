@@ -3,11 +3,19 @@ import { NavigationMixin } from 'lightning/navigation';
 import { refreshApex } from '@salesforce/apex';
 import getHome from '@salesforce/apex/ProviderHomeController.getHome';
 import markReviewed from '@salesforce/apex/DiagnosticReportService.markReviewed';
+import arriveAppointment from '@salesforce/apex/AppointmentCalendarController.arriveAppointment';
+import markNoShow from '@salesforce/apex/AppointmentCalendarController.markNoShow';
 import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import ENCOUNTER_OBJECT from '@salesforce/schema/Encounter__c';
+import APPOINTMENT_OBJECT from '@salesforce/schema/Appointment__c';
 import REPORT_OBJECT from '@salesforce/schema/DiagnosticReport__c';
 import NOTE_OBJECT from '@salesforce/schema/ClinicalNote__c';
 import PATIENT_FIELD from '@salesforce/schema/Encounter__c.Patient__c';
+import APPT_STATUS_FIELD from '@salesforce/schema/Appointment__c.Status__c';
+import APPT_START_FIELD from '@salesforce/schema/Appointment__c.Start__c';
+import APPT_TYPE_FIELD from '@salesforce/schema/Appointment__c.Appointment_Type__c';
+import APPT_REASON_FIELD from '@salesforce/schema/Appointment__c.Reason__c';
+import APPT_LOCATION_FIELD from '@salesforce/schema/Appointment__c.Location_Name__c';
 import FIRST_NAME_FIELD from '@salesforce/schema/Patient__c.First_Name__c';
 import LAST_NAME_FIELD from '@salesforce/schema/Patient__c.Last_Name__c';
 import MRN_FIELD from '@salesforce/schema/Patient__c.MRN__c';
@@ -29,6 +37,7 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
     pendingSearchFocus = false;
     metrics = emptyMetrics();
     todaysEncounters = [];
+    todaysAppointments = [];
     resultsToReview = [];
     unsignedNotes = [];
     recentPatients = [];
@@ -67,9 +76,11 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
             myActivePatients: metrics.myActivePatients || 0,
             openEncounters: metrics.openEncounters || 0,
             resultsToReview: metrics.resultsToReview || 0,
-            unsignedNotes: metrics.unsignedNotes || 0
+            unsignedNotes: metrics.unsignedNotes || 0,
+            todaysAppointments: metrics.todaysAppointments || 0
         };
         this.todaysEncounters = this.mapEncounters(lists.todaysEncounters || []);
+        this.todaysAppointments = this.mapAppointments(lists.todaysAppointments || []);
         this.resultsToReview = this.mapReports(lists.resultsToReview || []);
         this.unsignedNotes = this.mapNotes(lists.unsignedNotes || []);
         this.recentPatients = this.mapPatients(data && data.recentPatients ? data.recentPatients : []);
@@ -78,6 +89,7 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
     get metricItems() {
         return [
             { key: 'patients', label: 'Active patients', value: this.metrics.myActivePatients },
+            { key: 'appointments', label: "Today's appointments", value: this.metrics.todaysAppointments },
             { key: 'encounters', label: 'Open encounters', value: this.metrics.openEncounters },
             { key: 'results', label: 'Results to review', value: this.metrics.resultsToReview },
             { key: 'notes', label: 'Unsigned notes', value: this.metrics.unsignedNotes }
@@ -86,6 +98,10 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
 
     get hasTodaysEncounters() {
         return this.todaysEncounters.length > 0;
+    }
+
+    get hasTodaysAppointments() {
+        return this.todaysAppointments.length > 0;
     }
 
     get hasResultsToReview() {
@@ -133,6 +149,37 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
         }
     }
 
+    async handleArrive(event) {
+        const appointmentId = event.currentTarget.dataset.id;
+        if (!appointmentId || this.isSaving) {
+            return;
+        }
+        await this.runAppointmentAction(() => arriveAppointment({ appointmentId }));
+    }
+
+    async handleNoShow(event) {
+        const appointmentId = event.currentTarget.dataset.id;
+        if (!appointmentId || this.isSaving) {
+            return;
+        }
+        await this.runAppointmentAction(() => markNoShow({ appointmentId }));
+    }
+
+    async runAppointmentAction(action) {
+        this.isSaving = true;
+        this.errorMessage = undefined;
+        try {
+            await action();
+            if (this.wiredHomeResult) {
+                await refreshApex(this.wiredHomeResult);
+            }
+        } catch (error) {
+            this.errorMessage = this.reduceError(error);
+        } finally {
+            this.isSaving = false;
+        }
+    }
+
     async handleMarkReviewed(event) {
         const reportId = event.currentTarget.dataset.id;
         if (!reportId || this.isSaving) {
@@ -150,6 +197,30 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
         } finally {
             this.isSaving = false;
         }
+    }
+
+    mapAppointments(rows) {
+        return rows.map((row) => {
+            const status = row[APPT_STATUS_FIELD.fieldApiName];
+            const parts = [
+                this.patientName(row),
+                row[APPT_TYPE_FIELD.fieldApiName],
+                status,
+                this.formatDateTime(row[APPT_START_FIELD.fieldApiName]),
+                row[APPT_LOCATION_FIELD.fieldApiName]
+            ].filter((part) => part);
+            const reason = row[APPT_REASON_FIELD.fieldApiName];
+            const canAct = status === 'Booked';
+            return {
+                id: row.Id,
+                title: this.patientName(row) || row.Name || 'Appointment',
+                meta: parts.slice(1).join(' · '),
+                detail: reason || '',
+                canArrive: canAct,
+                canNoShow: canAct,
+                objectApiName: APPOINTMENT_OBJECT.objectApiName
+            };
+        });
     }
 
     mapEncounters(rows) {
@@ -278,6 +349,7 @@ function emptyMetrics() {
         myActivePatients: 0,
         openEncounters: 0,
         resultsToReview: 0,
-        unsignedNotes: 0
+        unsignedNotes: 0,
+        todaysAppointments: 0
     };
 }

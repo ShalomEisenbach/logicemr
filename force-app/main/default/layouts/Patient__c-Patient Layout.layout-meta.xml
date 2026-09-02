@@ -99,6 +99,15 @@
     <relatedLists>
         <fields>NAME</fields>
         <fields>Status__c</fields>
+        <fields>Start__c</fields>
+        <fields>End__c</fields>
+        <fields>Practitioner__c</fields>
+        <fields>Appointment_Type__c</fields>
+        <relatedList>Appointment__c.Patient__c</relatedList>
+    </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
+        <fields>Status__c</fields>
         <relatedList>CareTeam__c.Patient__c</relatedList>
     </relatedLists>
     <relatedLists>

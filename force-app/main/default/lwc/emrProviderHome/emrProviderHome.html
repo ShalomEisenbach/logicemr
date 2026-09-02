@@ -28,6 +28,50 @@
             <c-emr-patient-search></c-emr-patient-search>
 
             <div class="worklists">
+                <lightning-card title="Today's Appointments" icon-name="standard:service_appointment">
+                    <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                        <template lwc:if={hasTodaysAppointments}>
+                            <template for:each={todaysAppointments} for:item="row">
+                                <article key={row.id} class="work-row">
+                                    <p class="work-title">
+                                        <c-emr-record-link
+                                            record-id={row.id}
+                                            object-api-name={row.objectApiName}
+                                            label={row.title}
+                                        ></c-emr-record-link>
+                                    </p>
+                                    <p class="work-meta">{row.meta}</p>
+                                    <template lwc:if={row.detail}>
+                                        <p class="work-meta">{row.detail}</p>
+                                    </template>
+                                    <template lwc:if={row.canArrive}>
+                                        <div class="work-actions">
+                                            <lightning-button
+                                                label="Arrive"
+                                                variant="brand"
+                                                data-id={row.id}
+                                                disabled={isSaving}
+                                                class="slds-m-right_xx-small"
+                                                onclick={handleArrive}
+                                            ></lightning-button>
+                                            <lightning-button
+                                                label="No Show"
+                                                variant="neutral"
+                                                data-id={row.id}
+                                                disabled={isSaving}
+                                                onclick={handleNoShow}
+                                            ></lightning-button>
+                                        </div>
+                                    </template>
+                                </article>
+                            </template>
+                        </template>
+                        <template lwc:else>
+                            <p class="empty">No appointments today</p>
+                        </template>
+                    </div>
+                </lightning-card>
+
                 <lightning-card title="Today's Encounters" icon-name="custom:custom71">
                     <div class="slds-p-horizontal_medium slds-p-bottom_medium">
                         <template lwc:if={hasTodaysEncounters}>

@@ -1,0 +1,269 @@
+<template>
+    <lightning-card title="Enhanced calendar" icon-name="standard:event">
+        <div class="calendar-shell slds-p-horizontal_medium slds-p-bottom_medium">
+            <div class="toolbar">
+                <div class="toolbar-filters">
+                    <lightning-record-picker
+                        label="Provider"
+                        placeholder="Search practitioners"
+                        object-api-name={practitionerObjectApiName}
+                        value={practitionerId}
+                        onchange={handlePractitionerChange}
+                    ></lightning-record-picker>
+                    <lightning-combobox
+                        name="location"
+                        label="Location"
+                        value={locationKey}
+                        options={locationOptions}
+                        onchange={handleLocationChange}
+                    ></lightning-combobox>
+                </div>
+                <div class="toolbar-nav">
+                    <lightning-radio-group
+                        name="viewMode"
+                        label="View"
+                        options={viewOptions}
+                        value={viewMode}
+                        type="button"
+                        onchange={handleViewChange}
+                    ></lightning-radio-group>
+                    <div class="nav-row">
+                        <lightning-button-icon
+                            icon-name="utility:chevronleft"
+                            alternative-text="Previous"
+                            title="Previous"
+                            disabled={isBusy}
+                            onclick={handlePrev}
+                        ></lightning-button-icon>
+                        <lightning-button
+                            label="Today"
+                            variant="neutral"
+                            disabled={isBusy}
+                            onclick={handleToday}
+                        ></lightning-button>
+                        <lightning-button-icon
+                            icon-name="utility:chevronright"
+                            alternative-text="Next"
+                            title="Next"
+                            disabled={isBusy}
+                            onclick={handleNext}
+                        ></lightning-button-icon>
+                        <lightning-input
+                            name="selectedDate"
+                            label="Date"
+                            type="date"
+                            value={selectedDate}
+                            variant="label-hidden"
+                            onchange={handleDateChange}
+                        ></lightning-input>
+                        <lightning-button
+                            label="Refresh"
+                            variant="neutral"
+                            disabled={isBusy}
+                            onclick={handleRefresh}
+                        ></lightning-button>
+                    </div>
+                    <p class="range-label" aria-live="polite">{rangeLabel}</p>
+                </div>
+            </div>
+
+            <div class="manage-row">
+                <lightning-input
+                    type="toggle"
+                    label={manageToggleLabel}
+                    checked={manageAvailability}
+                    onchange={handleManageToggle}
+                ></lightning-input>
+                <template lwc:if={manageAvailability}>
+                    <p class="manage-hint" role="status">
+                        Click and drag across empty time to paint Free slots.
+                    </p>
+                </template>
+            </div>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-top_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={isBusy}>
+                <lightning-spinner alternative-text="Updating calendar" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:if={hasMoreSlots}>
+                <p class="slds-text-body_small slds-m-top_small" role="status">
+                    Showing the first 400 slots. Narrow the provider, location, or date range to see more.
+                </p>
+            </template>
+
+            <template lwc:if={showEmptyFilter}>
+                <div class="empty-state">
+                    <p>Select a provider or a location to load the calendar.</p>
+                </div>
+            </template>
+            <template lwc:elseif={showEmptySlots}>
+                <div class="empty-state">
+                    <p>No availability for this provider or location in the selected range.</p>
+                    <p class="empty-state-hint">
+                        Generate slots from schedule management, or turn on Manage availability to paint Free slots.
+                    </p>
+                </div>
+            </template>
+            <template lwc:elseif={showGrid}>
+                <div class="legend" aria-hidden="true">
+                    <span class="legend-item legend-item_free">Free</span>
+                    <span class="legend-item legend-item_booked">Booked</span>
+                    <span class="legend-item legend-item_arrived">Arrived</span>
+                    <span class="legend-item legend-item_blocked">Blocked</span>
+                    <span class="legend-item legend-item_noshow">No Show</span>
+                    <span class="legend-item legend-item_cancelled">Cancelled</span>
+                </div>
+                <div class="grid-scroll">
+                    <div class={gridClass}>
+                        <div class="time-gutter">
+                            <div class="time-gutter-header"></div>
+                            <template for:each={timeLabels} for:item="tick">
+                                <div key={tick.key} class={tick.className} style={tick.style}>{tick.label}</div>
+                            </template>
+                        </div>
+                        <template for:each={dayColumns} for:item="day">
+                            <div key={day.key} class="day-col">
+                                <div class={day.headerClass}>
+                                    <span class="day-weekday">{day.weekday}</span>
+                                    <span class="day-date">{day.dateLabel}</span>
+                                </div>
+                                <div
+                                    class="day-body"
+                                    style={day.bodyStyle}
+                                    data-day-key={day.key}
+                                    onpointerdown={handleDayPointerDown}
+                                    onpointermove={handleDayPointerMove}
+                                    onpointerup={handleDayPointerUp}
+                                >
+                                    <template for:each={day.slots} for:item="slot">
+                                        <button
+                                            key={slot.id}
+                                            type="button"
+                                            class={slot.className}
+                                            style={slot.style}
+                                            title={slot.title}
+                                            data-slot-id={slot.id}
+                                            onclick={handleSlotClick}
+                                        ></button>
+                                    </template>
+                                    <template for:each={day.blocks} for:item="block">
+                                        <div
+                                            key={block.id}
+                                            class={block.className}
+                                            style={block.style}
+                                            title={block.title}
+                                            data-appointment-id={block.id}
+                                            data-slot-id={block.slotId}
+                                            onpointerdown={handleBlockPointerDown}
+                                            onpointermove={handleBlockPointerMove}
+                                            onpointerup={handleBlockPointerUp}
+                                        >
+                                            <span class="block-label">{block.label}</span>
+                                            <span class="block-meta">{block.meta}</span>
+                                        </div>
+                                    </template>
+                                    <template lwc:if={day.paintStyle}>
+                                        <div class="paint-preview" style={day.paintStyle}></div>
+                                    </template>
+                                    <template lwc:if={day.showNow}>
+                                        <div class="now-line" style={day.nowStyle} aria-hidden="true"></div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:if={bookingPopover}>
+                <div class="popover" role="dialog" aria-label="Book appointment" style={bookingPopover.style}>
+                    <p class="popover-title">Book appointment</p>
+                    <p class="popover-meta">{bookingPopover.when}</p>
+                    <lightning-record-picker
+                        label="Patient"
+                        placeholder="Search patients"
+                        object-api-name={patientObjectApiName}
+                        value={bookingPatientId}
+                        required
+                        onchange={handleBookingPatient}
+                    ></lightning-record-picker>
+                    <lightning-combobox
+                        name="appointmentType"
+                        label="Appointment type"
+                        value={bookingType}
+                        options={typeOptions}
+                        required
+                        class="slds-m-top_small"
+                        onchange={handleBookingType}
+                    ></lightning-combobox>
+                    <lightning-input
+                        name="reason"
+                        label="Reason"
+                        value={bookingReason}
+                        maxlength="255"
+                        class="slds-m-top_small"
+                        onchange={handleBookingReason}
+                    ></lightning-input>
+                    <div class="popover-actions">
+                        <lightning-button label="Cancel" onclick={handleCloseBooking}></lightning-button>
+                        <lightning-button
+                            label="Book"
+                            variant="brand"
+                            disabled={isBookDisabled}
+                            onclick={handleBookSubmit}
+                        ></lightning-button>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:if={actionPopover}>
+                <div class="popover" role="dialog" aria-label="Appointment actions" style={actionPopover.style}>
+                    <p class="popover-title">{selectedActionTitle}</p>
+                    <p class="popover-meta">{actionPopover.when}</p>
+                    <p class="popover-meta">{selectedAction.status}</p>
+                    <template lwc:if={selectedAction.appointmentType}>
+                        <p class="popover-meta">Type: {selectedAction.appointmentType}</p>
+                    </template>
+                    <template lwc:if={selectedAction.reason}>
+                        <p class="popover-meta">Reason: {selectedAction.reason}</p>
+                    </template>
+                    <div class="popover-actions">
+                        <template lwc:if={canArriveSelected}>
+                            <lightning-button
+                                label="Arrive"
+                                variant="brand"
+                                disabled={isBusy}
+                                onclick={handleArrive}
+                            ></lightning-button>
+                        </template>
+                        <template lwc:if={canCancelSelected}>
+                            <lightning-button
+                                label="Cancel"
+                                disabled={isBusy}
+                                onclick={handleCancelAppointment}
+                            ></lightning-button>
+                        </template>
+                        <template lwc:if={canNoShowSelected}>
+                            <lightning-button
+                                label="No Show"
+                                disabled={isBusy}
+                                onclick={handleNoShow}
+                            ></lightning-button>
+                        </template>
+                        <template lwc:if={canOpenChart}>
+                            <lightning-button
+                                label={openChartLabel}
+                                disabled={isBusy}
+                                onclick={handleOpenChart}
+                            ></lightning-button>
+                        </template>
+                        <lightning-button label="Close" onclick={handleCloseActions}></lightning-button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

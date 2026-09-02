@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Free_Slots</fullName>
+    <columns>NAME</columns>
+    <columns>Schedule__c</columns>
+    <columns>Start__c</columns>
+    <columns>End__c</columns>
+    <columns>Appointment_Type__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Free</value>
+    </filters>
+    <label>Free Slots</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

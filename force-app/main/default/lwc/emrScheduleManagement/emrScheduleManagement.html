@@ -1,0 +1,214 @@
+<template>
+    <lightning-card title="Schedule management" icon-name="standard:event">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                Create or select a provider schedule, generate slots for a date range and daily window, then
+                block or free individual slots.
+            </p>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={isBusy}>
+                <lightning-spinner alternative-text="Working on schedule" size="small"></lightning-spinner>
+            </template>
+
+            <section class="section">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Schedule</h2>
+                <div class="slds-grid slds-gutters slds-wrap">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-record-picker
+                            label="Provider"
+                            placeholder="Search practitioners"
+                            object-api-name={practitionerObjectApiName}
+                            value={practitionerId}
+                            required
+                            onchange={handlePractitionerChange}
+                        ></lightning-record-picker>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <template lwc:if={hasExistingSchedules}>
+                            <lightning-combobox
+                                name="schedule"
+                                label="Schedule"
+                                value={selectedScheduleKey}
+                                options={scheduleOptions}
+                                onchange={handleScheduleSelect}
+                            ></lightning-combobox>
+                        </template>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input
+                            name="locationName"
+                            label="Location"
+                            value={locationName}
+                            onchange={handleLocationChange}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input
+                            name="slotDurationMinutes"
+                            label="Slot duration (minutes)"
+                            type="number"
+                            min="1"
+                            max="1440"
+                            value={slotDurationMinutes}
+                            required
+                            onchange={handleDurationChange}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input
+                            name="planningHorizonStart"
+                            label="Planning horizon start"
+                            type="date"
+                            value={planningHorizonStart}
+                            onchange={handleHorizonStartChange}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input
+                            name="planningHorizonEnd"
+                            label="Planning horizon end"
+                            type="date"
+                            value={planningHorizonEnd}
+                            onchange={handleHorizonEndChange}
+                        ></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <lightning-input
+                            name="active"
+                            label="Active"
+                            type="checkbox"
+                            checked={active}
+                            onchange={handleActiveChange}
+                        ></lightning-input>
+                    </div>
+                </div>
+                <template lwc:if={hasSelectedSchedule}>
+                    <p class="slds-text-body_small slds-m-top_x-small">
+                        Selected
+                        <c-emr-record-link
+                            record-id={selectedScheduleId}
+                            object-api-name={scheduleObjectApiName}
+                            label={scheduleName}
+                        ></c-emr-record-link>
+                    </p>
+                </template>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        label={saveLabel}
+                        variant="brand"
+                        disabled={isSaveDisabled}
+                        onclick={handleSaveSchedule}
+                    ></lightning-button>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Generate slots</h2>
+                <template lwc:if={hasSelectedSchedule}>
+                    <div class="slds-grid slds-gutters slds-wrap">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input
+                                name="rangeStart"
+                                label="Date range start"
+                                type="date"
+                                value={rangeStart}
+                                required
+                                onchange={handleRangeStartChange}
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input
+                                name="rangeEnd"
+                                label="Date range end"
+                                type="date"
+                                value={rangeEnd}
+                                required
+                                onchange={handleRangeEndChange}
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input
+                                name="dailyStart"
+                                label="Daily start time"
+                                type="time"
+                                value={dailyStart}
+                                required
+                                onchange={handleDailyStartChange}
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input
+                                name="dailyEnd"
+                                label="Daily end time"
+                                type="time"
+                                value={dailyEnd}
+                                required
+                                onchange={handleDailyEndChange}
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1">
+                            <lightning-checkbox-group
+                                name="includedDays"
+                                label="Days to include"
+                                options={dayOptions}
+                                value={selectedDays}
+                                required
+                                onchange={handleDaysChange}
+                            ></lightning-checkbox-group>
+                        </div>
+                    </div>
+                    <template lwc:if={hasPreview}>
+                        <p class="slds-text-body_regular slds-m-top_small" role="status">{previewSummary}</p>
+                    </template>
+                    <div class="slds-m-top_small slds-grid slds-wrap">
+                        <lightning-button
+                            label="Preview count"
+                            variant="neutral"
+                            class="slds-m-right_small"
+                            disabled={isPreviewDisabled}
+                            onclick={handlePreview}
+                        ></lightning-button>
+                        <lightning-button
+                            label="Generate slots"
+                            variant="brand"
+                            disabled={isGenerateDisabled}
+                            onclick={handleGenerate}
+                        ></lightning-button>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <p class="slds-text-body_regular">Save or select a schedule before generating slots.</p>
+                </template>
+            </section>
+
+            <section class="section section_last">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Slots</h2>
+                <template lwc:if={hasSlots}>
+                    <template lwc:if={hasMoreSlots}>
+                        <p class="slds-text-body_small slds-m-bottom_x-small" role="status">
+                            Showing the first 500 slots in this date range.
+                        </p>
+                    </template>
+                    <div class="slot-table">
+                        <lightning-datatable
+                            key-field="id"
+                            data={slotRows}
+                            columns={slotColumns}
+                            hide-checkbox-column
+                            onrowaction={handleSlotRowAction}
+                        ></lightning-datatable>
+                    </div>
+                </template>
+                <template lwc:elseif={showSlotsEmpty}>
+                    <p class="slds-text-body_regular">No slots in this date range.</p>
+                </template>
+                <template lwc:else>
+                    <p class="slds-text-body_regular">Select a schedule to review its slots.</p>
+                </template>
+            </section>
+        </div>
+    </lightning-card>
+</template>

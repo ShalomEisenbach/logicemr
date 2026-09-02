@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Provider Home</masterLabel>
-    <description>Provider worklist home with metrics, today&apos;s encounters, results to review, unsigned notes, and recent patients.</description>
+    <description>Provider worklist home with metrics, today&apos;s appointments, today&apos;s encounters, results to review, unsigned notes, and recent patients.</description>
     <targets>
         <target>lightning__HomePage</target>
         <target>lightning__AppPage</target>

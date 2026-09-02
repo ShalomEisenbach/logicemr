@@ -9,6 +9,10 @@ public with sharing class ProviderHomeController {
         'Final'
     };
     private static final String NOTE_STATUS_DRAFT = 'Draft';
+    private static final Set<String> TODAY_APPOINTMENT_STATUSES = new Set<String>{
+        'Booked',
+        'Arrived'
+    };
 
     public class HomePayload {
         @AuraEnabled
@@ -28,6 +32,8 @@ public with sharing class ProviderHomeController {
         public Integer resultsToReview;
         @AuraEnabled
         public Integer unsignedNotes;
+        @AuraEnabled
+        public Integer todaysAppointments;
     }
 
     public class HomeLists {
@@ -37,6 +43,8 @@ public with sharing class ProviderHomeController {
         public List<DiagnosticReport__c> resultsToReview;
         @AuraEnabled
         public List<ClinicalNote__c> unsignedNotes;
+        @AuraEnabled
+        public List<Appointment__c> todaysAppointments;
     }
 
     @AuraEnabled(cacheable=true)
@@ -50,7 +58,9 @@ public with sharing class ProviderHomeController {
         payload.metrics.openEncounters = countOpenEncounters(patientIds, practitionerId);
         payload.metrics.resultsToReview = countResultsToReview(patientIds);
         payload.metrics.unsignedNotes = countUnsignedNotes(practitionerId);
+        payload.metrics.todaysAppointments = countTodaysAppointments(practitionerId);
         payload.lists.todaysEncounters = queryTodaysEncounters(patientIds, practitionerId);
+        payload.lists.todaysAppointments = queryTodaysAppointments(practitionerId);
         payload.lists.resultsToReview = queryResultsToReview(patientIds);
         payload.lists.unsignedNotes = queryUnsignedNotes(practitionerId);
         payload.recentPatients = queryRecentPatients();
@@ -64,8 +74,10 @@ public with sharing class ProviderHomeController {
         payload.metrics.openEncounters = 0;
         payload.metrics.resultsToReview = 0;
         payload.metrics.unsignedNotes = 0;
+        payload.metrics.todaysAppointments = 0;
         payload.lists = new HomeLists();
         payload.lists.todaysEncounters = new List<Encounter__c>();
+        payload.lists.todaysAppointments = new List<Appointment__c>();
         payload.lists.resultsToReview = new List<DiagnosticReport__c>();
         payload.lists.unsignedNotes = new List<ClinicalNote__c>();
         payload.recentPatients = new List<Patient__c>();
@@ -191,6 +203,56 @@ public with sharing class ProviderHomeController {
                 AND Start__c >= :startOfDay
                 AND Start__c < :startOfNextDay
             ORDER BY Start__c DESC NULLS LAST
+            LIMIT :LIST_LIMIT
+        ];
+    }
+
+    private static Integer countTodaysAppointments(Id practitionerId) {
+        if (practitionerId == null) {
+            return 0;
+        }
+        Datetime startOfDay = Datetime.newInstance(Date.today(), Time.newInstance(0, 0, 0, 0));
+        Datetime startOfNextDay = startOfDay.addDays(1);
+        return [
+            SELECT COUNT()
+            FROM Appointment__c
+            WHERE
+                Practitioner__c = :practitionerId
+                AND Status__c IN :TODAY_APPOINTMENT_STATUSES
+                AND Start__c >= :startOfDay
+                AND Start__c < :startOfNextDay
+        ];
+    }
+
+    private static List<Appointment__c> queryTodaysAppointments(Id practitionerId) {
+        if (practitionerId == null) {
+            return new List<Appointment__c>();
+        }
+        Datetime startOfDay = Datetime.newInstance(Date.today(), Time.newInstance(0, 0, 0, 0));
+        Datetime startOfNextDay = startOfDay.addDays(1);
+        return [
+            SELECT
+                Id,
+                Name,
+                Status__c,
+                Appointment_Type__c,
+                Reason__c,
+                Start__c,
+                End__c,
+                Location_Name__c,
+                Encounter__c,
+                Practitioner__c,
+                Patient__c,
+                Patient__r.Name,
+                Patient__r.First_Name__c,
+                Patient__r.Last_Name__c
+            FROM Appointment__c
+            WHERE
+                Practitioner__c = :practitionerId
+                AND Status__c IN :TODAY_APPOINTMENT_STATUSES
+                AND Start__c >= :startOfDay
+                AND Start__c < :startOfNextDay
+            ORDER BY Start__c ASC NULLS LAST
             LIMIT :LIST_LIMIT
         ];
     }

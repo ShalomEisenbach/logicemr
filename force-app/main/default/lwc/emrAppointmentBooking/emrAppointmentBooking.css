@@ -1,0 +1,10 @@
+:host {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.slot-table {
+    max-height: 24rem;
+    overflow: auto;
+}

@@ -233,6 +233,11 @@ private class NameFormatterHandlerTest {
             Status__c = 'Completed'
         );
         insert new CareTeam__c(Patient__c = patient.Id, Status__c = 'Active');
+        insert new Appointment__c(
+            Patient__c = patient.Id,
+            Start__c = Datetime.newInstance(2026, 9, 2, 14, 0, 0),
+            Status__c = 'Booked'
+        );
         Test.stopTest();
 
         CareTeam__c careTeam = [SELECT Name FROM CareTeam__c WHERE Patient__c = :patient.Id LIMIT 1];
@@ -288,6 +293,16 @@ private class NameFormatterHandlerTest {
         System.assert(
             procedureRow.Name.startsWith('ECG'),
             'Procedure Name should compose display and performed datetime. Actual: ' + procedureRow.Name
+        );
+        Appointment__c appointmentRow = [
+            SELECT Name
+            FROM Appointment__c
+            WHERE Patient__c = :patient.Id
+            LIMIT 1
+        ];
+        System.assert(
+            appointmentRow.Name.contains(patient.Name),
+            'Appointment Name should include the parent Patient Name. Actual: ' + appointmentRow.Name
         );
     }
 
