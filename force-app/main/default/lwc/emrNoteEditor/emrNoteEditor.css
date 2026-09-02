@@ -1,0 +1,50 @@
+:host {
+    display: block;
+}
+
+.template-panel {
+    border: 1px solid #dddbda;
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    background: #f3f3f3;
+    min-height: 8rem;
+}
+
+.template-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.template-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    margin-bottom: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #dddbda;
+    border-radius: 0.25rem;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.template-button:hover:not(:disabled),
+.template-button:focus:not(:disabled) {
+    border-color: #0176d3;
+    box-shadow: 0 0 0 1px #0176d3 inset;
+}
+
+.template-button:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
+.shortcut {
+    color: #0176d3;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}

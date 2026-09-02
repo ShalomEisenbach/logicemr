@@ -1,0 +1,184 @@
+<template>
+    <lightning-card title="Mapping Runner" icon-name="standard:calibration">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading mappings" size="small"></lightning-spinner>
+            </template>
+
+            <lightning-combobox
+                name="mapping"
+                label="Active mapping"
+                value={selectedMappingId}
+                options={mappingOptions}
+                placeholder="Select a mapping"
+                required
+                onchange={handleMappingChange}
+            ></lightning-combobox>
+
+            <section class="slds-m-top_large">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Preview</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">
+                    Dry-run one source record. No Patient is written.
+                </p>
+                <template lwc:if={hasSourceObject}>
+                    <lightning-record-picker
+                        label="Sample source record"
+                        placeholder="Search source records"
+                        object-api-name={sourceObjectApiName}
+                        onchange={handlePreviewRecordPick}
+                    ></lightning-record-picker>
+                </template>
+                <lightning-input
+                    name="previewRecordId"
+                    label="Source record Id"
+                    value={previewRecordId}
+                    onchange={handlePreviewIdChange}
+                ></lightning-input>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        label="Preview"
+                        variant="neutral"
+                        disabled={isPreviewDisabled}
+                        onclick={handlePreview}
+                    ></lightning-button>
+                </div>
+                <template lwc:if={isPreviewing}>
+                    <lightning-spinner alternative-text="Previewing mapping" size="small"></lightning-spinner>
+                </template>
+                <template lwc:if={previewOutcome}>
+                    <p class="slds-text-body_regular slds-m-top_small" role="status">{previewOutcome}</p>
+                </template>
+                <template lwc:if={hasPreviewErrors}>
+                    <ul class="slds-m-top_x-small slds-text-color_error" role="alert">
+                        <template for:each={previewErrors} for:item="rowError">
+                            <li key={rowError.message}>{rowError.message}</li>
+                        </template>
+                    </ul>
+                </template>
+                <template lwc:if={hasPreviewRows}>
+                    <div class="slds-scrollable_x slds-m-top_small">
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col"><div class="slds-truncate" title="Source field">Source field</div></th>
+                                    <th scope="col"><div class="slds-truncate" title="Source value">Source value</div></th>
+                                    <th scope="col" class="arrow-col"><span class="slds-assistive-text">maps to</span></th>
+                                    <th scope="col"><div class="slds-truncate" title="Target field">Target field</div></th>
+                                    <th scope="col"><div class="slds-truncate" title="Mapped value">Mapped value</div></th>
+                                    <th scope="col"><div class="slds-truncate" title="Transform">Transform</div></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={previewResult.rows} for:item="row">
+                                    <tr key={row.targetField}>
+                                        <td><div class="slds-truncate" title={row.sourceField}>{row.sourceField}</div></td>
+                                        <td><div class="slds-truncate" title={row.sourceValue}>{row.sourceValue}</div></td>
+                                        <td class="arrow-col">→</td>
+                                        <td><div class="slds-truncate" title={row.targetField}>{row.targetField}</div></td>
+                                        <td><div class="slds-truncate" title={row.targetValue}>{row.targetValue}</div></td>
+                                        <td><div class="slds-truncate" title={row.transformationType}>{row.transformationType}</div></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+            </section>
+
+            <section class="slds-m-top_large">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Run</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">
+                    Commit the mapping for one or more source records.
+                </p>
+                <template lwc:if={hasSourceObject}>
+                    <lightning-record-picker
+                        label="Add a source record"
+                        placeholder="Search source records"
+                        object-api-name={sourceObjectApiName}
+                        onchange={handleRunRecordPick}
+                    ></lightning-record-picker>
+                </template>
+                <lightning-textarea
+                    name="runIds"
+                    label="Source record Ids"
+                    value={runIdsText}
+                    placeholder="One Id per line, or comma-separated"
+                    onchange={handleRunIdsChange}
+                ></lightning-textarea>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        label="Run mapping"
+                        variant="brand"
+                        disabled={isRunDisabled}
+                        onclick={handleRun}
+                    ></lightning-button>
+                </div>
+                <template lwc:if={isRunning}>
+                    <lightning-spinner alternative-text="Running mapping" size="small"></lightning-spinner>
+                </template>
+                <template lwc:if={hasRunSummary}>
+                    <dl class="slds-m-top_small slds-dl_inline">
+                        <dt class="slds-dl_inline__label">Created</dt>
+                        <dd class="slds-dl_inline__detail">{runSummary.created}</dd>
+                        <dt class="slds-dl_inline__label">Updated</dt>
+                        <dd class="slds-dl_inline__detail">{runSummary.updated}</dd>
+                        <dt class="slds-dl_inline__label">Skipped</dt>
+                        <dd class="slds-dl_inline__detail">{runSummary.skipped}</dd>
+                    </dl>
+                </template>
+                <template lwc:if={hasRunErrors}>
+                    <ul class="slds-m-top_x-small slds-text-color_error" role="alert">
+                        <template for:each={runErrors} for:item="rowError">
+                            <li key={rowError.message}>{rowError.message}</li>
+                        </template>
+                    </ul>
+                </template>
+            </section>
+
+            <section class="slds-m-top_large">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Backfill</h2>
+                <p class="slds-text-body_small slds-m-bottom_small">
+                    Queue a batch that maps every record of the source object. This cannot be undone from this screen.
+                </p>
+                <template lwc:if={showBackfillConfirm}>
+                    <div class="slds-box slds-theme_alert-texture slds-m-bottom_small" role="alertdialog">
+                        <p class="slds-text-body_regular slds-m-bottom_small">
+                            Queue a full backfill for this mapping? Every source record will be mapped to Patient.
+                        </p>
+                        <lightning-button
+                            label="Cancel"
+                            variant="neutral"
+                            class="slds-m-right_small"
+                            onclick={handleBackfillCancel}
+                        ></lightning-button>
+                        <lightning-button
+                            label="Yes, queue backfill"
+                            variant="destructive"
+                            disabled={isBackfilling}
+                            onclick={handleBackfillConfirm}
+                        ></lightning-button>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <lightning-button
+                        label="Queue full backfill"
+                        variant="destructive"
+                        disabled={isBackfillDisabled}
+                        onclick={handleBackfillClick}
+                    ></lightning-button>
+                </template>
+                <template lwc:if={isBackfilling}>
+                    <lightning-spinner alternative-text="Queueing backfill" size="small"></lightning-spinner>
+                </template>
+                <template lwc:if={backfillJobId}>
+                    <p class="slds-m-top_small" role="status">
+                        Backfill job Id: <strong>{backfillJobId}</strong>
+                    </p>
+                </template>
+            </section>
+        </div>
+    </lightning-card>
+</template>

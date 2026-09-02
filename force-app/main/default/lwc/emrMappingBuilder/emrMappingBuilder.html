@@ -1,0 +1,317 @@
+<template>
+    <lightning-card title="Mapping Builder" icon-name="standard:calibration">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <lightning-progress-indicator current-step={currentStep} type="base">
+                <lightning-progress-step label="Source object" value="source"></lightning-progress-step>
+                <lightning-progress-step label="Field mappings" value="fields"></lightning-progress-step>
+                <lightning-progress-step label="Match and status" value="match"></lightning-progress-step>
+            </lightning-progress-indicator>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-top_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading mapping builder" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:if={isStepSource}>
+                <div class="slds-m-top_medium">
+                    <lightning-input
+                        name="mappingName"
+                        label="Mapping name"
+                        value={mappingName}
+                        required
+                        onchange={handleNameChange}
+                    ></lightning-input>
+                    <template lwc:if={nameError}>
+                        <div class="slds-text-color_error slds-m-bottom_small" role="alert">{nameError}</div>
+                    </template>
+                    <lightning-textarea
+                        name="description"
+                        label="Description"
+                        value={description}
+                        onchange={handleDescriptionChange}
+                    ></lightning-textarea>
+                    <lightning-combobox
+                        name="sourceObject"
+                        label="Source object"
+                        value={sourceObject}
+                        options={sourceObjectOptions}
+                        required
+                        onchange={handleSourceObjectChange}
+                    ></lightning-combobox>
+                    <template lwc:if={sourceObjectError}>
+                        <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+                            {sourceObjectError}
+                        </div>
+                    </template>
+                    <lightning-input
+                        name="targetObject"
+                        label="Target object"
+                        value={targetObjectDisplay}
+                        disabled
+                    ></lightning-input>
+                </div>
+            </template>
+
+            <template lwc:if={isStepFields}>
+                <div class="slds-m-top_medium">
+                    <template lwc:if={rowsError}>
+                        <div class="slds-text-color_error slds-m-bottom_small" role="alert">{rowsError}</div>
+                    </template>
+                    <template for:each={displayRows} for:item="row">
+                        <div key={row.key} class="mapping-row slds-box slds-m-bottom_small">
+                            <div class="slds-grid slds-gutters slds-wrap">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
+                                    <template lwc:if={row.showSourceField}>
+                                        <lightning-combobox
+                                            name="sourceField"
+                                            label="Source field"
+                                            value={row.sourceField}
+                                            options={sourceFieldOptions}
+                                            data-row-key={row.key}
+                                            data-field="sourceField"
+                                            required
+                                            onchange={handleRowFieldChange}
+                                        ></lightning-combobox>
+                                        <template lwc:if={row.sourceFieldError}>
+                                            <div class="slds-text-color_error" role="alert">
+                                                {row.sourceFieldError}
+                                            </div>
+                                        </template>
+                                    </template>
+                                    <template lwc:if={row.isConcatenate}>
+                                        <lightning-dual-listbox
+                                            name="concatFields"
+                                            label="Source fields"
+                                            source-label="Available"
+                                            selected-label="Included"
+                                            options={sourceFieldOptions}
+                                            value={row.sourceFields}
+                                            data-row-key={row.key}
+                                            onchange={handleConcatFieldsChange}
+                                        ></lightning-dual-listbox>
+                                        <template lwc:if={row.concatFieldsError}>
+                                            <div class="slds-text-color_error" role="alert">
+                                                {row.concatFieldsError}
+                                            </div>
+                                        </template>
+                                    </template>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
+                                    <lightning-combobox
+                                        name="targetField"
+                                        label="Target field"
+                                        value={row.targetField}
+                                        options={targetFieldOptions}
+                                        data-row-key={row.key}
+                                        data-field="targetField"
+                                        required
+                                        onchange={handleRowFieldChange}
+                                    ></lightning-combobox>
+                                    <template lwc:if={row.targetFieldError}>
+                                        <div class="slds-text-color_error" role="alert">
+                                            {row.targetFieldError}
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_3-of-12">
+                                    <lightning-combobox
+                                        name="transformationType"
+                                        label="Transformation"
+                                        value={row.transformationType}
+                                        options={transformationOptions}
+                                        data-row-key={row.key}
+                                        data-field="transformationType"
+                                        onchange={handleRowFieldChange}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-12 slds-m-top_large">
+                                    <lightning-button-icon
+                                        icon-name="utility:delete"
+                                        alternative-text="Remove row"
+                                        title="Remove row"
+                                        variant="bare"
+                                        data-row-key={row.key}
+                                        onclick={handleRemoveRow}
+                                    ></lightning-button-icon>
+                                </div>
+                            </div>
+
+                            <template lwc:if={row.isDefaultValue}>
+                                <div class="slds-m-top_small">
+                                    <lightning-input
+                                        name="defaultValue"
+                                        label="Default value"
+                                        value={row.defaultValue}
+                                        data-row-key={row.key}
+                                        data-field="defaultValue"
+                                        required
+                                        onchange={handleRowFieldChange}
+                                    ></lightning-input>
+                                    <template lwc:if={row.defaultValueError}>
+                                        <div class="slds-text-color_error" role="alert">
+                                            {row.defaultValueError}
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template lwc:if={row.isDateFormat}>
+                                <div class="slds-m-top_small">
+                                    <lightning-input
+                                        name="formatPattern"
+                                        label="Format pattern"
+                                        value={row.formatPattern}
+                                        placeholder="yyyy-MM-dd"
+                                        data-row-key={row.key}
+                                        data-field="formatPattern"
+                                        required
+                                        onchange={handleRowFieldChange}
+                                    ></lightning-input>
+                                    <template lwc:if={row.formatPatternError}>
+                                        <div class="slds-text-color_error" role="alert">
+                                            {row.formatPatternError}
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template lwc:if={row.isConcatenate}>
+                                <div class="slds-m-top_small">
+                                    <lightning-input
+                                        name="concatSeparator"
+                                        label="Concat separator"
+                                        value={row.concatSeparator}
+                                        data-row-key={row.key}
+                                        data-field="concatSeparator"
+                                        maxlength="10"
+                                        onchange={handleRowFieldChange}
+                                    ></lightning-input>
+                                </div>
+                            </template>
+                            <template lwc:if={row.isPicklistMap}>
+                                <div class="slds-m-top_small">
+                                    <p class="slds-text-title_caps slds-m-bottom_xx-small">Value map</p>
+                                    <template lwc:if={row.valueMapError}>
+                                        <div class="slds-text-color_error slds-m-bottom_xx-small" role="alert">
+                                            {row.valueMapError}
+                                        </div>
+                                    </template>
+                                    <template for:each={row.valueMaps} for:item="valueMap">
+                                        <div key={valueMap.key} class="slds-grid slds-gutters slds-m-bottom_xx-small">
+                                            <div class="slds-col slds-size_5-of-12">
+                                                <lightning-input
+                                                    name="sourceValue"
+                                                    label="Source value"
+                                                    value={valueMap.sourceValue}
+                                                    data-row-key={row.key}
+                                                    data-vm-key={valueMap.key}
+                                                    data-field="sourceValue"
+                                                    onchange={handleValueMapChange}
+                                                ></lightning-input>
+                                                <template lwc:if={valueMap.sourceValueError}>
+                                                    <div class="slds-text-color_error" role="alert">
+                                                        {valueMap.sourceValueError}
+                                                    </div>
+                                                </template>
+                                            </div>
+                                            <div class="slds-col slds-size_5-of-12">
+                                                <lightning-input
+                                                    name="targetValue"
+                                                    label="Target value"
+                                                    value={valueMap.targetValue}
+                                                    data-row-key={row.key}
+                                                    data-vm-key={valueMap.key}
+                                                    data-field="targetValue"
+                                                    onchange={handleValueMapChange}
+                                                ></lightning-input>
+                                                <template lwc:if={valueMap.targetValueError}>
+                                                    <div class="slds-text-color_error" role="alert">
+                                                        {valueMap.targetValueError}
+                                                    </div>
+                                                </template>
+                                            </div>
+                                            <div class="slds-col slds-size_2-of-12 slds-m-top_large">
+                                                <lightning-button-icon
+                                                    icon-name="utility:delete"
+                                                    alternative-text="Remove value"
+                                                    title="Remove value"
+                                                    variant="bare"
+                                                    data-row-key={row.key}
+                                                    data-vm-key={valueMap.key}
+                                                    onclick={handleRemoveValueMap}
+                                                ></lightning-button-icon>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <lightning-button
+                                        label="Add value"
+                                        variant="neutral"
+                                        data-row-key={row.key}
+                                        onclick={handleAddValueMap}
+                                    ></lightning-button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <lightning-button
+                        label="Add field mapping"
+                        variant="neutral"
+                        onclick={handleAddRow}
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template lwc:if={isStepMatch}>
+                <div class="slds-m-top_medium">
+                    <lightning-combobox
+                        name="matchTargetField"
+                        label="Match target field"
+                        value={matchTargetField}
+                        options={targetFieldOptions}
+                        required
+                        onchange={handleMatchFieldChange}
+                    ></lightning-combobox>
+                    <template lwc:if={matchFieldError}>
+                        <div class="slds-text-color_error" role="alert">{matchFieldError}</div>
+                    </template>
+                    <div class="slds-m-top_small">
+                        <lightning-input
+                            type="toggle"
+                            name="active"
+                            label="Active"
+                            checked={active}
+                            onchange={handleActiveChange}
+                        ></lightning-input>
+                    </div>
+                </div>
+            </template>
+
+            <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                <template lwc:if={showBack}>
+                    <lightning-button
+                        label="Back"
+                        variant="neutral"
+                        class="slds-m-right_small"
+                        onclick={handleBack}
+                    ></lightning-button>
+                </template>
+                <template lwc:if={showNext}>
+                    <lightning-button
+                        label="Next"
+                        variant="brand"
+                        disabled={isNextDisabled}
+                        onclick={handleNext}
+                    ></lightning-button>
+                </template>
+                <template lwc:if={isStepMatch}>
+                    <lightning-button
+                        label="Save"
+                        variant="brand"
+                        disabled={isSaveDisabled}
+                        onclick={handleSave}
+                    ></lightning-button>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+</template>

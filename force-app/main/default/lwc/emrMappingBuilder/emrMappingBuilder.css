@@ -1,0 +1,7 @@
+:host {
+    display: block;
+}
+
+.mapping-row {
+    background: var(--lwc-colorBackgroundAlt, #f3f3f3);
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>61.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Mapping Builder</masterLabel>
+    <description>Admin tool to configure a source-to-Patient field mapping without writing code.</description>
+    <targets>
+        <target>lightning__AppPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__AppPage">
+            <property
+                name="mappingId"
+                type="String"
+                label="Mapping Definition Id"
+                description="Existing Mapping Definition to edit. Leave blank to create a new mapping."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

@@ -4,9 +4,8 @@
     <externalSharingModel>ControlledByParent</externalSharingModel>
     <label>Care Team</label>
     <nameField>
-        <displayFormat>CT-{00000000}</displayFormat>
-        <label>Care Team ID</label>
-        <type>AutoNumber</type>
+        <label>Care Team Name</label>
+        <type>Text</type>
     </nameField>
     <pluralLabel>Care Teams</pluralLabel>
     <sharingModel>ControlledByParent</sharingModel>

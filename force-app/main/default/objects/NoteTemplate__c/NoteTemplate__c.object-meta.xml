@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Reusable clinical note snippet (dot phrase). Config object — no FHIR or source-system identifiers.</description>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>Note Template</label>
+    <nameField>
+        <label>Template Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Note Templates</pluralLabel>
+    <sharingModel>Read</sharingModel>
+</CustomObject>

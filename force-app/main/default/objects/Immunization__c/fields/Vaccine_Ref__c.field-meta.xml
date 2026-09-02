@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Vaccine_Ref__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Canonical Code Reference. Vaccine_Display__c and Vaccine_Code__c remain snapshot fields populated at selection.</description>
+    <label>Vaccine</label>
+    <referenceTo>Code_Reference__c</referenceTo>
+    <relationshipLabel>Immunizations</relationshipLabel>
+    <relationshipName>Immunizations</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

@@ -1,0 +1,3 @@
+trigger MedicationStatementTrigger on MedicationStatement__c(before insert, before update) {
+    NameFormatterHandler.format(Trigger.new);
+}

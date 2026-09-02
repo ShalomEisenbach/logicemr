@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Procedure_Code_System__c</fullName>
+    <description>Typical code systems for procedures are SNOMED and CPT. Global value set defaults are package-wide, so they are not marked default on LogicEMR_Code_System.</description>
+    <label>Procedure Code System</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>LogicEMR_Code_System</valueSetName>
+    </valueSet>
+</CustomField>

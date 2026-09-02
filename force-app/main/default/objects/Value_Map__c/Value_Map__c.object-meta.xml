@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Source-to-target value pair used by Picklist Value Map transformations.</description>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Value Map</label>
+    <nameField>
+        <displayFormat>VM-{00000000}</displayFormat>
+        <label>Value Map Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Value Maps</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+</CustomObject>

@@ -1,0 +1,98 @@
+<template>
+    <lightning-card title="Code Set Import" icon-name="standard:dataset">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <p class="slds-text-body_regular slds-m-bottom_small">
+                Upload a CSV with columns <strong>Code System</strong>, <strong>Code</strong>, and
+                <strong>Display</strong>. Allowed code systems: ICD-10, CPT, LOINC, RxNorm, SNOMED, CVX.
+                Matching uses Code System + Code; re-import updates the existing row.
+            </p>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={isBusy}>
+                <lightning-spinner alternative-text="Processing code set import" size="small"></lightning-spinner>
+            </template>
+
+            <lightning-file-upload
+                label="Upload CSV"
+                accept=".csv"
+                disabled={isBusy}
+                onuploadfinished={handleUploadFinished}
+            ></lightning-file-upload>
+
+            <template lwc:if={hasPreview}>
+                <section class="slds-m-top_large">
+                    <h2 class="slds-text-heading_small slds-m-bottom_x-small">Preview</h2>
+                    <p class="slds-text-body_small slds-m-bottom_small" role="status">{previewSummary}</p>
+                    <div class="slds-scrollable_x">
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Code System">Code System</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Code">Code</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Display">Display</div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={previewRows} for:item="row">
+                                    <tr key={row.key}>
+                                        <td>
+                                            <div class="slds-truncate" title={row.codeSystem}>{row.codeSystem}</div>
+                                        </td>
+                                        <td>
+                                            <div class="slds-truncate" title={row.code}>{row.code}</div>
+                                        </td>
+                                        <td>
+                                            <div class="slds-truncate" title={row.display}>{row.display}</div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                        <lightning-button
+                            label="Clear"
+                            variant="neutral"
+                            class="slds-m-right_small"
+                            disabled={isBusy}
+                            onclick={handleClear}
+                        ></lightning-button>
+                        <lightning-button
+                            label="Import codes"
+                            variant="brand"
+                            disabled={isImportDisabled}
+                            onclick={handleImport}
+                        ></lightning-button>
+                    </div>
+                </section>
+            </template>
+
+            <template lwc:if={hasResult}>
+                <section class="slds-m-top_large">
+                    <h2 class="slds-text-heading_small slds-m-bottom_x-small">Import result</h2>
+                    <p class="slds-text-body_regular" role="status">{resultSummary}</p>
+                    <template lwc:if={hasResultErrors}>
+                        <ul class="slds-m-top_x-small slds-text-color_error" role="alert">
+                            <template for:each={visibleErrors} for:item="error">
+                                <li key={error.key}>{error.message}</li>
+                            </template>
+                        </ul>
+                        <template lwc:if={hiddenErrorCount}>
+                            <p class="slds-text-body_small slds-m-top_xx-small">
+                                And {hiddenErrorCount} more.
+                            </p>
+                        </template>
+                    </template>
+                </section>
+            </template>
+        </div>
+    </lightning-card>
+</template>

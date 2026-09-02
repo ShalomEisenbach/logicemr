@@ -4,9 +4,8 @@
     <externalSharingModel>Read</externalSharingModel>
     <label>Practitioner</label>
     <nameField>
-        <displayFormat>PRAC-{00000000}</displayFormat>
-        <label>Practitioner ID</label>
-        <type>AutoNumber</type>
+        <label>Practitioner Name</label>
+        <type>Text</type>
     </nameField>
     <pluralLabel>Practitioners</pluralLabel>
     <sharingModel>Read</sharingModel>

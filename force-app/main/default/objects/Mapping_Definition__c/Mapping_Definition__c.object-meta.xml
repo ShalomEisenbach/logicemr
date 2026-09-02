@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Admin-managed field-mapping configuration. Defines a source object to target object mapping used at runtime.</description>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>Mapping Definition</label>
+    <nameField>
+        <label>Mapping Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Mapping Definitions</pluralLabel>
+    <sharingModel>Read</sharingModel>
+</CustomObject>

@@ -1,0 +1,64 @@
+<template>
+    <c-emr-chart-panel title="Clinical Timeline">
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <div class="filter-row slds-m-bottom_small" role="group" aria-label="Event type filters">
+            <template for:each={filterChips} for:item="chip">
+                <lightning-button
+                    key={chip.type}
+                    label={chip.label}
+                    variant={chip.variant}
+                    data-type={chip.type}
+                    onclick={handleFilterClick}
+                ></lightning-button>
+            </template>
+        </div>
+        <template lwc:if={hasEvents}>
+            <ol class="timeline">
+                <template for:each={visibleEvents} for:item="event">
+                    <li key={event.recordId} class="timeline-item">
+                        <div
+                            class="timeline-event"
+                            role="button"
+                            tabindex="0"
+                            data-record-id={event.recordId}
+                            data-type={event.type}
+                            onclick={handleEventClick}
+                            onkeydown={handleEventKeydown}
+                        >
+                            <span class={event.iconClass} aria-hidden="true">
+                                <lightning-icon
+                                    icon-name={event.iconName}
+                                    size="small"
+                                    alternative-text={event.typeLabel}
+                                ></lightning-icon>
+                            </span>
+                            <div class="timeline-body">
+                                <div class="timeline-heading">
+                                    <span class="timeline-title slds-truncate">{event.title}</span>
+                                    <template lwc:if={event.hasDateTime}>
+                                        <lightning-relative-date-time
+                                            class="timeline-when"
+                                            value={event.dateTime}
+                                        ></lightning-relative-date-time>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="timeline-when">No date</span>
+                                    </template>
+                                </div>
+                                <p class="timeline-subtitle slds-text-body_small slds-text-color_weak">
+                                    {event.typeLabel}
+                                    <template lwc:if={event.subtitle}> · {event.subtitle}</template>
+                                </p>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </ol>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">{emptyMessage}</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

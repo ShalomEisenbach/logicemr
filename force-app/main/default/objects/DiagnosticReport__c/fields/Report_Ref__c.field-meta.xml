@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Report_Ref__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Canonical Code Reference. Report_Display__c and Report_Code__c remain snapshot fields populated at selection.</description>
+    <label>Report Type</label>
+    <referenceTo>Code_Reference__c</referenceTo>
+    <relationshipLabel>Diagnostic Reports</relationshipLabel>
+    <relationshipName>DiagnosticReports</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

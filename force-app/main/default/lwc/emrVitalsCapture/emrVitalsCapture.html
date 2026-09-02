@@ -1,0 +1,34 @@
+<template>
+    <c-emr-chart-panel title="Vitals">
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <div class="slds-grid slds-gutters_x-small slds-wrap">
+            <template for:each={vitals} for:item="vital">
+                <div key={vital.key} class="slds-col slds-size_1-of-2 slds-m-bottom_x-small">
+                    <lightning-input
+                        type="number"
+                        label={vital.label}
+                        value={vital.value}
+                        min={vital.min}
+                        max={vital.max}
+                        step={vital.step}
+                        field-level-help={vital.help}
+                        data-key={vital.key}
+                        message-when-range-overflow={vital.rangeMessage}
+                        message-when-range-underflow={vital.rangeMessage}
+                        onchange={handleChange}
+                    ></lightning-input>
+                </div>
+            </template>
+        </div>
+        <div class="slds-m-top_small">
+            <lightning-button
+                label="Save vitals"
+                variant="brand"
+                disabled={isSaving}
+                onclick={handleSave}
+            ></lightning-button>
+        </div>
+    </c-emr-chart-panel>
+</template>

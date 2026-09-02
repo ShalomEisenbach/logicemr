@@ -1,0 +1,101 @@
+<template>
+    <c-emr-chart-panel title="Flowsheet">
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <span class="toolbar-label" id="flowsheet-category">Category</span>
+                <lightning-button-group aria-labelledby="flowsheet-category">
+                    <lightning-button
+                        label="Vitals"
+                        variant={vitalsVariant}
+                        onclick={handleVitals}
+                    ></lightning-button>
+                    <lightning-button
+                        label="Labs"
+                        variant={labsVariant}
+                        onclick={handleLabs}
+                    ></lightning-button>
+                </lightning-button-group>
+            </div>
+            <div class="toolbar-group toolbar-range">
+                <lightning-combobox
+                    name="dateRange"
+                    label="Date range"
+                    value={dateRange}
+                    options={dateRangeOptions}
+                    onchange={handleDateRange}
+                ></lightning-combobox>
+            </div>
+        </div>
+
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+
+        <template lwc:if={isLoading}>
+            <div class="loading slds-is-relative">
+                <lightning-spinner alternative-text="Loading flowsheet" size="small"></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={showEmpty}>
+            <p class="slds-text-body_regular">{emptyMessage}</p>
+        </template>
+
+        <template lwc:if={hasGrid}>
+            <template lwc:if={truncated}>
+                <p class="slds-text-color_weak slds-m-bottom_x-small" role="status">{largeStateMessage}</p>
+            </template>
+            <div class="grid-wrap">
+                <table class="flowsheet">
+                    <caption class="slds-assistive-text">
+                        Trending observations by time. First column is the observation name.
+                    </caption>
+                    <thead>
+                        <tr>
+                            <th class="sticky-col" scope="col">Observation</th>
+                            <template for:each={columns} for:item="column">
+                                <th key={column.key} scope="col">
+                                    <lightning-formatted-date-time
+                                        value={column.effectiveDateTime}
+                                        year="numeric"
+                                        month="short"
+                                        day="2-digit"
+                                        hour="numeric"
+                                        minute="2-digit"
+                                    ></lightning-formatted-date-time>
+                                </th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={rows} for:item="row">
+                            <tr key={row.key}>
+                                <th class="sticky-col" scope="row">
+                                    <div class="obs-display">{row.display}</div>
+                                    <template lwc:if={row.code}>
+                                        <div class="obs-code">{row.code}</div>
+                                    </template>
+                                </th>
+                                <template for:each={row.cells} for:item="cell">
+                                    <td key={cell.key} class={cell.className} title={cell.title}>
+                                        <template lwc:if={cell.hasValue}>
+                                            <span class="value">{cell.value}</span>
+                                            <template lwc:if={cell.unit}>
+                                                <span class="unit">{cell.unit}</span>
+                                            </template>
+                                            <template lwc:if={cell.interpretation}>
+                                                <span class="slds-assistive-text">
+                                                    {cell.interpretation}
+                                                </span>
+                                            </template>
+                                        </template>
+                                    </td>
+                                </template>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+    </c-emr-chart-panel>
+</template>

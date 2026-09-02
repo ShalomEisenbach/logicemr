@@ -22,8 +22,16 @@
                             <lightning-badge label={status}></lightning-badge>
                         </template>
                     </div>
+                    <div class="slds-col slds-large-size_1-of-3">
+                        <p class="slds-text-title_caps">Allergies</p>
+                        <lightning-badge label={allergyCountLabel}></lightning-badge>
+                        <p class="slds-text-body_regular slds-m-top_xx-small">{allergyNames}</p>
+                    </div>
                 </div>
             </template>
         </div>
     </lightning-card>
+    <div class="slds-m-top_x-small">
+        <c-emr-alert-bar record-id={recordId}></c-emr-alert-bar>
+    </div>
 </template>

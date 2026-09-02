@@ -4,9 +4,8 @@
     <externalSharingModel>ControlledByParent</externalSharingModel>
     <label>Care Team Member</label>
     <nameField>
-        <displayFormat>CTM-{00000000}</displayFormat>
-        <label>Care Team Member ID</label>
-        <type>AutoNumber</type>
+        <label>Care Team Member Name</label>
+        <type>Text</type>
     </nameField>
     <pluralLabel>Care Team Members</pluralLabel>
     <sharingModel>ControlledByParent</sharingModel>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All_Members</fullName>
+    <columns>NAME</columns>
+    <columns>Care_Team__c</columns>
+    <columns>Practitioner__c</columns>
+    <columns>Role__c</columns>
+    <columns>Access_Level__c</columns>
+    <columns>Active__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>All Members</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

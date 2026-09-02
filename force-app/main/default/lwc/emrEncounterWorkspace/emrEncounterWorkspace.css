@@ -1,0 +1,35 @@
+:host {
+    display: block;
+}
+
+.status-path {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.status-step {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.status-step_complete {
+    background: #c9e7d3;
+    color: #2e844a;
+}
+
+.status-step_current {
+    background: #0176d3;
+    color: #fff;
+}
+
+.status-step_upcoming {
+    background: #e5e5e5;
+    color: #706e6b;
+}

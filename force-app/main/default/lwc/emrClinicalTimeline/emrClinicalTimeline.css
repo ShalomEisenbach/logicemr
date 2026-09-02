@@ -1,0 +1,100 @@
+:host {
+    display: block;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 0.75rem;
+    border-left: 2px solid var(--lwc-colorBorder, #c9c9c9);
+}
+
+.timeline-item {
+    position: relative;
+    padding: 0 0 0.85rem 0.85rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-event {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.timeline-event:hover,
+.timeline-event:focus {
+    background-color: var(--lwc-colorBackgroundRowHover, #f3f3f3);
+    outline: none;
+}
+
+.timeline-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+    margin-left: -1.85rem;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 2px currentColor;
+    background-color: #ffffff;
+}
+
+.timeline-icon_encounter {
+    color: #1b96ff;
+}
+
+.timeline-icon_condition {
+    color: #fe5c4c;
+}
+
+.timeline-icon_observation {
+    color: #3ba755;
+}
+
+.timeline-icon_medication {
+    color: #9050e9;
+}
+
+.timeline-icon_procedure {
+    color: #0b827c;
+}
+
+.timeline-body {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.timeline-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.timeline-title {
+    font-weight: 600;
+}
+
+.timeline-when {
+    flex: 0 0 auto;
+    color: var(--lwc-colorTextWeak, #706e6b);
+    font-size: 0.75rem;
+}
+
+.timeline-subtitle {
+    margin: 0.15rem 0 0;
+}

@@ -8,3 +8,5 @@ RULES:
 - Naming: Objects PascalCase + __c; fields PascalCase + __c; LWC camelCase prefixed "emr".
 - Apex: "with sharing" by default, bulkified, no SOQL/DML in loops; every class has a matching test >90% coverage with meaningful System.assert checks.
 - Only build what the prompt specifies. Don't invent fields — add a TODO comment if unsure.
+- Every custom object ships with a Page Layout (.layout) organizing fields into sensible sections (Identification, Clinical/Details, Status, and a System Information section for the External ID fields) and including relevant related lists. Assign the layout to all profiles via the object's metadata where applicable.
+- Every custom object ships with at least two List Views (.listView): an "All" view and one filtered view relevant to the object, each with sensible columns.

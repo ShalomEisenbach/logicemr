@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All_Mappings</fullName>
+    <columns>NAME</columns>
+    <columns>Source_Object__c</columns>
+    <columns>Target_Object__c</columns>
+    <columns>Match_Target_Field__c</columns>
+    <columns>Active__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>All Mappings</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

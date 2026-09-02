@@ -1,0 +1,45 @@
+<template>
+    <div class="slds-form-element">
+        <div class="slds-combobox_container">
+            <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open">
+                <lightning-input
+                    type="search"
+                    label={label}
+                    placeholder={placeholder}
+                    value={inputValue}
+                    required={required}
+                    onchange={handleInput}
+                    onfocus={handleFocus}
+                    onblur={handleBlur}
+                ></lightning-input>
+                <template lwc:if={showDropdown}>
+                    <div class="slds-dropdown slds-dropdown_fluid results-dropdown" role="listbox">
+                        <ul class="slds-listbox slds-listbox_vertical" role="presentation">
+                            <template for:each={results} for:item="row">
+                                <li key={row.key} role="presentation" class="slds-listbox__item">
+                                    <div
+                                        class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small"
+                                        role="option"
+                                        data-key={row.key}
+                                        onmousedown={handleOptionMouseDown}
+                                        onclick={handleSelect}
+                                    >
+                                        <span class="slds-media__body">
+                                            <span class="slds-truncate" title={row.label}>{row.label}</span>
+                                        </span>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                        <template lwc:if={showNoResults}>
+                            <div class="slds-p-around_small slds-text-color_weak">No matching codes.</div>
+                        </template>
+                        <template lwc:if={errorMessage}>
+                            <div class="slds-p-around_small slds-text-color_error" role="alert">{errorMessage}</div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</template>

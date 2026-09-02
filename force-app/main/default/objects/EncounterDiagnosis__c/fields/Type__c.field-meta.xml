@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Type__c</fullName>
+    <label>Type</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Principal</fullName>
+                <default>false</default>
+                <label>Principal</label>
+            </value>
+            <value>
+                <fullName>Secondary</fullName>
+                <default>false</default>
+                <label>Secondary</label>
+            </value>
+            <value>
+                <fullName>Admitting</fullName>
+                <default>false</default>
+                <label>Admitting</label>
+            </value>
+            <value>
+                <fullName>Discharge</fullName>
+                <default>false</default>
+                <label>Discharge</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,10 +1,16 @@
 import { LightningElement, api, wire } from 'lwc';
 import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
+import { refreshApex } from '@salesforce/apex';
+import { registerRefreshHandler, unregisterRefreshHandler } from 'lightning/refresh';
+import resolvePatientId from '@salesforce/apex/AlertBarController.resolvePatientId';
+import getActiveAllergies from '@salesforce/apex/AllergyPanelController.getActiveAllergies';
 import FIRST_NAME_FIELD from '@salesforce/schema/Patient__c.First_Name__c';
 import LAST_NAME_FIELD from '@salesforce/schema/Patient__c.Last_Name__c';
 import DOB_FIELD from '@salesforce/schema/Patient__c.Date_of_Birth__c';
 import MRN_FIELD from '@salesforce/schema/Patient__c.MRN__c';
 import STATUS_FIELD from '@salesforce/schema/Patient__c.Status__c';
+import DISPLAY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Display__c';
+import CODE_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Code__c';
 
 const PATIENT_FIELDS = [
     FIRST_NAME_FIELD,
@@ -17,13 +23,57 @@ const PATIENT_FIELDS = [
 export default class EmrPatientBanner extends LightningElement {
     @api recordId;
 
+    patientId;
     patient;
     errorMessage;
+    activeAllergies = [];
+    wiredAllergiesResult;
+    refreshHandlerId;
 
-    @wire(getRecord, { recordId: '$recordId', fields: PATIENT_FIELDS })
+    connectedCallback() {
+        this.refreshHandlerId = registerRefreshHandler(this, this.refreshHandler);
+    }
+
+    disconnectedCallback() {
+        unregisterRefreshHandler(this.refreshHandlerId);
+    }
+
+    refreshHandler() {
+        if (!this.wiredAllergiesResult) {
+            return Promise.resolve();
+        }
+        return refreshApex(this.wiredAllergiesResult);
+    }
+
+    @wire(resolvePatientId, { recordId: '$recordId' })
+    wiredResolvedPatient({ data, error }) {
+        if (error) {
+            this.patientId = undefined;
+            this.errorMessage = this.reduceError(error);
+            return;
+        }
+        this.patientId = data || undefined;
+        if (data) {
+            this.errorMessage = undefined;
+        }
+    }
+
+    @wire(getRecord, { recordId: '$patientId', fields: PATIENT_FIELDS })
     wiredPatient({ data, error }) {
         this.patient = data;
-        this.errorMessage = error ? this.reduceError(error) : undefined;
+        if (error) {
+            this.errorMessage = this.reduceError(error);
+        }
+    }
+
+    @wire(getActiveAllergies, { patientId: '$patientId' })
+    wiredAllergies(result) {
+        this.wiredAllergiesResult = result;
+        if (result.data) {
+            this.activeAllergies = result.data;
+        } else if (result.error) {
+            this.activeAllergies = [];
+        }
     }
 
     get hasPatient() {
@@ -70,6 +120,25 @@ export default class EmrPatientBanner extends LightningElement {
 
     get status() {
         return getFieldValue(this.patient, STATUS_FIELD) || '';
+    }
+
+    get allergyCount() {
+        return this.activeAllergies.length;
+    }
+
+    get allergyCountLabel() {
+        const count = this.allergyCount;
+        return count === 1 ? '1 active' : `${count} active`;
+    }
+
+    get allergyNames() {
+        if (!this.activeAllergies.length) {
+            return 'None';
+        }
+        return this.activeAllergies
+            .map((row) => row[DISPLAY_FIELD.fieldApiName] || row[CODE_FIELD.fieldApiName] || '')
+            .filter((name) => name)
+            .join(', ');
     }
 
     reduceError(error) {

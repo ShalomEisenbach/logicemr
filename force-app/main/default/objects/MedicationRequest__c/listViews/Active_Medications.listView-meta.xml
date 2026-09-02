@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Active_Medications</fullName>
+    <columns>NAME</columns>
+    <columns>Patient__c</columns>
+    <columns>Medication_Display__c</columns>
+    <columns>Status__c</columns>
+    <columns>Intent__c</columns>
+    <columns>Dosage_Text__c</columns>
+    <columns>Requester__c</columns>
+    <columns>Authored_On__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Active</value>
+    </filters>
+    <label>Active Medications</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

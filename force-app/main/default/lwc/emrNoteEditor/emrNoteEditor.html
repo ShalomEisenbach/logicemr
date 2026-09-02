@@ -1,0 +1,116 @@
+<template>
+    <c-emr-chart-panel title="Notes">
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+
+        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-end slds-wrap slds-m-bottom_small">
+            <div class="slds-col slds-grow">
+                <lightning-combobox
+                    name="noteType"
+                    label="Note type"
+                    value={noteType}
+                    options={noteTypeOptions}
+                    disabled={isLocked}
+                    onchange={handleNoteTypeChange}
+                ></lightning-combobox>
+            </div>
+            <div class="slds-col slds-no-flex slds-m-left_small slds-m-top_small">
+                <lightning-badge label={status}></lightning-badge>
+                <template lwc:if={signedDate}>
+                    <span class="slds-m-left_x-small slds-text-body_small slds-text-color_weak">
+                        <lightning-formatted-date-time
+                            value={signedDate}
+                            year="numeric"
+                            month="short"
+                            day="2-digit"
+                            hour="2-digit"
+                            minute="2-digit"
+                        ></lightning-formatted-date-time>
+                    </span>
+                </template>
+            </div>
+        </div>
+
+        <div class="slds-grid slds-gutters slds-wrap">
+            <div class={editorClass}>
+                <lightning-input-rich-text
+                    data-id="note-body"
+                    label="Note"
+                    value={body}
+                    disabled={isLocked}
+                    onchange={handleBodyChange}
+                ></lightning-input-rich-text>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        label="Save as Draft"
+                        variant="neutral"
+                        disabled={actionsDisabled}
+                        class="slds-m-right_small"
+                        onclick={handleSaveDraft}
+                    ></lightning-button>
+                    <lightning-button
+                        label="Sign"
+                        variant="brand"
+                        disabled={actionsDisabled}
+                        onclick={handleSign}
+                    ></lightning-button>
+                    <template lwc:if={isLocked}>
+                        <lightning-button
+                            label="New note"
+                            variant="neutral"
+                            class="slds-m-left_small"
+                            onclick={handleNewNote}
+                        ></lightning-button>
+                    </template>
+                </div>
+            </div>
+
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                <div class="template-panel">
+                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                        <h3 class="slds-text-title_caps">Templates</h3>
+                        <lightning-button
+                            variant="base"
+                            label={panelToggleLabel}
+                            onclick={handleToggleTemplates}
+                        ></lightning-button>
+                    </div>
+                    <template lwc:if={templatesOpen}>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                            Click a template to insert it, or type its shortcut (for example .ros).
+                        </p>
+                        <template lwc:if={hasTemplates}>
+                            <template for:each={templateGroups} for:item="group">
+                                <section key={group.key} class="slds-m-bottom_small">
+                                    <h4 class="slds-text-title_caps slds-m-bottom_xx-small">{group.category}</h4>
+                                    <ul class="template-list">
+                                        <template for:each={group.templates} for:item="item">
+                                            <li key={item.id}>
+                                                <button
+                                                    class="template-button"
+                                                    type="button"
+                                                    data-id={item.id}
+                                                    disabled={isLocked}
+                                                    onclick={handleInsertTemplate}
+                                                >
+                                                    <span class="slds-truncate">{item.name}</span>
+                                                    <template lwc:if={item.shortcutLabel}>
+                                                        <span class="shortcut">{item.shortcutLabel}</span>
+                                                    </template>
+                                                </button>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </section>
+                            </template>
+                        </template>
+                        <template lwc:else>
+                            <p class="slds-text-body_regular">No active templates.</p>
+                        </template>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </c-emr-chart-panel>
+</template>

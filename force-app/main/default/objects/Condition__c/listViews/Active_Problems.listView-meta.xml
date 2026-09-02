@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Active_Problems</fullName>
+    <columns>NAME</columns>
+    <columns>Patient__c</columns>
+    <columns>Diagnosis_Display__c</columns>
+    <columns>Diagnosis_Code__c</columns>
+    <columns>Clinical_Status__c</columns>
+    <columns>Category__c</columns>
+    <columns>Onset_Date__c</columns>
+    <columns>Severity__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Clinical_Status__c</field>
+        <operation>equals</operation>
+        <value>Active</value>
+    </filters>
+    <filters>
+        <field>Category__c</field>
+        <operation>equals</operation>
+        <value>Problem List Item</value>
+    </filters>
+    <label>Active Problems</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

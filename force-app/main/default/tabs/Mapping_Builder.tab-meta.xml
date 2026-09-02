@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Configure a source-to-Patient field mapping without writing code.</description>
+    <flexiPage>Mapping_Builder</flexiPage>
+    <label>Mapping Builder</label>
+    <motif>Custom67: Gears</motif>
+</CustomTab>

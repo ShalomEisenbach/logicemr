@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Medication_Ref__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Canonical Code Reference. Medication_Display__c and Medication_Code__c remain snapshot fields populated at selection.</description>
+    <label>Medication</label>
+    <referenceTo>Code_Reference__c</referenceTo>
+    <relationshipLabel>Medication Requests</relationshipLabel>
+    <relationshipName>MedicationRequests</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

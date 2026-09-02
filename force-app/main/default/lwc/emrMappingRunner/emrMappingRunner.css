@@ -1,0 +1,9 @@
+:host {
+    display: block;
+}
+
+.arrow-col {
+    width: 2rem;
+    text-align: center;
+    color: var(--lwc-colorTextWeak, #706e6b);
+}

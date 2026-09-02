@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Note_Type__c</fullName>
+    <label>Note Type</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Progress Note</fullName>
+                <default>true</default>
+                <label>Progress Note</label>
+            </value>
+            <value>
+                <fullName>H&amp;P</fullName>
+                <default>false</default>
+                <label>H&amp;P</label>
+            </value>
+            <value>
+                <fullName>Discharge Summary</fullName>
+                <default>false</default>
+                <label>Discharge Summary</label>
+            </value>
+            <value>
+                <fullName>Consult</fullName>
+                <default>false</default>
+                <label>Consult</label>
+            </value>
+            <value>
+                <fullName>Other</fullName>
+                <default>false</default>
+                <label>Other</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

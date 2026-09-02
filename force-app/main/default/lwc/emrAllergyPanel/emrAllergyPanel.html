@@ -1,0 +1,74 @@
+<template>
+    <c-emr-chart-panel title="Allergies" view-all-label="View All" onviewall={handleViewAll}>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <div class="slds-m-bottom_small">
+            <lightning-button
+                label="Add"
+                variant="neutral"
+                onclick={handleToggleAdd}
+            ></lightning-button>
+        </div>
+        <template lwc:if={showAddForm}>
+            <div class="slds-m-bottom_medium">
+                <c-emr-code-search
+                    label="Allergen"
+                    placeholder="Search RxNorm or SNOMED"
+                    required
+                    include-record-id
+                    code-systems={codeSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <lightning-combobox
+                    name="type"
+                    label="Type"
+                    value={allergyType}
+                    options={typeOptions}
+                    onchange={handleTypeChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="category"
+                    label="Category"
+                    value={category}
+                    options={categoryOptions}
+                    onchange={handleCategoryChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="criticality"
+                    label="Criticality"
+                    value={criticality}
+                    options={criticalityOptions}
+                    onchange={handleCriticalityChange}
+                ></lightning-combobox>
+                <lightning-textarea
+                    name="reaction"
+                    label="Reaction"
+                    value={reaction}
+                    onchange={handleReactionChange}
+                ></lightning-textarea>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        label="Save allergy"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                </div>
+            </div>
+        </template>
+        <template lwc:if={hasAllergies}>
+            <lightning-datatable
+                key-field="Id"
+                data={allergies}
+                columns={columns}
+                hide-checkbox-column
+                onrowaction={handleRowAction}
+            ></lightning-datatable>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No allergies.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

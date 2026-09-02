@@ -1,4 +1,4 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, api } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import searchPatients from '@salesforce/apex/PatientSearchController.search';
 import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
@@ -12,6 +12,12 @@ const DEBOUNCE_MS = 300;
 const OPEN_CHART = 'open_chart';
 
 export default class EmrPatientSearch extends NavigationMixin(LightningElement) {
+    @api eager;
+    @api height;
+    @api icon;
+    @api label;
+    @api scrollable;
+    @api width;
     patients = [];
     errorMessage;
     hasSearched = false;

@@ -1,0 +1,32 @@
+<template>
+    <template lwc:if={hasLoaded}>
+        <div class={stripClass} role={stripRole}>
+            <template lwc:if={showIcon}>
+                <lightning-icon
+                    icon-name={iconName}
+                    size="x-small"
+                    variant={iconVariant}
+                    alternative-text="Allergies"
+                    class="slds-m-right_x-small"
+                ></lightning-icon>
+            </template>
+            <template lwc:if={errorMessage}>
+                <span>{errorMessage}</span>
+            </template>
+            <template lwc:elseif={hasAllergies}>
+                <span class="alert-label">Allergies</span>
+                <template for:each={allergyItems} for:item="item">
+                    <span key={item.id} class={item.cssClass} title={item.criticality}>
+                        {item.name}
+                        <template lwc:if={item.isHigh}>
+                            <span class="high-flag"> High</span>
+                        </template>
+                    </span>
+                </template>
+            </template>
+            <template lwc:else>
+                <span class="nka">No known allergies</span>
+            </template>
+        </div>
+    </template>
+</template>

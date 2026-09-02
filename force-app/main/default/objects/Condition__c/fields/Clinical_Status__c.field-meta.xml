@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Clinical_Status__c</fullName>
+    <label>Clinical Status</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Active</fullName>
+                <default>true</default>
+                <label>Active</label>
+            </value>
+            <value>
+                <fullName>Recurrence</fullName>
+                <default>false</default>
+                <label>Recurrence</label>
+            </value>
+            <value>
+                <fullName>Relapse</fullName>
+                <default>false</default>
+                <label>Relapse</label>
+            </value>
+            <value>
+                <fullName>Inactive</fullName>
+                <default>false</default>
+                <label>Inactive</label>
+            </value>
+            <value>
+                <fullName>Remission</fullName>
+                <default>false</default>
+                <label>Remission</label>
+            </value>
+            <value>
+                <fullName>Resolved</fullName>
+                <default>false</default>
+                <label>Resolved</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Active</fullName>
+    <columns>NAME</columns>
+    <columns>Last_Name__c</columns>
+    <columns>First_Name__c</columns>
+    <columns>MRN__c</columns>
+    <columns>Date_of_Birth__c</columns>
+    <columns>Status__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Active</value>
+    </filters>
+    <label>Active</label>
+</ListView>

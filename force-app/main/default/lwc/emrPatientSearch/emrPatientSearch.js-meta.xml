@@ -7,5 +7,16 @@
     <targets>
         <target>lightning__AppPage</target>
         <target>lightning__HomePage</target>
+        <target>lightning__UtilityBar</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__UtilityBar">
+            <property name="eager" type="Boolean" default="false" />
+            <property name="height" type="Integer" default="480" />
+            <property name="icon" type="String" default="search" />
+            <property name="label" type="String" default="Patient Search" />
+            <property name="scrollable" type="Boolean" default="true" />
+            <property name="width" type="Integer" default="800" />
+        </targetConfig>
+    </targetConfigs>
 </LightningComponentBundle>

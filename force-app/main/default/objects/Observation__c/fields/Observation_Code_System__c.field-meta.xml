@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Observation_Code_System__c</fullName>
+    <description>Default code system for observations is LOINC. Global value set defaults are package-wide, so LOINC is not marked default on LogicEMR_Code_System.</description>
+    <label>Observation Code System</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>LogicEMR_Code_System</valueSetName>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All_Medication_Statements</fullName>
+    <columns>NAME</columns>
+    <columns>Patient__c</columns>
+    <columns>Medication_Display__c</columns>
+    <columns>Status__c</columns>
+    <columns>Dosage_Text__c</columns>
+    <columns>Source__c</columns>
+    <columns>Effective_Start__c</columns>
+    <columns>Effective_End__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>All Medication Statements</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

@@ -1,0 +1,14 @@
+:host {
+    display: block;
+    position: relative;
+}
+
+.results-dropdown {
+    z-index: 7000;
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.slds-listbox__option {
+    cursor: pointer;
+}

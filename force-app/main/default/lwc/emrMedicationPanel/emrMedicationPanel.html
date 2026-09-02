@@ -1,0 +1,57 @@
+<template>
+    <c-emr-chart-panel title="Medications" view-all-label="View All" onviewall={handleViewAll}>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <div class="slds-m-bottom_small">
+            <lightning-button
+                label="Add"
+                variant="neutral"
+                onclick={handleToggleAdd}
+            ></lightning-button>
+        </div>
+        <template lwc:if={showAddForm}>
+            <div class="slds-m-bottom_medium">
+                <c-emr-code-search
+                    label="Medication"
+                    placeholder="Search RxNorm"
+                    required
+                    include-record-id
+                    code-systems={codeSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <div class="slds-m-top_small">
+                    <lightning-button
+                        label="Save medication"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                </div>
+            </div>
+        </template>
+        <template lwc:if={showEmpty}>
+            <p class="slds-text-body_regular">No medications.</p>
+        </template>
+        <template lwc:if={hasActiveOrders}>
+            <h3 class="slds-text-title_caps slds-m-bottom_xx-small">Active orders</h3>
+            <lightning-datatable
+                key-field="Id"
+                data={activeOrders}
+                columns={orderColumns}
+                hide-checkbox-column
+                onrowaction={handleRowAction}
+            ></lightning-datatable>
+        </template>
+        <template lwc:if={hasReported}>
+            <h3 class="slds-text-title_caps slds-m-top_medium slds-m-bottom_xx-small">Reported</h3>
+            <lightning-datatable
+                key-field="Id"
+                data={reportedMedications}
+                columns={reportedColumns}
+                hide-checkbox-column
+            ></lightning-datatable>
+        </template>
+    </c-emr-chart-panel>
+</template>
