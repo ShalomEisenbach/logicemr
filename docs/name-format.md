@@ -23,6 +23,7 @@ Database.executeBatch(new NameBackfillBatch('MedicationStatement__c'));
 Database.executeBatch(new NameBackfillBatch('MedicationAdministration__c'));
 Database.executeBatch(new NameBackfillBatch('ServiceRequest__c'));
 Database.executeBatch(new NameBackfillBatch('DiagnosticReport__c'));
+Database.executeBatch(new NameBackfillBatch('Procedure__c'));
 Database.executeBatch(new NameBackfillBatch('ClinicalNote__c'));
 Database.executeBatch(new NameBackfillBatch('CareTeam__c'));
 Database.executeBatch(new NameBackfillBatch('CareTeamMember__c'));

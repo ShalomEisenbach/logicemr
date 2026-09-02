@@ -1,6 +1,8 @@
 /**
  * Idempotent LogicEMR demo seed. Re-run safe via Source_System_Id__c upsert.
  * Covers Patient Search, Patient Banner, Encounter Panel, and Care Team.
+ * Do not set Name — Patient, Practitioner, Encounter, CareTeam, and
+ * CareTeamMember Names are composed by NameFormatterHandler.
  */
 Id runningUserId = UserInfo.getUserId();
 
@@ -13,7 +15,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__NPI__c = '1000000001',
         lfemr__Active__c = true,
         lfemr__User__c = runningUserId,
-        lfemr__Specialty__c = 'Other'
+        lfemr__Specialty__c = 'Primary Care'
     ),
     new lfemr__Practitioner__c(
         lfemr__Source_System_Id__c = 'seed-prac-patel',
@@ -22,7 +24,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__Last_Name__c = 'Patel',
         lfemr__NPI__c = '1000000002',
         lfemr__Active__c = true,
-        lfemr__Specialty__c = 'Other'
+        lfemr__Specialty__c = 'Cardiology'
     ),
     new lfemr__Practitioner__c(
         lfemr__Source_System_Id__c = 'seed-prac-chen',
@@ -31,7 +33,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__Last_Name__c = 'Chen',
         lfemr__NPI__c = '1000000003',
         lfemr__Active__c = true,
-        lfemr__Specialty__c = 'Other'
+        lfemr__Specialty__c = 'Emergency Medicine'
     ),
     new lfemr__Practitioner__c(
         lfemr__Source_System_Id__c = 'seed-prac-vasquez',
@@ -40,7 +42,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__Last_Name__c = 'Vasquez',
         lfemr__NPI__c = '1000000004',
         lfemr__Active__c = true,
-        lfemr__Specialty__c = 'Other'
+        lfemr__Specialty__c = 'Nursing'
     ),
     new lfemr__Practitioner__c(
         lfemr__Source_System_Id__c = 'seed-prac-smith',

@@ -143,6 +143,14 @@
         <fields>Patient__c</fields>
         <relatedList>DiagnosticReport__c.Report_Ref__c</relatedList>
     </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
+        <fields>Procedure_Display__c</fields>
+        <fields>Status__c</fields>
+        <fields>Category__c</fields>
+        <fields>Patient__c</fields>
+        <relatedList>Procedure__c.Procedure_Ref__c</relatedList>
+    </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>
     <showHighlightsPanel>false</showHighlightsPanel>
     <showInteractionLogPanel>false</showInteractionLogPanel>

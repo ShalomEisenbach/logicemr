@@ -905,6 +905,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Procedure__c.Procedure_Ref__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Procedure__c.Source_System_Id__c</field>
         <readable>true</readable>
     </fieldPermissions>

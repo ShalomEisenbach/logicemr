@@ -4,9 +4,8 @@
     <externalSharingModel>ControlledByParent</externalSharingModel>
     <label>Procedure</label>
     <nameField>
-        <displayFormat>PROC-{00000000}</displayFormat>
-        <label>Procedure ID</label>
-        <type>AutoNumber</type>
+        <label>Procedure Name</label>
+        <type>Text</type>
     </nameField>
     <pluralLabel>Procedures</pluralLabel>
     <sharingModel>ControlledByParent</sharingModel>

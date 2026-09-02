@@ -1,6 +1,6 @@
 # Reporting on coded clinical data
 
-Group and count diagnoses, medications, allergies, immunizations, observations, service requests, and diagnostic reports using the **master catalog Lookup** (for example `Condition__c.Diagnosis_Ref__c` → `Code_Reference__c`). That Id is the stable key for a code. Snapshot fields (`Diagnosis_Code_System__c`, `Diagnosis_Code__c`, `Diagnosis_Display__c`, and the same pattern on other objects) preserve the point-in-time display that was stored when the clinical row was written. They can drift from the catalog if a display label is later corrected, so they are the wrong grain for “how many patients have X”.
+Group and count diagnoses, medications, allergies, immunizations, observations, service requests, diagnostic reports, and procedures using the **master catalog Lookup** (for example `Condition__c.Diagnosis_Ref__c` → `Code_Reference__c`). That Id is the stable key for a code. Snapshot fields (`Diagnosis_Code_System__c`, `Diagnosis_Code__c`, `Diagnosis_Display__c`, and the same pattern on other objects) preserve the point-in-time display that was stored when the clinical row was written. They can drift from the catalog if a display label is later corrected, so they are the wrong grain for “how many patients have X”.
 
 ## Example: patients grouped by diagnosis
 
@@ -12,7 +12,7 @@ WHERE Diagnosis_Ref__c != null
 GROUP BY Diagnosis_Ref__r.Code_System__c, Diagnosis_Ref__r.Code__c, Diagnosis_Ref__r.Display__c
 ```
 
-Same idea for other coded objects: `Observation__c.Observation_Ref__c`, `AllergyIntolerance__c.Allergen_Ref__c`, `Immunization__c.Vaccine_Ref__c`, `MedicationRequest__c.Medication_Ref__c`, `MedicationStatement__c.Medication_Ref__c`, `ServiceRequest__c.Service_Ref__c`, `DiagnosticReport__c.Report_Ref__c`.
+Same idea for other coded objects: `Observation__c.Observation_Ref__c`, `AllergyIntolerance__c.Allergen_Ref__c`, `Immunization__c.Vaccine_Ref__c`, `MedicationRequest__c.Medication_Ref__c`, `MedicationStatement__c.Medication_Ref__c`, `ServiceRequest__c.Service_Ref__c`, `DiagnosticReport__c.Report_Ref__c`, `Procedure__c.Procedure_Ref__c`.
 
 ## Linking older rows to the catalog
 
@@ -42,6 +42,9 @@ Database.executeBatch(new CatalogLinkBackfillBatch(
 ));
 Database.executeBatch(new CatalogLinkBackfillBatch(
     'DiagnosticReport__c', 'Report_Code_System__c', 'Report_Code__c', 'Report_Ref__c'
+));
+Database.executeBatch(new CatalogLinkBackfillBatch(
+    'Procedure__c', 'Procedure_Code_System__c', 'Procedure_Code__c', 'Procedure_Ref__c'
 ));
 ```
 

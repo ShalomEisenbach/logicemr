@@ -40,6 +40,10 @@
         <layoutColumns>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>Procedure_Ref__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>Procedure_Display__c</field>
             </layoutItems>
             <layoutItems>
