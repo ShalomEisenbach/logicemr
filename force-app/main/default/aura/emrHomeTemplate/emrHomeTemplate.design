@@ -1,0 +1,7 @@
+<design:component label="LogicEMR Home">
+    <flexipage:template>
+        <flexipage:region name="main" defaultWidth="LARGE">
+            <flexipage:formfactor type="LARGE" width="LARGE" />
+        </flexipage:region>
+    </flexipage:template>
+</design:component>

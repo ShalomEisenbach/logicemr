@@ -14,6 +14,6 @@ This surfaces candidates for **manual review**. Open each record, compare the ch
 
 Assign **LogicEMR Admin**, which grants the `LogicEMR_View_Data_Quality` custom permission and Apex access to `DuplicatePatientController`. The panel is hidden when the running user lacks that permission. `DuplicatePatientController` runs `with sharing`; users need visibility to the patient records they are reviewing.
 
-The LogicEMR app Home page (`LogicEMR_Home`) places the panel in the sidebar. Clinicians using `LogicEMR Clinician` see the provider worklist and patient search; they do not receive `LogicEMR_View_Data_Quality`.
+The LogicEMR app Home page (`LogicEMR_Home`) places the panel below the provider worklist. Clinicians using `LogicEMR Clinician` see the provider worklist and patient search; they do not receive `LogicEMR_View_Data_Quality`.
 
 The panel caps the number of groups shown (50) and displays a “Showing first N groups” notice when more groups exist.

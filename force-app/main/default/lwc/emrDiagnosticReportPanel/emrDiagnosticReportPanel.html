@@ -1,0 +1,179 @@
+<template>
+    <c-emr-chart-panel title="Results" view-all-label="View All" has-records={hasRecords} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={showAddForm}>
+            <c-emr-modal title="Add diagnostic report" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <c-emr-code-search
+                    label="Report"
+                    placeholder="Search LOINC"
+                    required
+                    include-record-id
+                    code-systems={codeSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <lightning-combobox
+                    name="category"
+                    label="Category"
+                    value={category}
+                    options={categoryOptions}
+                    onchange={handleCategoryChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="status"
+                    label="Status"
+                    value={status}
+                    options={statusOptions}
+                    onchange={handleStatusChange}
+                ></lightning-combobox>
+                <lightning-input
+                    type="datetime"
+                    label="Effective"
+                    value={effectiveDateTime}
+                    onchange={handleEffectiveChange}
+                ></lightning-input>
+                <lightning-input
+                    type="datetime"
+                    label="Issued"
+                    value={issuedDateTime}
+                    onchange={handleIssuedChange}
+                ></lightning-input>
+                <lightning-textarea
+                    name="conclusion"
+                    label="Conclusion"
+                    value={conclusion}
+                    onchange={handleConclusionChange}
+                ></lightning-textarea>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save report"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={showEmpty}>
+            <p class="slds-text-body_regular">No diagnostic reports.</p>
+        </template>
+        <template lwc:if={hasUnreviewed}>
+            <h3 class="slds-text-title_caps slds-m-bottom_xx-small">Unreviewed</h3>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={unreviewedReports}
+                    columns={unreviewedColumns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={unreviewedCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <template lwc:if={row.issuedDateTime}>
+                            <p class="stack-detail">
+                                <lightning-formatted-date-time
+                                    value={row.issuedDateTime}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    hour="numeric"
+                                    minute="2-digit"
+                                ></lightning-formatted-date-time>
+                            </p>
+                        </template>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Mark reviewed"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleReviewCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:if={hasReviewed}>
+            <h3 class="slds-text-title_caps slds-m-top_medium slds-m-bottom_xx-small">Reviewed</h3>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={reviewedReports}
+                    columns={reviewedColumns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={reviewedCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <template lwc:if={row.issuedDateTime}>
+                            <p class="stack-detail">
+                                <lightning-formatted-date-time
+                                    value={row.issuedDateTime}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    hour="numeric"
+                                    minute="2-digit"
+                                ></lightning-formatted-date-time>
+                            </p>
+                        </template>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+    </c-emr-chart-panel>
+</template>

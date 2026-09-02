@@ -1,0 +1,6 @@
+<aura:component implements="lightning:homeTemplate" access="global" description="Full-width LogicEMR home with a single main region.">
+    <aura:attribute name="main" type="Aura.Component[]" />
+    <div class="main">
+        {!v.main}
+    </div>
+</aura:component>

@@ -43,12 +43,11 @@
     flex-wrap: wrap;
 }
 
-.search-panel {
-    display: none;
-}
-
-.search-panel_open {
-    display: block;
+.worklists {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-items: start;
 }
 
 .work-row {
@@ -84,5 +83,9 @@
 @media (max-width: 47.9375rem) {
     .metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .worklists {
+        grid-template-columns: 1fr;
     }
 }

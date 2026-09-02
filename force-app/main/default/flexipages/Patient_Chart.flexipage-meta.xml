@@ -59,6 +59,16 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
+                <componentName>emrDiagnosticReportPanel</componentName>
+                <identifier>emrDiagnosticReportPanel</identifier>
+            </componentInstance>
+        </itemInstances>
+        <name>resultsTabContent</name>
+        <type>Facet</type>
+    </flexiPageRegions>
+    <flexiPageRegions>
+        <itemInstances>
+            <componentInstance>
                 <componentName>emrProcedurePanel</componentName>
                 <identifier>emrProcedurePanel</identifier>
             </componentInstance>
@@ -137,6 +147,24 @@
                 </componentInstanceProperties>
                 <componentName>flexipage:tab</componentName>
                 <identifier>flexipage_tab_flowsheet</identifier>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
+                <componentInstanceProperties>
+                    <name>active</name>
+                    <value>false</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>body</name>
+                    <value>resultsTabContent</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>title</name>
+                    <value>Results</value>
+                </componentInstanceProperties>
+                <componentName>flexipage:tab</componentName>
+                <identifier>flexipage_tab_results</identifier>
             </componentInstance>
         </itemInstances>
         <itemInstances>
