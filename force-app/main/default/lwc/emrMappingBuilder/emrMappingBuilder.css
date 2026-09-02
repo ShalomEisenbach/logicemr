@@ -1,7 +1,14 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .mapping-row {
     background: var(--lwc-colorBackgroundAlt, #f3f3f3);
+}
+
+lightning-progress-indicator {
+    max-width: 100%;
+    overflow-x: auto;
 }

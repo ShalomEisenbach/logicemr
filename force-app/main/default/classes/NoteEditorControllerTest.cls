@@ -27,17 +27,17 @@ private class NoteEditorControllerTest {
         };
 
         Test.startTest();
-        List<NoteTemplate__c> templates = NoteEditorController.getActiveTemplates();
+        List<NoteEditorController.NoteTemplateInfo> templates = NoteEditorController.getActiveTemplates();
         Test.stopTest();
 
         System.assertEquals(2, templates.size(), 'Inactive templates must be excluded');
-        System.assertEquals('Physical Exam', templates[0].Category__c, 'Results should order by category');
-        System.assertEquals('PE Normal', templates[0].Name, 'Physical Exam template should be first by category');
-        System.assertEquals('.pe', templates[0].Shortcut__c, 'Shortcut should load for expansion');
-        System.assertEquals('<p>Exam unremarkable.</p>', templates[0].Body__c, 'Body should load for insert');
-        System.assertEquals('ROS Normal', templates[1].Name, 'ROS template should follow Physical Exam');
-        for (NoteTemplate__c row : templates) {
-            System.assertNotEquals('.oldros', row.Shortcut__c, 'Inactive shortcut must not be returned');
+        System.assertEquals('Physical Exam', templates[0].category, 'Results should order by category');
+        System.assertEquals('PE Normal', templates[0].name, 'Physical Exam template should be first by category');
+        System.assertEquals('.pe', templates[0].shortcut, 'Shortcut should load for expansion');
+        System.assertEquals('<p>Exam unremarkable.</p>', templates[0].body, 'Body should load for insert');
+        System.assertEquals('ROS Normal', templates[1].name, 'ROS template should follow Physical Exam');
+        for (NoteEditorController.NoteTemplateInfo row : templates) {
+            System.assertNotEquals('.oldros', row.shortcut, 'Inactive shortcut must not be returned');
         }
     }
 
@@ -241,16 +241,77 @@ private class NoteEditorControllerTest {
     }
 
     @IsTest
-    static void getCurrentNoteIgnoresSignedNotes() {
+    static void getNotesReturnsAllNotesForEncounterNewestFirst() {
         Encounter__c encounter = insertEncounter();
-        NoteEditorController.signNote(encounter.Id, null, 'Other', '<p>Signed only</p>');
+        ClinicalNote__c older = insertDraft(encounter, 'Consult', '<p>Older</p>');
+        ClinicalNote__c newer = insertDraft(encounter, 'H&P', '<p>Newer</p>');
+        newer.Body__c = '<p>Newest</p>';
+        update newer;
+        NoteEditorController.NoteEditorState signed = NoteEditorController.signNote(
+            encounter.Id,
+            null,
+            'Other',
+            '<p>Signed</p>'
+        );
+        Encounter__c other = insertEncounter();
+        insertDraft(other, 'Progress Note', '<p>Other encounter</p>');
+
+        Test.startTest();
+        List<NoteEditorController.NoteEditorState> notes = NoteEditorController.getNotes(encounter.Id);
+        Boolean nullIdThrew = false;
+        try {
+            NoteEditorController.getNotes(null);
+        } catch (AuraHandledException e) {
+            nullIdThrew = true;
+        }
+        Test.stopTest();
+
+        System.assertEquals(3, notes.size(), 'All notes for the encounter should be returned');
+        System.assertEquals(signed.noteId, notes[0].noteId, 'Most recently modified note should be first');
+        Set<Id> ids = new Set<Id>();
+        for (NoteEditorController.NoteEditorState row : notes) {
+            ids.add(row.noteId);
+        }
+        System.assertEquals(true, ids.contains(older.Id), 'Older draft should be included');
+        System.assertEquals(true, ids.contains(newer.Id), 'Updated draft should be included');
+        System.assertEquals(true, ids.contains(signed.noteId), 'Signed note should be included');
+        System.assertEquals(true, nullIdThrew, 'Null encounter Id should be rejected');
+        System.assertEquals(
+            1,
+            [SELECT COUNT() FROM ClinicalNote__c WHERE Encounter__c = :other.Id],
+            'Notes from another encounter must not be mixed in'
+        );
+    }
+
+    @IsTest
+    static void getNotesReturnsEmptyWhenNoneExist() {
+        Encounter__c encounter = insertEncounter();
+
+        Test.startTest();
+        List<NoteEditorController.NoteEditorState> notes = NoteEditorController.getNotes(encounter.Id);
+        Test.stopTest();
+
+        System.assertEquals(0, notes.size(), 'Encounters without notes should return an empty list');
+    }
+
+    @IsTest
+    static void getCurrentNoteReturnsSignedNoteWhenNoDraft() {
+        Encounter__c encounter = insertEncounter();
+        NoteEditorController.NoteEditorState signed = NoteEditorController.signNote(
+            encounter.Id,
+            null,
+            'Other',
+            '<p>Signed only</p>'
+        );
 
         Test.startTest();
         NoteEditorController.NoteEditorState state = NoteEditorController.getCurrentNote(encounter.Id);
         Test.stopTest();
 
-        System.assertEquals(null, state.noteId, 'Signed notes should not be reopened as the current draft');
-        System.assertEquals('Draft', state.status, 'Editor should present a new draft after the prior note is signed');
+        System.assertEquals(signed.noteId, state.noteId, 'Signed note should remain visible when no draft exists');
+        System.assertEquals('Signed', state.status, 'Signed status should load for display');
+        System.assertEquals('<p>Signed only</p>', state.body, 'Signed body should load for display');
+        System.assertEquals('Other', state.noteType, 'Signed note type should load for display');
     }
 
     private static ClinicalNote__c insertDraft(Encounter__c encounter, String noteType, String body) {

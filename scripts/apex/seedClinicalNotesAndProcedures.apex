@@ -1,9 +1,9 @@
 /**
- * Idempotent seed for note templates, clinical notes, and procedures.
+ * Idempotent seed for clinical notes and procedures.
  * Requires seedDemoData.apex. Run seedCatalog.apex first for Procedure_Ref__c.
+ * Note templates are seeded separately: scripts/apex/seedNoteTemplates.apex
  * ClinicalNote Name is composed ({Note_Type__c} - {Author__r.Last_Name__c}).
  * Procedure Name is composed ({Procedure_Display__c} {Performed_DateTime__c}).
- * NoteTemplate Name is a Text Template Name — set it explicitly.
  */
 Map<String, Id> ptIds = new Map<String, Id>();
 for (lfemr__Patient__c row : [
@@ -58,56 +58,6 @@ Id sofiaProgress = encIds.get('seed-enc-sofia-progress');
 Id jamesEd = encIds.get('seed-enc-james-ed');
 Id jamesIp = encIds.get('seed-enc-james-ip');
 Id oliviaVirtual = encIds.get('seed-enc-olivia-virtual');
-
-List<lfemr__NoteTemplate__c> desiredTemplates = new List<lfemr__NoteTemplate__c>{
-    new lfemr__NoteTemplate__c(
-        Name = 'Hypertension Follow-up',
-        lfemr__Shortcut__c = '.htn',
-        lfemr__Category__c = 'Progress Note',
-        lfemr__Active__c = true,
-        lfemr__Body__c = '<p>BP reviewed. Continue current antihypertensive therapy. Counsel on home readings and sodium restriction.</p>'
-    ),
-    new lfemr__NoteTemplate__c(
-        Name = 'Cardiovascular ROS',
-        lfemr__Shortcut__c = '.ros-cv',
-        lfemr__Category__c = 'ROS',
-        lfemr__Active__c = true,
-        lfemr__Body__c = '<p>Denies chest pain, orthopnea, PND. Reports palpitations. No syncope.</p>'
-    ),
-    new lfemr__NoteTemplate__c(
-        Name = 'General Physical Exam',
-        lfemr__Shortcut__c = '.pe',
-        lfemr__Category__c = 'Physical Exam',
-        lfemr__Active__c = true,
-        lfemr__Body__c = '<p>General: NAD. HEENT: NCAT. Lungs: CTAB. Heart: RRR, no m/r/g. Abd: soft, NT. Ext: no edema.</p>'
-    ),
-    new lfemr__NoteTemplate__c(
-        Name = 'Diabetes Assessment/Plan',
-        lfemr__Shortcut__c = '.dm-ap',
-        lfemr__Category__c = 'Assessment/Plan',
-        lfemr__Active__c = true,
-        lfemr__Body__c = '<p>Type 2 DM: A1c above goal. Continue metformin. Endocrine referral. Recheck A1c in 3 months.</p>'
-    )
-};
-
-Set<String> templateNames = new Set<String>();
-for (lfemr__NoteTemplate__c row : desiredTemplates) {
-    templateNames.add(row.Name);
-}
-Map<String, Id> existingTemplateIds = new Map<String, Id>();
-for (lfemr__NoteTemplate__c row : [
-    SELECT Id, Name
-    FROM lfemr__NoteTemplate__c
-    WHERE Name IN :templateNames
-]) {
-    existingTemplateIds.put(row.Name, row.Id);
-}
-for (lfemr__NoteTemplate__c row : desiredTemplates) {
-    if (existingTemplateIds.containsKey(row.Name)) {
-        row.Id = existingTemplateIds.get(row.Name);
-    }
-}
-upsert desiredTemplates;
 
 List<lfemr__ClinicalNote__c> notes = new List<lfemr__ClinicalNote__c>{
     new lfemr__ClinicalNote__c(
@@ -247,16 +197,55 @@ List<lfemr__Procedure__c> procedures = new List<lfemr__Procedure__c>{
         lfemr__Procedure_Display__c = 'X-ray hip, 2 or 3 views',
         lfemr__Procedure_Ref__c = cat.get('CPT::73502'),
         lfemr__Performed_DateTime__c = Datetime.newInstance(2026, 8, 2, 19, 35, 0)
+    ),
+    new lfemr__Procedure__c(
+        lfemr__Source_System_Id__c = 'seed-proc-maya-echo',
+        lfemr__FHIR_Id__c = 'seed-proc-maya-echo',
+        lfemr__Patient__c = maya,
+        lfemr__Encounter__c = mayaProgress,
+        lfemr__Performer__c = lee,
+        lfemr__Category__c = 'Diagnostic',
+        lfemr__Status__c = 'Completed',
+        lfemr__Procedure_Code_System__c = 'CPT',
+        lfemr__Procedure_Code__c = '93306',
+        lfemr__Procedure_Display__c = 'Echocardiogram, complete',
+        lfemr__Procedure_Ref__c = cat.get('CPT::93306'),
+        lfemr__Performed_DateTime__c = Datetime.newInstance(2026, 9, 1, 9, 40, 0),
+        lfemr__Notes__c = 'Normal EF. No wall-motion abnormality.'
+    ),
+    new lfemr__Procedure__c(
+        lfemr__Source_System_Id__c = 'seed-proc-liam-spirometry',
+        lfemr__FHIR_Id__c = 'seed-proc-liam-spirometry',
+        lfemr__Patient__c = liam,
+        lfemr__Encounter__c = liamWell,
+        lfemr__Performer__c = lee,
+        lfemr__Category__c = 'Diagnostic',
+        lfemr__Status__c = 'Completed',
+        lfemr__Procedure_Code_System__c = 'CPT',
+        lfemr__Procedure_Code__c = '94010',
+        lfemr__Procedure_Display__c = 'Spirometry',
+        lfemr__Procedure_Ref__c = cat.get('CPT::94010'),
+        lfemr__Performed_DateTime__c = Datetime.newInstance(2026, 7, 22, 9, 50, 0),
+        lfemr__Notes__c = 'Mild obstruction. Albuterol PRN reviewed.'
+    ),
+    new lfemr__Procedure__c(
+        lfemr__Source_System_Id__c = 'seed-proc-olivia-psychotherapy',
+        lfemr__FHIR_Id__c = 'seed-proc-olivia-psychotherapy',
+        lfemr__Patient__c = olivia,
+        lfemr__Encounter__c = oliviaVirtual,
+        lfemr__Performer__c = patel,
+        lfemr__Category__c = 'Counseling',
+        lfemr__Status__c = 'Completed',
+        lfemr__Procedure_Code_System__c = 'CPT',
+        lfemr__Procedure_Code__c = '90834',
+        lfemr__Procedure_Display__c = 'Psychotherapy, 45 minutes',
+        lfemr__Procedure_Ref__c = cat.get('CPT::90834'),
+        lfemr__Performed_DateTime__c = Datetime.newInstance(2026, 7, 8, 18, 0, 0),
+        lfemr__Notes__c = 'Virtual session. Sleep and sertraline response reviewed.'
     )
 };
 upsert procedures lfemr__Source_System_Id__c;
 
 System.debug(
-    'Seeded ' +
-        desiredTemplates.size() +
-        ' note templates, ' +
-        notes.size() +
-        ' clinical notes, ' +
-        procedures.size() +
-        ' procedures.'
+    'Seeded ' + notes.size() + ' clinical notes, ' + procedures.size() + ' procedures.'
 );

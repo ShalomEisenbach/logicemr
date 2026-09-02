@@ -1,5 +1,7 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .toolbar {
@@ -22,7 +24,8 @@
 }
 
 .toolbar-range {
-    min-width: 12rem;
+    min-width: 8rem;
+    flex: 1 1 12rem;
 }
 
 .loading {
@@ -32,6 +35,7 @@
 
 .grid-wrap {
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
     max-height: 28rem;
     border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
     border-radius: 0.25rem;
@@ -67,7 +71,7 @@ table.flowsheet {
     left: 0;
     z-index: 2;
     text-align: left;
-    min-width: 11rem;
+    min-width: 8rem;
     max-width: 14rem;
     white-space: normal;
     background: var(--slds-g-color-neutral-base-95, #f3f3f3);

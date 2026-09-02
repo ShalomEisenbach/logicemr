@@ -1,17 +1,19 @@
 <template>
-    <c-emr-chart-panel title="Allergies" view-all-label="View All" onviewall={handleViewAll}>
+    <c-emr-chart-panel title="Allergies" view-all-label="View All" has-records={hasAllergies} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>
-        <div class="slds-m-bottom_small">
-            <lightning-button
-                label="Add"
-                variant="neutral"
-                onclick={handleToggleAdd}
-            ></lightning-button>
-        </div>
         <template lwc:if={showAddForm}>
-            <div class="slds-m-bottom_medium">
+            <c-emr-modal title="Add allergy" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
                 <c-emr-code-search
                     label="Allergen"
                     placeholder="Search RxNorm or SNOMED"
@@ -48,7 +50,13 @@
                     value={reaction}
                     onchange={handleReactionChange}
                 ></lightning-textarea>
-                <div class="slds-m-top_small">
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
                     <lightning-button
                         label="Save allergy"
                         variant="brand"
@@ -56,16 +64,53 @@
                         onclick={handleAdd}
                     ></lightning-button>
                 </div>
-            </div>
+            </c-emr-modal>
         </template>
         <template lwc:if={hasAllergies}>
-            <lightning-datatable
-                key-field="Id"
-                data={allergies}
-                columns={columns}
-                hide-checkbox-column
-                onrowaction={handleRowAction}
-            ></lightning-datatable>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={allergies}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={allergyCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <template lwc:if={row.detail}>
+                            <p class="stack-detail">{row.detail}</p>
+                        </template>
+                        <div class="stack-actions">
+                            <template lwc:if={row.canInactivate}>
+                                <lightning-button
+                                    label="Inactivate"
+                                    variant="neutral"
+                                    data-id={row.id}
+                                    disabled={isSaving}
+                                    onclick={handleInactivateCard}
+                                ></lightning-button>
+                            </template>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
         <template lwc:elseif={showEmpty}>
             <p class="slds-text-body_regular">No allergies.</p>

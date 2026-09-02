@@ -1,10 +1,13 @@
 import { LightningElement, api, wire } from 'lwc';
+import { NavigationMixin } from 'lightning/navigation';
 import getData from '@salesforce/apex/FlowsheetController.getData';
+import OBSERVATION_OBJECT from '@salesforce/schema/Observation__c';
+import { recordViewPageRef } from 'c/emrNavigationUtils';
 
 const CATEGORY_VITALS = 'Vitals';
 const CATEGORY_LABS = 'Labs';
 
-export default class EmrFlowsheet extends LightningElement {
+export default class EmrFlowsheet extends NavigationMixin(LightningElement) {
     @api recordId;
 
     category = CATEGORY_VITALS;
@@ -25,6 +28,10 @@ export default class EmrFlowsheet extends LightningElement {
         { label: 'All time', value: 'all' }
     ];
 
+    get observationObjectApiName() {
+        return OBSERVATION_OBJECT.objectApiName;
+    }
+
     @wire(getData, {
         patientId: '$recordId',
         category: '$category',
@@ -35,7 +42,7 @@ export default class EmrFlowsheet extends LightningElement {
         const { data, error } = result;
         if (data) {
             this.columns = data.columns || [];
-            this.rows = this.pivotRows(data.rows || [], this.columns);
+            this.applyRows(data.rows || [], this.columns);
             this.truncated = data.truncated === true;
             this.totalObservationCount = data.totalObservationCount || 0;
             this.errorMessage = undefined;
@@ -45,6 +52,30 @@ export default class EmrFlowsheet extends LightningElement {
             this.truncated = false;
             this.totalObservationCount = 0;
             this.errorMessage = this.reduceError(error);
+        }
+    }
+
+    async applyRows(sourceRows, columns) {
+        const pivoted = this.pivotRows(sourceRows, columns);
+        this.rows = await Promise.all(
+            pivoted.map(async (row) => ({
+                ...row,
+                cells: await Promise.all(row.cells.map((cell) => this.withCellUrl(cell)))
+            }))
+        );
+    }
+
+    async withCellUrl(cell) {
+        if (!cell.observationId) {
+            return cell;
+        }
+        try {
+            const url = await this[NavigationMixin.GenerateUrl](
+                recordViewPageRef(cell.observationId, OBSERVATION_OBJECT.objectApiName)
+            );
+            return { ...cell, url: url || '' };
+        } catch (e) {
+            return cell;
         }
     }
 
@@ -111,14 +142,17 @@ export default class EmrFlowsheet extends LightningElement {
         const interpretation = cell?.interpretation;
         const value = cell?.value;
         const unit = cell?.unit;
+        const observationId = cell?.observationId;
         return {
-            key: `${columnKey}-${cell?.observationId || 'empty'}`,
+            key: `${columnKey}-${observationId || 'empty'}`,
             value,
             unit,
             interpretation,
+            observationId,
             hasValue: value !== null && value !== undefined && value !== '',
             className: this.cellClass(interpretation),
-            title: interpretation || ''
+            title: interpretation || '',
+            url: ''
         };
     }
 

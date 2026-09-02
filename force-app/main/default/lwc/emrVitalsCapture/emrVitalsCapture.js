@@ -1,7 +1,20 @@
 import { LightningElement, api } from 'lwc';
-import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { RefreshEvent } from 'lightning/refresh';
 import saveVitals from '@salesforce/apex/VitalsCaptureController.saveVitals';
+import getEncounterVitals from '@salesforce/apex/VitalsCaptureController.getEncounterVitals';
+
+const SAVE_DELAY_MS = 400;
+
+const EMPTY_VALUES = {
+    systolic: '',
+    diastolic: '',
+    hr: '',
+    rr: '',
+    temp: '',
+    spo2: '',
+    height: '',
+    weight: ''
+};
 
 const VITAL_DEFS = {
     systolic: {
@@ -66,22 +79,22 @@ const VITAL_DEFS = {
     },
     height: {
         key: 'height',
-        label: 'Height (cm)',
+        label: 'Height (in)',
         display: 'Body height',
-        unit: 'cm',
+        unit: 'in',
         loinc: '8302-2',
-        min: 30,
-        max: 250,
+        min: 12,
+        max: 108,
         step: '0.1'
     },
     weight: {
         key: 'weight',
-        label: 'Weight (kg)',
+        label: 'Weight (lbs)',
         display: 'Body weight',
-        unit: 'kg',
+        unit: 'lbs',
         loinc: '29463-7',
-        min: 0.5,
-        max: 500,
+        min: 1,
+        max: 1100,
         step: '0.1'
     }
 };
@@ -89,20 +102,29 @@ const VITAL_DEFS = {
 const VITAL_ORDER = ['systolic', 'diastolic', 'hr', 'rr', 'temp', 'spo2', 'height', 'weight'];
 
 export default class EmrVitalsCapture extends LightningElement {
-    @api recordId;
-
     errorMessage;
     isSaving = false;
-    values = {
-        systolic: '',
-        diastolic: '',
-        hr: '',
-        rr: '',
-        temp: '',
-        spo2: '',
-        height: '',
-        weight: ''
-    };
+    isDirty = false;
+    pendingSave = false;
+    saveTimeoutId;
+    loadRequestId = 0;
+    _recordId;
+    values = { ...EMPTY_VALUES };
+
+    @api
+    get recordId() {
+        return this._recordId;
+    }
+    set recordId(value) {
+        const changed = this._recordId !== value;
+        this._recordId = value;
+        if (changed) {
+            this.isDirty = false;
+            this.values = { ...EMPTY_VALUES };
+            this.errorMessage = undefined;
+            this.loadExisting();
+        }
+    }
 
     get vitals() {
         return VITAL_ORDER.map((key) => {
@@ -117,16 +139,30 @@ export default class EmrVitalsCapture extends LightningElement {
         });
     }
 
+    disconnectedCallback() {
+        window.clearTimeout(this.saveTimeoutId);
+    }
+
     handleChange(event) {
         const key = event.target.dataset.key;
+        this.isDirty = true;
         this.values = { ...this.values, [key]: event.detail.value };
         this.errorMessage = undefined;
         event.target.setCustomValidity('');
         event.target.reportValidity();
+        this.scheduleSave();
     }
 
-    async handleSave() {
+    scheduleSave() {
+        window.clearTimeout(this.saveTimeoutId);
+        this.saveTimeoutId = window.setTimeout(() => {
+            this.persistVitals();
+        }, SAVE_DELAY_MS);
+    }
+
+    async persistVitals() {
         if (this.isSaving) {
+            this.pendingSave = true;
             return;
         }
 
@@ -142,28 +178,39 @@ export default class EmrVitalsCapture extends LightningElement {
                 encounterId: this.recordId,
                 vitals: parsed
             });
-            this.values = {
-                systolic: '',
-                diastolic: '',
-                hr: '',
-                rr: '',
-                temp: '',
-                spo2: '',
-                height: '',
-                weight: ''
-            };
             this.dispatchEvent(new RefreshEvent());
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Vitals saved',
-                    message: `${parsed.length} observation${parsed.length === 1 ? '' : 's'} recorded.`,
-                    variant: 'success'
-                })
-            );
         } catch (error) {
             this.errorMessage = this.reduceError(error);
         } finally {
             this.isSaving = false;
+            if (this.pendingSave) {
+                this.pendingSave = false;
+                this.persistVitals();
+            }
+        }
+    }
+
+    async loadExisting() {
+        if (!this.recordId) {
+            return;
+        }
+        const requestId = ++this.loadRequestId;
+        try {
+            const latest = await getEncounterVitals({ encounterId: this.recordId });
+            if (requestId !== this.loadRequestId || this.isDirty) {
+                return;
+            }
+            const next = { ...EMPTY_VALUES };
+            VITAL_ORDER.forEach((key) => {
+                if (latest && latest[key] != null) {
+                    next[key] = String(latest[key]);
+                }
+            });
+            this.values = next;
+        } catch (error) {
+            if (requestId === this.loadRequestId) {
+                this.errorMessage = this.reduceError(error);
+            }
         }
     }
 
@@ -210,11 +257,7 @@ export default class EmrVitalsCapture extends LightningElement {
             hasInlineError = true;
         }
 
-        if (hasInlineError) {
-            return null;
-        }
-        if (filled.length === 0) {
-            this.errorMessage = 'Enter at least one vital.';
+        if (hasInlineError || filled.length === 0) {
             return null;
         }
         return filled;

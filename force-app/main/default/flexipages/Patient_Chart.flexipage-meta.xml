@@ -7,7 +7,13 @@
                 <identifier>emrPatientBanner</identifier>
             </componentInstance>
         </itemInstances>
-        <name>header</name>
+        <itemInstances>
+            <componentInstance>
+                <componentName>emrCareTeamManagement</componentName>
+                <identifier>emrCareTeamManagement</identifier>
+            </componentInstance>
+        </itemInstances>
+        <name>leftsidebar</name>
         <type>Region</type>
     </flexiPageRegions>
     <flexiPageRegions>
@@ -48,6 +54,16 @@
             </componentInstance>
         </itemInstances>
         <name>flowsheetTabContent</name>
+        <type>Facet</type>
+    </flexiPageRegions>
+    <flexiPageRegions>
+        <itemInstances>
+            <componentInstance>
+                <componentName>emrProcedurePanel</componentName>
+                <identifier>emrProcedurePanel</identifier>
+            </componentInstance>
+        </itemInstances>
+        <name>proceduresTabContent</name>
         <type>Facet</type>
     </flexiPageRegions>
     <flexiPageRegions>
@@ -123,6 +139,24 @@
                 <identifier>flexipage_tab_flowsheet</identifier>
             </componentInstance>
         </itemInstances>
+        <itemInstances>
+            <componentInstance>
+                <componentInstanceProperties>
+                    <name>active</name>
+                    <value>false</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>body</name>
+                    <value>proceduresTabContent</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>title</name>
+                    <value>Procedures</value>
+                </componentInstanceProperties>
+                <componentName>flexipage:tab</componentName>
+                <identifier>flexipage_tab_procedures</identifier>
+            </componentInstance>
+        </itemInstances>
         <name>clinicalTabs</name>
         <type>Facet</type>
     </flexiPageRegions>
@@ -135,12 +169,6 @@
         </itemInstances>
         <itemInstances>
             <componentInstance>
-                <componentName>emrClinicalTimeline</componentName>
-                <identifier>emrClinicalTimeline</identifier>
-            </componentInstance>
-        </itemInstances>
-        <itemInstances>
-            <componentInstance>
                 <componentInstanceProperties>
                     <name>tabs</name>
                     <value>clinicalTabs</value>
@@ -149,19 +177,23 @@
                 <identifier>flexipage_tabset_clinical</identifier>
             </componentInstance>
         </itemInstances>
+        <name>main</name>
+        <type>Region</type>
+    </flexiPageRegions>
+    <flexiPageRegions>
         <itemInstances>
             <componentInstance>
-                <componentName>emrCareTeamManagement</componentName>
-                <identifier>emrCareTeamManagement</identifier>
+                <componentName>emrClinicalTimeline</componentName>
+                <identifier>emrClinicalTimeline</identifier>
             </componentInstance>
         </itemInstances>
-        <name>main</name>
+        <name>rightsidebar</name>
         <type>Region</type>
     </flexiPageRegions>
     <masterLabel>Patient Chart</masterLabel>
     <sobjectType>Patient__c</sobjectType>
     <template>
-        <name>flexipage:recordHomeSingleColTemplateDesktop</name>
+        <name>flexipage:recordHomeThreeColTemplateDesktop</name>
     </template>
     <type>RecordPage</type>
 </FlexiPage>

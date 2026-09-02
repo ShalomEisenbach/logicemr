@@ -79,7 +79,12 @@
                                 <template for:each={row.cells} for:item="cell">
                                     <td key={cell.key} class={cell.className} title={cell.title}>
                                         <template lwc:if={cell.hasValue}>
-                                            <span class="value">{cell.value}</span>
+                                            <template lwc:if={cell.url}>
+                                                <a href={cell.url} class="value">{cell.value}</a>
+                                            </template>
+                                            <template lwc:else>
+                                                <span class="value">{cell.value}</span>
+                                            </template>
                                             <template lwc:if={cell.unit}>
                                                 <span class="unit">{cell.unit}</span>
                                             </template>

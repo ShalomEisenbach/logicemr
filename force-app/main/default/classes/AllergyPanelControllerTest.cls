@@ -188,6 +188,45 @@ private class AllergyPanelControllerTest {
         );
     }
 
+    @IsTest
+    static void deleteAllergiesRemovesRowsAndIgnoresBlankIds() {
+        Patient__c patient = insertPatient('MRN-ALG-6');
+        AllergyIntolerance__c first = insertAllergy(
+            patient.Id,
+            'Active',
+            'RxNorm',
+            '7980',
+            'Penicillin',
+            'High',
+            'Anaphylaxis'
+        );
+        AllergyIntolerance__c second = insertAllergy(
+            patient.Id,
+            'Inactive',
+            'SNOMED',
+            '227493005',
+            'Cashew',
+            'Low',
+            'Rash'
+        );
+
+        Test.startTest();
+        AllergyPanelController.deleteAllergies(null);
+        AllergyPanelController.deleteAllergies(new List<Id>());
+        AllergyPanelController.deleteAllergies(new List<Id>{ first.Id, second.Id });
+        Test.stopTest();
+
+        System.assertEquals(
+            0,
+            [
+                SELECT COUNT()
+                FROM AllergyIntolerance__c
+                WHERE Id IN :new List<Id>{ first.Id, second.Id }
+            ],
+            'Both allergies should be deleted'
+        );
+    }
+
     private static Patient__c insertPatient(String mrn) {
         Patient__c patient = new Patient__c(MRN__c = mrn, Last_Name__c = 'Allergies');
         insert patient;

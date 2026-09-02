@@ -1,0 +1,30 @@
+<template>
+    <section
+        role="dialog"
+        tabindex="-1"
+        aria-modal="true"
+        aria-labelledby="emr-modal-heading"
+        class={dialogClass}
+    >
+        <div class="slds-modal__container" onclick={stopPropagation}>
+            <header class="slds-modal__header">
+                <lightning-button-icon
+                    icon-name="utility:close"
+                    alternative-text="Close"
+                    variant="bare-inverse"
+                    class="slds-modal__close"
+                    title="Close"
+                    onclick={handleClose}
+                ></lightning-button-icon>
+                <h2 id="emr-modal-heading" class="slds-modal__title slds-hyphenate">{title}</h2>
+            </header>
+            <div class="slds-modal__content slds-p-around_medium">
+                <slot></slot>
+            </div>
+            <footer class="slds-modal__footer">
+                <slot name="footer"></slot>
+            </footer>
+        </div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open" onclick={handleBackdropClick}></div>
+</template>

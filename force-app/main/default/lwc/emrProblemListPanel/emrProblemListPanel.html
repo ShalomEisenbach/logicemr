@@ -1,17 +1,19 @@
 <template>
-    <c-emr-chart-panel title="Problems" view-all-label="View All" onviewall={handleViewAll}>
+    <c-emr-chart-panel title="Problems" view-all-label="View All" has-records={hasRecords} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>
-        <div class="slds-m-bottom_small">
-            <lightning-button
-                label="Add"
-                variant="neutral"
-                onclick={handleToggleAdd}
-            ></lightning-button>
-        </div>
         <template lwc:if={showAddForm}>
-            <div class="slds-m-bottom_medium">
+            <c-emr-modal title="Add problem" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
                 <c-emr-code-search
                     label="Diagnosis"
                     placeholder="Search ICD-10 or SNOMED"
@@ -21,7 +23,20 @@
                     value={codeSearchValue}
                     oncodeselected={handleCodeSelected}
                 ></c-emr-code-search>
-                <div class="slds-m-top_small">
+                <lightning-input
+                    type="date"
+                    label="Onset"
+                    value={onsetDate}
+                    onchange={handleOnsetChange}
+                    class="slds-m-top_small"
+                ></lightning-input>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
                     <lightning-button
                         label="Save problem"
                         variant="brand"
@@ -29,29 +44,137 @@
                         onclick={handleAdd}
                     ></lightning-button>
                 </div>
-            </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={showOnsetForm}>
+            <c-emr-modal title="Set onset" onclose={handleCloseOnset}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <lightning-input
+                    type="date"
+                    label="Onset"
+                    value={onsetDate}
+                    onchange={handleOnsetChange}
+                ></lightning-input>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseOnset}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save onset"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleSaveOnset}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
         </template>
         <template lwc:if={showEmpty}>
             <p class="slds-text-body_regular">No problems.</p>
         </template>
         <template lwc:if={hasActive}>
             <h3 class="slds-text-title_caps slds-m-bottom_xx-small">Active</h3>
-            <lightning-datatable
-                key-field="Id"
-                data={activeProblems}
-                columns={activeColumns}
-                hide-checkbox-column
-                onrowaction={handleRowAction}
-            ></lightning-datatable>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={activeProblems}
+                    columns={activeColumns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={activeProblemCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Set onset"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-onset={row.onsetDate}
+                                disabled={isSaving}
+                                onclick={handleSetOnsetCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Resolve"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleResolveCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
         <template lwc:if={hasResolved}>
             <h3 class="slds-text-title_caps slds-m-top_medium slds-m-bottom_xx-small">Resolved</h3>
-            <lightning-datatable
-                key-field="Id"
-                data={resolvedProblems}
-                columns={resolvedColumns}
-                hide-checkbox-column
-            ></lightning-datatable>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={resolvedProblems}
+                    columns={resolvedColumns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={resolvedProblemCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Set onset"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-onset={row.onsetDate}
+                                disabled={isSaving}
+                                onclick={handleSetOnsetCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Reopen"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleReopenCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
     </c-emr-chart-panel>
 </template>

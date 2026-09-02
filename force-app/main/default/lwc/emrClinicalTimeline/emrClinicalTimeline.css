@@ -1,11 +1,46 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .filter-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    overflow-x: auto;
+    min-width: 0;
+}
+
+.filter-chip {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0.125rem 0.25rem;
+    border: 1px solid #c9c9c9;
+    border-radius: 1rem;
+    background: #ffffff;
+    color: #0176d3;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.filter-chip:hover,
+.filter-chip:focus {
+    border-color: #0176d3;
+    outline: none;
+}
+
+.filter-chip_on {
+    background: #0176d3;
+    border-color: #0176d3;
+    color: #ffffff;
 }
 
 .timeline {
@@ -97,4 +132,12 @@
 
 .timeline-subtitle {
     margin: 0.15rem 0 0;
+}
+
+@media (max-width: 47.9375rem) {
+    .timeline-heading {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+    }
 }

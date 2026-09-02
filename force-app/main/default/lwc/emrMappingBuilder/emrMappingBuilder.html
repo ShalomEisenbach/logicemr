@@ -197,8 +197,8 @@
                                         </div>
                                     </template>
                                     <template for:each={row.valueMaps} for:item="valueMap">
-                                        <div key={valueMap.key} class="slds-grid slds-gutters slds-m-bottom_xx-small">
-                                            <div class="slds-col slds-size_5-of-12">
+                                        <div key={valueMap.key} class="slds-grid slds-gutters slds-wrap slds-m-bottom_xx-small">
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12">
                                                 <lightning-input
                                                     name="sourceValue"
                                                     label="Source value"
@@ -214,7 +214,7 @@
                                                     </div>
                                                 </template>
                                             </div>
-                                            <div class="slds-col slds-size_5-of-12">
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12">
                                                 <lightning-input
                                                     name="targetValue"
                                                     label="Target value"
@@ -230,7 +230,7 @@
                                                     </div>
                                                 </template>
                                             </div>
-                                            <div class="slds-col slds-size_2-of-12 slds-m-top_large">
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-12 slds-m-top_large">
                                                 <lightning-button-icon
                                                     icon-name="utility:delete"
                                                     alternative-text="Remove value"
@@ -286,7 +286,7 @@
                 </div>
             </template>
 
-            <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+            <div class="slds-m-top_medium slds-grid slds-grid_align-end slds-wrap">
                 <template lwc:if={showBack}>
                     <lightning-button
                         label="Back"

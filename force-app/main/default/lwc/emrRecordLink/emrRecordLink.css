@@ -1,0 +1,17 @@
+:host {
+    display: inline;
+}
+
+.record-link {
+    color: var(--slds-g-color-brand-base-50, #0176d3);
+    text-decoration: none;
+}
+
+.record-link:hover,
+.record-link:focus {
+    text-decoration: underline;
+}
+
+.record-link_inverse {
+    color: #ffffff;
+}

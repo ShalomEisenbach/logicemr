@@ -1,14 +1,24 @@
 :host {
     display: block;
     position: relative;
+    min-width: 0;
+    max-width: 100%;
 }
 
-.results-dropdown {
-    z-index: 7000;
+.results-panel {
+    margin-top: 0.25rem;
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-radius: 0.25rem;
+    background: var(--slds-g-color-neutral-base-100, #ffffff);
     max-height: 16rem;
     overflow-y: auto;
 }
 
 .slds-listbox__option {
     cursor: pointer;
+}
+
+.slds-listbox__option:hover,
+.slds-listbox__option:focus {
+    background-color: var(--slds-g-color-neutral-base-95, #f3f3f3);
 }

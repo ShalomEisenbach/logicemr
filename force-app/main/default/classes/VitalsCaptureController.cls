@@ -37,8 +37,8 @@ public with sharing class VitalsCaptureController {
         'rr' => new VitalDef('9279-1', 'Respiratory rate', '/min', 4, 80),
         'temp' => new VitalDef('8310-5', 'Body temperature', 'Cel', 30, 45),
         'spo2' => new VitalDef('59408-5', 'Oxygen saturation', '%', 50, 100),
-        'height' => new VitalDef('8302-2', 'Body height', 'cm', 30, 250),
-        'weight' => new VitalDef('29463-7', 'Body weight', 'kg', 0.5, 500)
+        'height' => new VitalDef('8302-2', 'Body height', 'in', 12, 108),
+        'weight' => new VitalDef('29463-7', 'Body weight', 'lbs', 1, 1100)
     };
 
     @AuraEnabled
@@ -76,26 +76,104 @@ public with sharing class VitalsCaptureController {
 
         Datetime effective = Datetime.now();
         Id patientId = encounters[0].Patient__c;
-        List<Observation__c> observations = new List<Observation__c>();
+        Map<String, Observation__c> latestByCode = latestByLoinc(encounterId, filled);
+
+        List<Observation__c> toInsert = new List<Observation__c>();
+        List<Observation__c> toUpdate = new List<Observation__c>();
         for (VitalInput row : filled) {
             VitalDef def = VITAL_DEFS.get(row.key);
-            observations.add(
-                new Observation__c(
-                    Patient__c = patientId,
-                    Encounter__c = encounterId,
-                    Category__c = CATEGORY_VITALS,
-                    Status__c = STATUS_FINAL,
-                    Observation_Code_System__c = CODE_SYSTEM_LOINC,
-                    Observation_Code__c = def.loinc,
-                    Observation_Display__c = def.display,
-                    Value_Quantity__c = row.value,
-                    Value_Unit__c = def.unit,
-                    Effective_DateTime__c = effective
-                )
-            );
+            Observation__c existing = latestByCode.get(def.loinc);
+            if (existing != null) {
+                existing.Value_Quantity__c = row.value;
+                existing.Value_Unit__c = def.unit;
+                existing.Effective_DateTime__c = effective;
+                toUpdate.add(existing);
+            } else {
+                toInsert.add(
+                    new Observation__c(
+                        Patient__c = patientId,
+                        Encounter__c = encounterId,
+                        Category__c = CATEGORY_VITALS,
+                        Status__c = STATUS_FINAL,
+                        Observation_Code_System__c = CODE_SYSTEM_LOINC,
+                        Observation_Code__c = def.loinc,
+                        Observation_Display__c = def.display,
+                        Value_Quantity__c = row.value,
+                        Value_Unit__c = def.unit,
+                        Effective_DateTime__c = effective
+                    )
+                );
+            }
         }
-        insert observations;
+        if (!toUpdate.isEmpty()) {
+            update toUpdate;
+        }
+        if (!toInsert.isEmpty()) {
+            insert toInsert;
+        }
+
+        List<Observation__c> observations = new List<Observation__c>();
+        observations.addAll(toUpdate);
+        observations.addAll(toInsert);
         return observations;
+    }
+
+    @AuraEnabled
+    public static Map<String, Decimal> getEncounterVitals(Id encounterId) {
+        Map<String, Decimal> result = new Map<String, Decimal>();
+        if (encounterId == null) {
+            return result;
+        }
+
+        Map<String, String> keyByLoinc = new Map<String, String>();
+        for (String key : VITAL_DEFS.keySet()) {
+            keyByLoinc.put(VITAL_DEFS.get(key).loinc, key);
+        }
+
+        for (Observation__c row : [
+            SELECT Observation_Code__c, Value_Quantity__c
+            FROM Observation__c
+            WHERE
+                Encounter__c = :encounterId
+                AND Category__c = :CATEGORY_VITALS
+                AND Observation_Code__c IN :keyByLoinc.keySet()
+            ORDER BY Effective_DateTime__c DESC NULLS LAST
+        ]) {
+            String key = keyByLoinc.get(row.Observation_Code__c);
+            if (key != null && !result.containsKey(key) && row.Value_Quantity__c != null) {
+                result.put(key, row.Value_Quantity__c);
+            }
+        }
+        return result;
+    }
+
+    private static Map<String, Observation__c> latestByLoinc(Id encounterId, List<VitalInput> filled) {
+        Set<String> codes = new Set<String>();
+        for (VitalInput row : filled) {
+            VitalDef def = VITAL_DEFS.get(row.key);
+            if (def != null) {
+                codes.add(def.loinc);
+            }
+        }
+
+        Map<String, Observation__c> latestByCode = new Map<String, Observation__c>();
+        if (codes.isEmpty()) {
+            return latestByCode;
+        }
+        for (Observation__c row : [
+            SELECT Id, Observation_Code__c, Value_Quantity__c, Value_Unit__c, Effective_DateTime__c
+            FROM Observation__c
+            WHERE
+                Encounter__c = :encounterId
+                AND Category__c = :CATEGORY_VITALS
+                AND Observation_Code__c IN :codes
+            ORDER BY Effective_DateTime__c DESC NULLS LAST
+        ]) {
+            if (!latestByCode.containsKey(row.Observation_Code__c)) {
+                latestByCode.put(row.Observation_Code__c, row);
+            }
+        }
+        return latestByCode;
     }
 
     @TestVisible

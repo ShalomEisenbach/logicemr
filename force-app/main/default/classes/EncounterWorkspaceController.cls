@@ -122,6 +122,7 @@ public with sharing class EncounterWorkspaceController {
         String codeSystem,
         String code,
         String display,
+        Id codeReferenceId,
         String diagnosisType,
         Decimal rank
     ) {
@@ -150,6 +151,7 @@ public with sharing class EncounterWorkspaceController {
             Encounter__c = encounterId,
             Category__c = CATEGORY_ENCOUNTER_DX,
             Clinical_Status__c = STATUS_ACTIVE,
+            Diagnosis_Ref__c = codeReferenceId,
             Diagnosis_Code_System__c = codeSystem,
             Diagnosis_Code__c = code,
             Diagnosis_Display__c = display
@@ -164,5 +166,32 @@ public with sharing class EncounterWorkspaceController {
         );
         insert link;
         return link;
+    }
+
+    @AuraEnabled
+    public static void deleteDiagnoses(List<Id> encounterDiagnosisIds) {
+        if (encounterDiagnosisIds == null || encounterDiagnosisIds.isEmpty()) {
+            return;
+        }
+
+        List<EncounterDiagnosis__c> links = [
+            SELECT Id, Condition__c
+            FROM EncounterDiagnosis__c
+            WHERE Id IN :encounterDiagnosisIds
+        ];
+        Set<Id> conditionIds = new Set<Id>();
+        for (EncounterDiagnosis__c link : links) {
+            if (link.Condition__c != null) {
+                conditionIds.add(link.Condition__c);
+            }
+        }
+        delete links;
+        if (!conditionIds.isEmpty()) {
+            delete [
+                SELECT Id
+                FROM Condition__c
+                WHERE Id IN :conditionIds AND Category__c = :CATEGORY_ENCOUNTER_DX
+            ];
+        }
     }
 }

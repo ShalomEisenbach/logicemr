@@ -1,0 +1,127 @@
+<template>
+    <c-emr-chart-panel title="Procedures" view-all-label="View All" has-records={hasProcedures} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={showAddForm}>
+            <c-emr-modal title="Add procedure" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <c-emr-code-search
+                    label="Procedure"
+                    placeholder="Search CPT or SNOMED"
+                    required
+                    include-record-id
+                    code-systems={codeSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <lightning-combobox
+                    name="category"
+                    label="Category"
+                    value={category}
+                    options={categoryOptions}
+                    onchange={handleCategoryChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="status"
+                    label="Status"
+                    value={status}
+                    options={statusOptions}
+                    onchange={handleStatusChange}
+                ></lightning-combobox>
+                <lightning-input
+                    type="datetime"
+                    label="Performed"
+                    value={performedDateTime}
+                    onchange={handlePerformedChange}
+                ></lightning-input>
+                <lightning-textarea
+                    name="notes"
+                    label="Notes"
+                    value={notes}
+                    onchange={handleNotesChange}
+                ></lightning-textarea>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save procedure"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={hasProcedures}>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={procedures}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={procedureCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <template lwc:if={row.performedDateTime}>
+                            <p class="stack-detail">
+                                <lightning-formatted-date-time
+                                    value={row.performedDateTime}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    hour="numeric"
+                                    minute="2-digit"
+                                ></lightning-formatted-date-time>
+                            </p>
+                        </template>
+                        <div class="stack-actions">
+                            <template lwc:if={row.canComplete}>
+                                <lightning-button
+                                    label="Complete"
+                                    variant="neutral"
+                                    data-id={row.id}
+                                    disabled={isSaving}
+                                    onclick={handleCompleteCard}
+                                ></lightning-button>
+                            </template>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No procedures.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

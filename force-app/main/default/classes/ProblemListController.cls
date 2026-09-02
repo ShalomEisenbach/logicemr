@@ -37,7 +37,8 @@ public with sharing class ProblemListController {
         String codeSystem,
         String code,
         String display,
-        Id codeReferenceId
+        Id codeReferenceId,
+        Date onsetDate
     ) {
         if (patientId == null) {
             throw new AuraHandledException('Patient Id is required.');
@@ -56,10 +57,27 @@ public with sharing class ProblemListController {
             Diagnosis_Ref__c = codeReferenceId,
             Diagnosis_Code_System__c = codeSystem,
             Diagnosis_Code__c = code,
-            Diagnosis_Display__c = display
+            Diagnosis_Display__c = display,
+            Onset_Date__c = onsetDate
         );
         insert condition;
         return condition;
+    }
+
+    @AuraEnabled
+    public static void updateOnsetDate(Id conditionId, Date onsetDate) {
+        if (conditionId == null) {
+            throw new AuraHandledException('Condition Id is required.');
+        }
+
+        Condition__c condition = [
+            SELECT Id, Onset_Date__c
+            FROM Condition__c
+            WHERE Id = :conditionId
+            LIMIT 1
+        ];
+        condition.Onset_Date__c = onsetDate;
+        update condition;
     }
 
     @AuraEnabled
@@ -80,6 +98,34 @@ public with sharing class ProblemListController {
         if (!conditions.isEmpty()) {
             update conditions;
         }
+    }
+
+    @AuraEnabled
+    public static void reopenProblems(List<Id> conditionIds) {
+        if (conditionIds == null || conditionIds.isEmpty()) {
+            return;
+        }
+
+        List<Condition__c> conditions = [
+            SELECT Id, Clinical_Status__c, Abatement_Date__c
+            FROM Condition__c
+            WHERE Id IN :conditionIds AND Clinical_Status__c = :STATUS_RESOLVED
+        ];
+        for (Condition__c condition : conditions) {
+            condition.Clinical_Status__c = STATUS_ACTIVE;
+            condition.Abatement_Date__c = null;
+        }
+        if (!conditions.isEmpty()) {
+            update conditions;
+        }
+    }
+
+    @AuraEnabled
+    public static void deleteProblems(List<Id> conditionIds) {
+        if (conditionIds == null || conditionIds.isEmpty()) {
+            return;
+        }
+        delete [SELECT Id FROM Condition__c WHERE Id IN :conditionIds];
     }
 
     private static List<Condition__c> queryProblems(Set<Id> patientIds) {

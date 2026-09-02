@@ -2,19 +2,128 @@
     <c-emr-chart-panel
         title="Encounters"
         view-all-label="View All"
+        has-records={hasEncounters}
         onviewall={handleViewAll}
     >
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
         <template lwc:if={errorMessage}>
-            <div class="slds-text-color_error" role="alert">{errorMessage}</div>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>
-        <template lwc:elseif={hasEncounters}>
-            <lightning-datatable
-                key-field="Id"
-                data={encounters}
-                columns={columns}
-                hide-checkbox-column
-                onrowaction={handleRowAction}
-            ></lightning-datatable>
+        <template lwc:if={showAddForm}>
+            <c-emr-modal title="Add encounter" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <lightning-combobox
+                    name="encounterClass"
+                    label="Class"
+                    value={encounterClass}
+                    options={classOptions}
+                    required
+                    onchange={handleClassChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="status"
+                    label="Status"
+                    value={status}
+                    options={statusOptions}
+                    class="slds-m-top_small"
+                    onchange={handleStatusChange}
+                ></lightning-combobox>
+                <lightning-input
+                    type="datetime"
+                    name="start"
+                    label="Start"
+                    value={startValue}
+                    class="slds-m-top_small"
+                    onchange={handleStartChange}
+                ></lightning-input>
+                <lightning-record-picker
+                    label="Attending"
+                    placeholder="Search practitioners"
+                    object-api-name={practitionerObjectApiName}
+                    value={practitionerId}
+                    class="slds-m-top_small"
+                    onchange={handlePractitionerChange}
+                ></lightning-record-picker>
+                <lightning-input
+                    type="text"
+                    name="location"
+                    label="Location"
+                    value={locationName}
+                    maxlength="120"
+                    class="slds-m-top_small"
+                    onchange={handleLocationChange}
+                ></lightning-input>
+                <lightning-input
+                    type="text"
+                    name="reason"
+                    label="Chief Complaint"
+                    value={reason}
+                    maxlength="255"
+                    class="slds-m-top_small"
+                    onchange={handleReasonChange}
+                ></lightning-input>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save encounter"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={hasEncounters}>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={encounters}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={encounterCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Open"
+                                variant="neutral"
+                                data-id={row.id}
+                                onclick={handleOpenCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
         <template lwc:elseif={showEmpty}>
             <p class="slds-text-body_regular">No encounters.</p>

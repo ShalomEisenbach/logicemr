@@ -5,12 +5,14 @@
  * Code__c is an External Id but not unique across systems, so match on Code_System + Code.
  */
 List<lfemr__Code_Reference__c> desired = new List<lfemr__Code_Reference__c>{
+    // ICD-10 — problem list / encounter diagnoses
     ref('ICD-10', 'E11.9', 'Type 2 diabetes mellitus'),
     ref('ICD-10', 'E11.65', 'Type 2 diabetes with hyperglycemia'),
     ref('ICD-10', 'I10', 'Essential hypertension'),
     ref('ICD-10', 'E78.5', 'Hyperlipidemia'),
     ref('ICD-10', 'R07.9', 'Chest pain, unspecified'),
     ref('ICD-10', 'J45.20', 'Mild intermittent asthma'),
+    ref('ICD-10', 'J45.909', 'Unspecified asthma, uncomplicated'),
     ref('ICD-10', 'H66.90', 'Otitis media, unspecified'),
     ref('ICD-10', 'I48.91', 'Unspecified atrial fibrillation'),
     ref('ICD-10', 'K80.20', 'Cholelithiasis'),
@@ -18,6 +20,39 @@ List<lfemr__Code_Reference__c> desired = new List<lfemr__Code_Reference__c>{
     ref('ICD-10', 'S72.001A', 'Right femoral neck fracture'),
     ref('ICD-10', 'M81.0', 'Age-related osteoporosis'),
     ref('ICD-10', 'F41.1', 'Generalized anxiety disorder'),
+    ref('ICD-10', 'F32.9', 'Major depressive disorder, single episode, unspecified'),
+    ref('ICD-10', 'N18.3', 'Chronic kidney disease, stage 3'),
+    ref('ICD-10', 'J18.9', 'Pneumonia, unspecified organism'),
+    ref('ICD-10', 'G43.909', 'Migraine, unspecified, not intractable'),
+    ref('ICD-10', 'M54.5', 'Low back pain'),
+    ref('ICD-10', 'E66.9', 'Obesity, unspecified'),
+    ref('ICD-10', 'Z79.4', 'Long term (current) use of insulin'),
+    // SNOMED — clinical findings for diagnosis search (problem list)
+    ref('SNOMED', '44054006', 'Diabetes mellitus type 2'),
+    ref('SNOMED', '38341003', 'Hypertensive disorder'),
+    ref('SNOMED', '55822004', 'Hyperlipidemia'),
+    ref('SNOMED', '29857009', 'Chest pain'),
+    ref('SNOMED', '195967001', 'Asthma'),
+    ref('SNOMED', '65363002', 'Otitis media'),
+    ref('SNOMED', '49436004', 'Atrial fibrillation'),
+    ref('SNOMED', '266569009', 'Cholelithiasis'),
+    ref('SNOMED', '80313002', 'Palpitations'),
+    ref('SNOMED', '5913000', 'Fracture of neck of femur'),
+    ref('SNOMED', '64859006', 'Osteoporosis'),
+    ref('SNOMED', '21897009', 'Generalized anxiety disorder'),
+    ref('SNOMED', '370143000', 'Major depressive disorder'),
+    ref('SNOMED', '709044004', 'Chronic kidney disease stage 3'),
+    ref('SNOMED', '233604007', 'Pneumonia'),
+    ref('SNOMED', '37796009', 'Migraine'),
+    ref('SNOMED', '279039007', 'Low back pain'),
+    ref('SNOMED', '414916001', 'Obesity'),
+    // SNOMED — allergens / referrals
+    ref('SNOMED', '91935009', 'Peanut'),
+    ref('SNOMED', '111088007', 'Latex'),
+    ref('SNOMED', '300913001', 'Shellfish'),
+    ref('SNOMED', '91936005', 'Allergy to penicillin'),
+    ref('SNOMED', '306118007', 'Referral to endocrinology'),
+    // RxNorm — medications / allergens
     ref('RxNorm', '7980', 'Penicillin'),
     ref('RxNorm', '10180', 'Sulfonamide'),
     ref('RxNorm', '723', 'Amoxicillin'),
@@ -34,10 +69,6 @@ List<lfemr__Code_Reference__c> desired = new List<lfemr__Code_Reference__c>{
     ref('RxNorm', '2418', 'Cholecalciferol 2000 IU'),
     ref('RxNorm', '745679', 'Albuterol 90 mcg/actuation inhaler'),
     ref('RxNorm', '904421', 'Alendronate 70 mg oral tablet'),
-    ref('SNOMED', '91935009', 'Peanut'),
-    ref('SNOMED', '111088007', 'Latex'),
-    ref('SNOMED', '300913001', 'Shellfish'),
-    ref('SNOMED', '306118007', 'Referral to endocrinology'),
     ref('CVX', '141', 'Influenza, seasonal, injectable'),
     ref('CVX', '213', 'SARS-CoV-2 (COVID-19) vaccine'),
     ref('CVX', '20', 'DTaP'),
@@ -66,7 +97,9 @@ List<lfemr__Code_Reference__c> desired = new List<lfemr__Code_Reference__c>{
     ref('CPT', '73502', 'X-ray hip, 2 or 3 views'),
     ref('CPT', '27236', 'Open treatment of femoral neck fracture'),
     ref('CPT', '47562', 'Laparoscopic cholecystectomy'),
-    ref('CPT', '93000', 'Electrocardiogram, complete')
+    ref('CPT', '93000', 'Electrocardiogram, complete'),
+    ref('CPT', '94010', 'Spirometry'),
+    ref('CPT', '90834', 'Psychotherapy, 45 minutes')
 };
 
 Set<String> codes = new Set<String>();

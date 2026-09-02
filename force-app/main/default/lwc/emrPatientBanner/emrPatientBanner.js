@@ -3,21 +3,24 @@ import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
 import { refreshApex } from '@salesforce/apex';
 import { registerRefreshHandler, unregisterRefreshHandler } from 'lightning/refresh';
 import resolvePatientId from '@salesforce/apex/AlertBarController.resolvePatientId';
-import getActiveAllergies from '@salesforce/apex/AllergyPanelController.getActiveAllergies';
+import getLatestVitals from '@salesforce/apex/PatientBannerController.getLatestVitals';
+import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import FIRST_NAME_FIELD from '@salesforce/schema/Patient__c.First_Name__c';
 import LAST_NAME_FIELD from '@salesforce/schema/Patient__c.Last_Name__c';
 import DOB_FIELD from '@salesforce/schema/Patient__c.Date_of_Birth__c';
 import MRN_FIELD from '@salesforce/schema/Patient__c.MRN__c';
 import STATUS_FIELD from '@salesforce/schema/Patient__c.Status__c';
-import DISPLAY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Display__c';
-import CODE_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Code__c';
+import SEX_FIELD from '@salesforce/schema/Patient__c.Sex_at_Birth__c';
+import PHONE_FIELD from '@salesforce/schema/Patient__c.Phone__c';
 
 const PATIENT_FIELDS = [
     FIRST_NAME_FIELD,
     LAST_NAME_FIELD,
     DOB_FIELD,
     MRN_FIELD,
-    STATUS_FIELD
+    STATUS_FIELD,
+    SEX_FIELD,
+    PHONE_FIELD
 ];
 
 export default class EmrPatientBanner extends LightningElement {
@@ -26,8 +29,9 @@ export default class EmrPatientBanner extends LightningElement {
     patientId;
     patient;
     errorMessage;
-    activeAllergies = [];
-    wiredAllergiesResult;
+    vitalItems = [];
+    vitalsRecordedAt;
+    wiredVitalsResult;
     refreshHandlerId;
 
     connectedCallback() {
@@ -39,10 +43,10 @@ export default class EmrPatientBanner extends LightningElement {
     }
 
     refreshHandler() {
-        if (!this.wiredAllergiesResult) {
+        if (!this.wiredVitalsResult) {
             return Promise.resolve();
         }
-        return refreshApex(this.wiredAllergiesResult);
+        return refreshApex(this.wiredVitalsResult);
     }
 
     @wire(resolvePatientId, { recordId: '$recordId' })
@@ -66,18 +70,36 @@ export default class EmrPatientBanner extends LightningElement {
         }
     }
 
-    @wire(getActiveAllergies, { patientId: '$patientId' })
-    wiredAllergies(result) {
-        this.wiredAllergiesResult = result;
+    @wire(getLatestVitals, { patientId: '$vitalsPatientId' })
+    wiredVitals(result) {
+        this.wiredVitalsResult = result;
         if (result.data) {
-            this.activeAllergies = result.data;
+            this.vitalItems = result.data.items || [];
+            this.vitalsRecordedAt = result.data.recordedAt;
         } else if (result.error) {
-            this.activeAllergies = [];
+            this.vitalItems = [];
+            this.vitalsRecordedAt = undefined;
         }
+    }
+
+    get showVitals() {
+        return !!(this.recordId && this.patientId && this.recordId === this.patientId);
+    }
+
+    get vitalsPatientId() {
+        return this.showVitals ? this.patientId : undefined;
     }
 
     get hasPatient() {
         return !!this.patient;
+    }
+
+    get patientObjectApiName() {
+        return PATIENT_OBJECT.objectApiName;
+    }
+
+    get emptyValue() {
+        return '—';
     }
 
     get patientName() {
@@ -115,30 +137,38 @@ export default class EmrPatientBanner extends LightningElement {
     }
 
     get mrn() {
-        return getFieldValue(this.patient, MRN_FIELD) || '';
+        return getFieldValue(this.patient, MRN_FIELD) || this.emptyValue;
+    }
+
+    get dateOfBirth() {
+        return getFieldValue(this.patient, DOB_FIELD) || '';
+    }
+
+    get sexAtBirth() {
+        return getFieldValue(this.patient, SEX_FIELD) || this.emptyValue;
+    }
+
+    get phone() {
+        return getFieldValue(this.patient, PHONE_FIELD) || '';
     }
 
     get status() {
         return getFieldValue(this.patient, STATUS_FIELD) || '';
     }
 
-    get allergyCount() {
-        return this.activeAllergies.length;
-    }
-
-    get allergyCountLabel() {
-        const count = this.allergyCount;
-        return count === 1 ? '1 active' : `${count} active`;
-    }
-
-    get allergyNames() {
-        if (!this.activeAllergies.length) {
-            return 'None';
+    get statusBadgeClass() {
+        const normalized = (this.status || '').toLowerCase();
+        if (normalized === 'active') {
+            return 'status-badge status-badge_active';
         }
-        return this.activeAllergies
-            .map((row) => row[DISPLAY_FIELD.fieldApiName] || row[CODE_FIELD.fieldApiName] || '')
-            .filter((name) => name)
-            .join(', ');
+        if (normalized === 'inactive') {
+            return 'status-badge status-badge_inactive';
+        }
+        return 'status-badge';
+    }
+
+    get hasVitals() {
+        return this.vitalItems.length > 0;
     }
 
     reduceError(error) {

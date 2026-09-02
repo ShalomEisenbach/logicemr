@@ -4,7 +4,7 @@
             <lightning-input
                 type="search"
                 label="Search patients"
-                placeholder="Last name, first name, or MRN"
+                placeholder="Name, MRN, DOB, or phone"
                 onchange={handleSearchChange}
             ></lightning-input>
             <template lwc:if={errorMessage}>
@@ -13,7 +13,7 @@
                 </div>
             </template>
             <template lwc:if={hasResults}>
-                <div class="slds-p-top_small">
+                <div class="slds-p-top_small table-wide">
                     <lightning-datatable
                         key-field="Id"
                         data={patients}
@@ -21,6 +21,28 @@
                         hide-checkbox-column
                         onrowaction={handleRowAction}
                     ></lightning-datatable>
+                </div>
+                <div class="slds-p-top_small stack-narrow">
+                    <template for:each={patientCards} for:item="row">
+                        <article key={row.id} class="stack-card">
+                            <p class="stack-title">
+                                <c-emr-record-link
+                                    record-id={row.id}
+                                    object-api-name={row.objectApiName}
+                                    label={row.title}
+                                ></c-emr-record-link>
+                            </p>
+                            <p class="stack-meta">{row.meta}</p>
+                            <div class="stack-actions">
+                                <lightning-button
+                                    label="Open chart"
+                                    variant="neutral"
+                                    data-id={row.id}
+                                    onclick={handleOpenCard}
+                                ></lightning-button>
+                            </div>
+                        </article>
+                    </template>
                 </div>
             </template>
             <template lwc:elseif={showNoResults}>

@@ -6,6 +6,7 @@
     <columns>First_Name__c</columns>
     <columns>MRN__c</columns>
     <columns>Date_of_Birth__c</columns>
+    <columns>Phone__c</columns>
     <columns>Status__c</columns>
     <filterScope>Everything</filterScope>
     <filters>

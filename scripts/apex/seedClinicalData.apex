@@ -9,6 +9,7 @@
  *   sf apex run --file scripts/apex/seedClinicalAllergiesImmunizations.apex
  *   sf apex run --file scripts/apex/seedClinicalMedications.apex
  *   sf apex run --file scripts/apex/seedClinicalOrdersAndResults.apex
+ *   sf apex run --file scripts/apex/seedNoteTemplates.apex
  *   sf apex run --file scripts/apex/seedClinicalNotesAndProcedures.apex
  *
  * Re-running upserts on Source_System_Id__c refreshes composed Names.

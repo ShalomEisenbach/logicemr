@@ -29,6 +29,14 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>DiagnosticReportService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>DuplicatePatientController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>EncounterPanelController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -81,11 +89,23 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>PatientBannerController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>PatientSearchController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
         <apexClass>ProblemListController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>ProcedurePanelController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>ProviderHomeController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -100,6 +120,10 @@
         <enabled>true</enabled>
         <name>Name_Format__mdt</name>
     </customMetadataTypeAccesses>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>LogicEMR_View_Data_Quality</name>
+    </customPermissions>
     <description>Full CRUD on all LogicEMR objects and access to the LogicEMR app.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Admin</label>
@@ -216,6 +240,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Patient__c.Last_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Patient__c.Phone__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -491,6 +520,21 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>DiagnosticReport__c.Report_Ref__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>DiagnosticReport__c.Reviewed_By__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>DiagnosticReport__c.Reviewed_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>DiagnosticReport__c.Reviewed__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -1283,6 +1327,10 @@
     </objectPermissions>
     <tabSettings>
         <tab>Encounter__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Patient_Search</tab>
         <visibility>Visible</visibility>
     </tabSettings>
     <tabSettings>

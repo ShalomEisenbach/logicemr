@@ -27,20 +27,58 @@ public with sharing class NoteEditorController {
         public Datetime signedDate { get; set; }
     }
 
+    public class NoteTemplateInfo {
+        @AuraEnabled
+        public Id id { get; set; }
+        @AuraEnabled
+        public String name { get; set; }
+        @AuraEnabled
+        public String body { get; set; }
+        @AuraEnabled
+        public String category { get; set; }
+        @AuraEnabled
+        public String shortcut { get; set; }
+    }
+
     @AuraEnabled(cacheable=true)
-    public static List<NoteTemplate__c> getActiveTemplates() {
-        return [
+    public static List<NoteTemplateInfo> getActiveTemplates() {
+        List<NoteTemplateInfo> results = new List<NoteTemplateInfo>();
+        for (NoteTemplate__c row : [
             SELECT Id, Name, Body__c, Category__c, Shortcut__c
             FROM NoteTemplate__c
             WHERE Active__c = TRUE
             ORDER BY Category__c, Name
-        ];
+        ]) {
+            NoteTemplateInfo info = new NoteTemplateInfo();
+            info.id = row.Id;
+            info.name = row.Name;
+            info.body = row.Body__c;
+            info.category = row.Category__c;
+            info.shortcut = row.Shortcut__c;
+            results.add(info);
+        }
+        return results;
     }
 
     @AuraEnabled
     public static NoteEditorState getCurrentNote(Id encounterId) {
+        List<NoteEditorState> notes = getNotes(encounterId);
+        if (notes.isEmpty()) {
+            return emptyState(requireEncounter(encounterId));
+        }
+        for (NoteEditorState note : notes) {
+            if (STATUS_DRAFT.equals(note.status)) {
+                return note;
+            }
+        }
+        return notes[0];
+    }
+
+    @AuraEnabled
+    public static List<NoteEditorState> getNotes(Id encounterId) {
         Encounter__c encounter = requireEncounter(encounterId);
-        List<ClinicalNote__c> drafts = [
+        List<NoteEditorState> results = new List<NoteEditorState>();
+        for (ClinicalNote__c note : [
             SELECT
                 Id,
                 Encounter__c,
@@ -50,14 +88,12 @@ public with sharing class NoteEditorController {
                 Status__c,
                 Signed_Date__c
             FROM ClinicalNote__c
-            WHERE Encounter__c = :encounter.Id AND Status__c = :STATUS_DRAFT
+            WHERE Encounter__c = :encounter.Id
             ORDER BY LastModifiedDate DESC
-            LIMIT 1
-        ];
-        if (drafts.isEmpty()) {
-            return emptyState(encounter);
+        ]) {
+            results.add(toState(note));
         }
-        return toState(drafts[0]);
+        return results;
     }
 
     @AuraEnabled

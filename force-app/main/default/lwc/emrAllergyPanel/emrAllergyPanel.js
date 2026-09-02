@@ -2,18 +2,23 @@ import { LightningElement, api, wire } from 'lwc';
 import { refreshApex } from '@salesforce/apex';
 import { NavigationMixin } from 'lightning/navigation';
 import { RefreshEvent } from 'lightning/refresh';
+import LightningConfirm from 'lightning/confirm';
 import getAllergies from '@salesforce/apex/AllergyPanelController.getAllergies';
 import addAllergy from '@salesforce/apex/AllergyPanelController.addAllergy';
 import inactivateAllergies from '@salesforce/apex/AllergyPanelController.inactivateAllergies';
+import deleteAllergies from '@salesforce/apex/AllergyPanelController.deleteAllergies';
 import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
+import ALLERGY_OBJECT from '@salesforce/schema/AllergyIntolerance__c';
 import DISPLAY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Display__c';
 import TYPE_FIELD from '@salesforce/schema/AllergyIntolerance__c.Type__c';
 import CATEGORY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Category__c';
 import CRITICALITY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Criticality__c';
 import REACTION_FIELD from '@salesforce/schema/AllergyIntolerance__c.Reaction__c';
 import STATUS_FIELD from '@salesforce/schema/AllergyIntolerance__c.Clinical_Status__c';
+import { urlColumn, withRecordUrls } from 'c/emrNavigationUtils';
 
 const INACTIVATE = 'inactivate';
+const DELETE = 'delete';
 
 export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
     @api recordId;
@@ -52,32 +57,44 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
         { label: 'Unable to Assess', value: 'Unable to Assess' }
     ];
 
-    columns = [
-        { label: 'Allergen', fieldName: DISPLAY_FIELD.fieldApiName, wrapText: true },
-        { label: 'Type', fieldName: TYPE_FIELD.fieldApiName },
-        { label: 'Category', fieldName: CATEGORY_FIELD.fieldApiName },
-        { label: 'Criticality', fieldName: CRITICALITY_FIELD.fieldApiName },
-        { label: 'Reaction', fieldName: REACTION_FIELD.fieldApiName, wrapText: true },
-        { label: 'Status', fieldName: STATUS_FIELD.fieldApiName },
-        {
-            type: 'action',
-            typeAttributes: {
-                rowActions: this.getRowActions.bind(this)
+    get columns() {
+        return [
+            urlColumn('Allergen', 'recordUrl', 'recordLabel'),
+            { label: 'Type', fieldName: TYPE_FIELD.fieldApiName },
+            { label: 'Category', fieldName: CATEGORY_FIELD.fieldApiName },
+            { label: 'Criticality', fieldName: CRITICALITY_FIELD.fieldApiName },
+            { label: 'Reaction', fieldName: REACTION_FIELD.fieldApiName, wrapText: true },
+            { label: 'Status', fieldName: STATUS_FIELD.fieldApiName },
+            {
+                type: 'action',
+                typeAttributes: {
+                    rowActions: this.getRowActions.bind(this)
+                }
             }
-        }
-    ];
+        ];
+    }
+
+    get allergyObjectApiName() {
+        return ALLERGY_OBJECT.objectApiName;
+    }
 
     @wire(getAllergies, { patientId: '$recordId' })
     wiredAllergies(result) {
         this.wiredAllergiesResult = result;
         const { data, error } = result;
         if (data) {
-            this.allergies = data;
+            this.applyAllergies(data);
             this.errorMessage = undefined;
         } else if (error) {
             this.allergies = [];
             this.errorMessage = this.reduceError(error);
         }
+    }
+
+    async applyAllergies(data) {
+        this.allergies = await withRecordUrls(this, data, ALLERGY_OBJECT.objectApiName, {
+            labelField: DISPLAY_FIELD.fieldApiName
+        });
     }
 
     get hasAllergies() {
@@ -86,6 +103,26 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
 
     get showEmpty() {
         return this.allergies && this.allergies.length === 0 && !this.errorMessage;
+    }
+
+    get allergyCards() {
+        return (this.allergies || []).map((row) => {
+            const status = row[STATUS_FIELD.fieldApiName];
+            const parts = [
+                row[TYPE_FIELD.fieldApiName],
+                row[CATEGORY_FIELD.fieldApiName],
+                row[CRITICALITY_FIELD.fieldApiName],
+                status
+            ].filter((part) => part);
+            return {
+                id: row.Id,
+                title: row[DISPLAY_FIELD.fieldApiName] || 'Allergy',
+                meta: parts.join(' · '),
+                detail: row[REACTION_FIELD.fieldApiName] || '',
+                canInactivate: status === 'Active',
+                objectApiName: ALLERGY_OBJECT.objectApiName
+            };
+        });
     }
 
     get allergiesRelationshipApiName() {
@@ -99,6 +136,7 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
         if (row[STATUS_FIELD.fieldApiName] === 'Active') {
             actions.push({ label: 'Inactivate', name: INACTIVATE });
         }
+        actions.push({ label: 'Delete', name: DELETE });
         doneCallback(actions);
     }
 
@@ -115,8 +153,22 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
     }
 
     handleToggleAdd() {
-        this.showAddForm = !this.showAddForm;
+        this.showAddForm = true;
         this.errorMessage = undefined;
+    }
+
+    handleCloseAdd() {
+        this.showAddForm = false;
+        this.errorMessage = undefined;
+        this.resetAddForm();
+    }
+
+    resetAddForm() {
+        this.code = '';
+        this.display = '';
+        this.codeReferenceId = undefined;
+        this.codeSearchValue = undefined;
+        this.reaction = '';
     }
 
     handleCodeSelected(event) {
@@ -163,11 +215,7 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
                 criticality: this.criticality,
                 reaction: this.reaction
             });
-            this.code = '';
-            this.display = '';
-            this.codeReferenceId = undefined;
-            this.codeSearchValue = undefined;
-            this.reaction = '';
+            this.resetAddForm();
             this.showAddForm = false;
             await refreshApex(this.wiredAllergiesResult);
             this.dispatchEvent(new RefreshEvent());
@@ -178,14 +226,48 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
         }
     }
 
+    handleInactivateCard(event) {
+        this.handleRowAction({
+            detail: {
+                action: { name: INACTIVATE },
+                row: { Id: event.currentTarget.dataset.id }
+            }
+        });
+    }
+
+    handleDeleteCard(event) {
+        this.handleRowAction({
+            detail: {
+                action: { name: DELETE },
+                row: { Id: event.currentTarget.dataset.id }
+            }
+        });
+    }
+
     async handleRowAction(event) {
-        if (event.detail.action.name !== INACTIVATE || this.isSaving) {
+        const actionName = event.detail.action.name;
+        if ((actionName !== INACTIVATE && actionName !== DELETE) || this.isSaving) {
             return;
+        }
+        if (actionName === DELETE) {
+            const confirmed = await LightningConfirm.open({
+                message: 'Delete this allergy?',
+                label: 'Delete allergy',
+                theme: 'error'
+            });
+            if (!confirmed) {
+                return;
+            }
         }
         this.isSaving = true;
         this.errorMessage = undefined;
         try {
-            await inactivateAllergies({ allergyIds: [event.detail.row.Id] });
+            const allergyIds = [event.detail.row.Id];
+            if (actionName === INACTIVATE) {
+                await inactivateAllergies({ allergyIds });
+            } else {
+                await deleteAllergies({ allergyIds });
+            }
             await refreshApex(this.wiredAllergiesResult);
             this.dispatchEvent(new RefreshEvent());
         } catch (error) {

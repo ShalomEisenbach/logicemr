@@ -63,12 +63,14 @@ private class ProblemListControllerTest {
         );
 
         Test.startTest();
+        Date onset = Date.today().addDays(-14);
         Condition__c created = ProblemListController.addProblem(
             patient.Id,
             codeRef.Code_System__c,
             codeRef.Code__c,
             codeRef.Display__c,
-            codeRef.Id
+            codeRef.Id,
+            onset
         );
         Test.stopTest();
 
@@ -80,7 +82,8 @@ private class ProblemListControllerTest {
                 Diagnosis_Ref__c,
                 Diagnosis_Code_System__c,
                 Diagnosis_Code__c,
-                Diagnosis_Display__c
+                Diagnosis_Display__c,
+                Onset_Date__c
             FROM Condition__c
             WHERE Id = :created.Id
         ];
@@ -95,6 +98,7 @@ private class ProblemListControllerTest {
             stored.Diagnosis_Display__c,
             'Snapshot display should match the Code Reference'
         );
+        System.assertEquals(onset, stored.Onset_Date__c, 'Add should persist the onset date');
     }
 
     @IsTest
@@ -106,17 +110,17 @@ private class ProblemListControllerTest {
 
         Test.startTest();
         try {
-            ProblemListController.addProblem(null, 'ICD-10', 'E11.9', 'Diabetes', null);
+            ProblemListController.addProblem(null, 'ICD-10', 'E11.9', 'Diabetes', null, null);
         } catch (AuraHandledException e) {
             missingPatient = true;
         }
         try {
-            ProblemListController.addProblem(patient.Id, 'ICD-10', 'E11.9', '', null);
+            ProblemListController.addProblem(patient.Id, 'ICD-10', 'E11.9', '', null, null);
         } catch (AuraHandledException e) {
             missingDisplay = true;
         }
         try {
-            ProblemListController.addProblem(patient.Id, 'CPT', '99213', 'Office visit', null);
+            ProblemListController.addProblem(patient.Id, 'CPT', '99213', 'Office visit', null, null);
         } catch (AuraHandledException e) {
             wrongSystem = true;
         }
@@ -169,6 +173,123 @@ private class ProblemListControllerTest {
         System.assertEquals('Resolved', stored.get(second.Id).Clinical_Status__c, 'Second row should resolve');
         System.assertEquals(Date.today(), stored.get(first.Id).Abatement_Date__c, 'Resolve should set abatement date');
         System.assertEquals(Date.today(), stored.get(second.Id).Abatement_Date__c, 'Bulk resolve should set both dates');
+    }
+
+    @IsTest
+    static void reopenProblemsRestoresActiveAndClearsAbatement() {
+        Patient__c patient = insertPatient('MRN-PROB-6');
+        Condition__c resolved = insertCondition(
+            patient.Id,
+            'Problem List Item',
+            'Resolved',
+            'ICD-10',
+            'H66.90',
+            'Otitis media'
+        );
+        resolved.Abatement_Date__c = Date.today().addDays(-10);
+        update resolved;
+        Condition__c alreadyActive = insertCondition(
+            patient.Id,
+            'Problem List Item',
+            'Active',
+            'ICD-10',
+            'J45.20',
+            'Asthma'
+        );
+
+        Test.startTest();
+        ProblemListController.reopenProblems(null);
+        ProblemListController.reopenProblems(new List<Id>());
+        ProblemListController.reopenProblems(new List<Id>{ resolved.Id, alreadyActive.Id });
+        Test.stopTest();
+
+        Map<Id, Condition__c> stored = new Map<Id, Condition__c>(
+            [
+                SELECT Clinical_Status__c, Abatement_Date__c
+                FROM Condition__c
+                WHERE Id IN :new List<Id>{ resolved.Id, alreadyActive.Id }
+            ]
+        );
+        System.assertEquals('Active', stored.get(resolved.Id).Clinical_Status__c, 'Resolved row should reopen as Active');
+        System.assertEquals(null, stored.get(resolved.Id).Abatement_Date__c, 'Reopen should clear abatement date');
+        System.assertEquals('Active', stored.get(alreadyActive.Id).Clinical_Status__c, 'Already-active row should stay Active');
+        System.assertEquals(
+            null,
+            stored.get(alreadyActive.Id).Abatement_Date__c,
+            'Already-active row should not get an abatement date'
+        );
+    }
+
+    @IsTest
+    static void updateOnsetDateSetsAndClearsOnset() {
+        Patient__c patient = insertPatient('MRN-PROB-7');
+        Condition__c condition = insertCondition(
+            patient.Id,
+            'Problem List Item',
+            'Active',
+            'ICD-10',
+            'J45.20',
+            'Asthma'
+        );
+        Date onset = Date.newInstance(2023, 4, 11);
+        Boolean missingId = false;
+
+        Test.startTest();
+        try {
+            ProblemListController.updateOnsetDate(null, onset);
+        } catch (AuraHandledException e) {
+            missingId = true;
+        }
+        ProblemListController.updateOnsetDate(condition.Id, onset);
+        Date storedOnset = [
+            SELECT Onset_Date__c
+            FROM Condition__c
+            WHERE Id = :condition.Id
+        ]
+        .Onset_Date__c;
+        ProblemListController.updateOnsetDate(condition.Id, null);
+        Test.stopTest();
+
+        System.assertEquals(true, missingId, 'Blank condition Id should be rejected');
+        System.assertEquals(onset, storedOnset, 'Onset date should persist on the problem');
+        System.assertEquals(
+            null,
+            [SELECT Onset_Date__c FROM Condition__c WHERE Id = :condition.Id].Onset_Date__c,
+            'Onset date should be clearable'
+        );
+    }
+
+    @IsTest
+    static void deleteProblemsRemovesRowsAndIgnoresBlankIds() {
+        Patient__c patient = insertPatient('MRN-PROB-8');
+        Condition__c first = insertCondition(
+            patient.Id,
+            'Problem List Item',
+            'Active',
+            'ICD-10',
+            'J45.20',
+            'Asthma'
+        );
+        Condition__c second = insertCondition(
+            patient.Id,
+            'Problem List Item',
+            'Resolved',
+            'ICD-10',
+            'H66.90',
+            'Otitis media'
+        );
+
+        Test.startTest();
+        ProblemListController.deleteProblems(null);
+        ProblemListController.deleteProblems(new List<Id>());
+        ProblemListController.deleteProblems(new List<Id>{ first.Id, second.Id });
+        Test.stopTest();
+
+        System.assertEquals(
+            0,
+            [SELECT COUNT() FROM Condition__c WHERE Id IN :new List<Id>{ first.Id, second.Id }],
+            'Both problems should be deleted'
+        );
     }
 
     private static Patient__c insertPatient(String mrn) {

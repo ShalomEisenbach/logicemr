@@ -1,0 +1,8 @@
+<template>
+    <template lwc:if={showLink}>
+        <a href={url} class={linkClass} onclick={handleClick}>{displayLabel}</a>
+    </template>
+    <template lwc:else>
+        <span>{displayLabel}</span>
+    </template>
+</template>

@@ -1,3 +1,52 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.table-wide {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+.stack-narrow {
+    display: none;
+}
+
+.stack-card {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.stack-card:last-child {
+    border-bottom: none;
+}
+
+.stack-title {
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+}
+
+.stack-meta {
+    margin: 0;
+    color: var(--slds-g-color-neutral-base-30, #706e6b);
+    font-size: 0.8125rem;
+}
+
+.stack-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+@media (max-width: 47.9375rem) {
+    .table-wide {
+        display: none;
+    }
+
+    .stack-narrow {
+        display: block;
+    }
 }

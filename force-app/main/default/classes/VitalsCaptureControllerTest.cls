@@ -10,8 +10,8 @@ private class VitalsCaptureControllerTest {
             vital('rr', 16),
             vital('temp', 36.8),
             vital('spo2', 98),
-            vital('height', 170),
-            vital('weight', 70)
+            vital('height', 67),
+            vital('weight', 154)
         };
 
         Test.startTest();
@@ -44,8 +44,8 @@ private class VitalsCaptureControllerTest {
         assertVital(byCode.get('9279-1'), encounter, 'Respiratory rate', 16, '/min');
         assertVital(byCode.get('8310-5'), encounter, 'Body temperature', 36.8, 'Cel');
         assertVital(byCode.get('59408-5'), encounter, 'Oxygen saturation', 98, '%');
-        assertVital(byCode.get('8302-2'), encounter, 'Body height', 170, 'cm');
-        assertVital(byCode.get('29463-7'), encounter, 'Body weight', 70, 'kg');
+        assertVital(byCode.get('8302-2'), encounter, 'Body height', 67, 'in');
+        assertVital(byCode.get('29463-7'), encounter, 'Body weight', 154, 'lbs');
     }
 
     @IsTest
@@ -126,6 +126,65 @@ private class VitalsCaptureControllerTest {
             new List<VitalsCaptureController.VitalInput>{ vital('temp', 50), vital(null, 1) }
         );
         System.assertEquals(true, !rangeErrors.isEmpty(), 'Validate should return range and unknown errors');
+    }
+
+    @IsTest
+    static void saveVitalsUpdatesExistingObservationForSameCode() {
+        Encounter__c encounter = insertEncounter('MRN-VIT-UPSERT');
+        VitalsCaptureController.saveVitals(
+            encounter.Id,
+            new List<VitalsCaptureController.VitalInput>{ vital('hr', 72) }
+        );
+
+        Test.startTest();
+        List<Observation__c> updated = VitalsCaptureController.saveVitals(
+            encounter.Id,
+            new List<VitalsCaptureController.VitalInput>{ vital('hr', 80), vital('spo2', 98) }
+        );
+        Test.stopTest();
+
+        System.assertEquals(2, updated.size(), 'Existing heart rate should update and SpO2 should insert');
+        System.assertEquals(
+            2,
+            [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id],
+            'Repeat save must not create a second heart rate observation'
+        );
+        Observation__c heartRate = [
+            SELECT Value_Quantity__c
+            FROM Observation__c
+            WHERE Encounter__c = :encounter.Id AND Observation_Code__c = '8867-4'
+        ];
+        System.assertEquals(80, heartRate.Value_Quantity__c, 'Heart rate should update in place');
+    }
+
+    @IsTest
+    static void getEncounterVitalsReturnsLatestNumericValues() {
+        Encounter__c encounter = insertEncounter('MRN-VIT-LOAD');
+        VitalsCaptureController.saveVitals(
+            encounter.Id,
+            new List<VitalsCaptureController.VitalInput>{ vital('hr', 64), vital('temp', 36.8) }
+        );
+        insert new Observation__c(
+            Patient__c = encounter.Patient__c,
+            Encounter__c = encounter.Id,
+            Category__c = 'Vital Signs',
+            Status__c = 'Final',
+            Observation_Code_System__c = 'LOINC',
+            Observation_Code__c = '8867-4',
+            Observation_Display__c = 'Heart rate',
+            Value_Quantity__c = 88,
+            Value_Unit__c = '/min',
+            Effective_DateTime__c = Datetime.now().addMinutes(5)
+        );
+
+        Test.startTest();
+        Map<String, Decimal> latest = VitalsCaptureController.getEncounterVitals(encounter.Id);
+        Map<String, Decimal> blank = VitalsCaptureController.getEncounterVitals(null);
+        Test.stopTest();
+
+        System.assertEquals(88, latest.get('hr'), 'Latest heart rate should win');
+        System.assertEquals(36.8, latest.get('temp'), 'Temperature should load');
+        System.assertEquals(true, blank.isEmpty(), 'Null encounter should return no vitals');
     }
 
     @IsTest

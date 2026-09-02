@@ -1,3 +1,32 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.slds-card,
+.slds-card__body {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.slds-card__header {
+    margin-bottom: 0;
+    padding-top: 0.5rem;
+    padding-bottom: 0;
+}
+
+.slds-card__body_inner {
+    padding-top: 0.5rem;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.view-all {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
 }

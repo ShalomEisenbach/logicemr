@@ -293,6 +293,88 @@ private class OrderEntryControllerTest {
     }
 
     @IsTest
+    static void getEncounterOrdersReturnsEmptyWhenEncounterIdIsNull() {
+        Test.startTest();
+        List<OrderEntryController.EncounterOrderRow> rows = OrderEntryController.getEncounterOrders(null);
+        Test.stopTest();
+
+        System.assertEquals(0, rows.size(), 'Null encounter Id should return no orders');
+    }
+
+    @IsTest
+    static void getEncounterOrdersReturnsServiceAndMedicationForEncounter() {
+        insertPractitionerForCurrentUser();
+        Encounter__c encounter = insertEncounter();
+        Encounter__c otherEncounter = insertEncounter();
+        Code_Reference__c labRef = insertCode('LOINC', '24323-8', 'Comprehensive metabolic panel');
+        Code_Reference__c rxRef = insertCode('RxNorm', '197361', 'Lisinopril 10 MG Oral Tablet');
+
+        OrderEntryController.createServiceOrders(
+            encounter.Id,
+            new List<OrderEntryController.ServiceOrderInput>{
+                serviceInput(
+                    'Lab',
+                    labRef.Code_System__c,
+                    labRef.Code__c,
+                    labRef.Display__c,
+                    'STAT',
+                    'Annual labs',
+                    labRef.Id
+                )
+            }
+        );
+        OrderEntryController.createMedicationOrders(
+            encounter.Id,
+            new List<OrderEntryController.MedicationOrderInput>{
+                medicationInput(rxRef.Code_System__c, rxRef.Code__c, rxRef.Display__c, rxRef.Id)
+            }
+        );
+        OrderEntryController.createServiceOrders(
+            otherEncounter.Id,
+            new List<OrderEntryController.ServiceOrderInput>{
+                serviceInput('Imaging', 'CPT', '71046', 'Chest X-ray 2 views', 'Routine', 'Cough')
+            }
+        );
+
+        Test.startTest();
+        List<OrderEntryController.EncounterOrderRow> rows = OrderEntryController.getEncounterOrders(encounter.Id);
+        List<OrderEntryController.EncounterOrderRow> emptyEncounter = OrderEntryController.getEncounterOrders(
+            insertEncounter().Id
+        );
+        Test.stopTest();
+
+        System.assertEquals(2, rows.size(), 'Encounter should return both service and medication orders');
+        System.assertEquals(0, emptyEncounter.size(), 'Encounter with no orders should return an empty list');
+
+        Map<String, OrderEntryController.EncounterOrderRow> byType = new Map<String, OrderEntryController.EncounterOrderRow>();
+        for (OrderEntryController.EncounterOrderRow row : rows) {
+            byType.put(row.orderType, row);
+            System.assertNotEquals(null, row.id, 'Each order row needs a record Id');
+            System.assertNotEquals(null, row.authoredOn, 'Authored On should be present for sorting');
+            System.assertEquals(
+                'Priya Patel',
+                row.orderedBy,
+                'Ordered by should use the requester linked to the running user'
+            );
+        }
+
+        OrderEntryController.EncounterOrderRow lab = byType.get('Lab');
+        System.assertNotEquals(null, lab, 'Lab order should be included');
+        System.assertEquals(labRef.Display__c, lab.display, 'Lab display should match the saved service request');
+        System.assertEquals(labRef.Code__c, lab.code, 'Lab code should match the saved service request');
+        System.assertEquals(labRef.Code_System__c, lab.codeSystem, 'Lab code system should match');
+        System.assertEquals('Active', lab.status, 'Lab order should be Active');
+        System.assertEquals('STAT', lab.detail, 'Lab detail should prefer priority');
+
+        OrderEntryController.EncounterOrderRow rx = byType.get('Prescription');
+        System.assertNotEquals(null, rx, 'Prescription should be included');
+        System.assertEquals(rxRef.Display__c, rx.display, 'Prescription display should match the saved medication request');
+        System.assertEquals(rxRef.Code__c, rx.code, 'Prescription code should match');
+        System.assertEquals('RxNorm', rx.codeSystem, 'Prescription code system should be RxNorm');
+        System.assertEquals('Active', rx.status, 'Prescription should be Active');
+    }
+
+    @IsTest
     static void createServiceOrdersAcceptsReferralWithCpt() {
         Encounter__c encounter = insertEncounter();
 
@@ -365,6 +447,17 @@ private class OrderEntryControllerTest {
         );
         insert row;
         return row;
+    }
+
+    private static Practitioner__c insertPractitionerForCurrentUser() {
+        Practitioner__c practitioner = new Practitioner__c(
+            Last_Name__c = 'Patel',
+            First_Name__c = 'Priya',
+            User__c = UserInfo.getUserId(),
+            Active__c = true
+        );
+        insert practitioner;
+        return practitioner;
     }
 
     private static Patient__c insertPatient(String mrn) {

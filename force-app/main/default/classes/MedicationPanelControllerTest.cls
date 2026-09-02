@@ -91,7 +91,15 @@ private class MedicationPanelControllerTest {
             codeRef.Code_System__c,
             codeRef.Code__c,
             codeRef.Display__c,
-            codeRef.Id
+            codeRef.Id,
+            'Take 1 tablet by mouth daily',
+            10,
+            'mg',
+            'Once daily',
+            'Oral',
+            'Order',
+            'Active',
+            null
         );
         Test.stopTest();
 
@@ -104,6 +112,11 @@ private class MedicationPanelControllerTest {
                 Medication_Code_System__c,
                 Medication_Code__c,
                 Medication_Display__c,
+                Dosage_Text__c,
+                Dose_Quantity__c,
+                Dose_Unit__c,
+                Frequency__c,
+                Route__c,
                 Authored_On__c
             FROM MedicationRequest__c
             WHERE Id = :created.Id
@@ -119,6 +132,11 @@ private class MedicationPanelControllerTest {
             stored.Medication_Display__c,
             'Snapshot display should match the Code Reference'
         );
+        System.assertEquals('Take 1 tablet by mouth daily', stored.Dosage_Text__c, 'Dosage text should persist');
+        System.assertEquals(10, stored.Dose_Quantity__c, 'Dose quantity should persist');
+        System.assertEquals('mg', stored.Dose_Unit__c, 'Dose unit should persist');
+        System.assertEquals('Once daily', stored.Frequency__c, 'Frequency should persist');
+        System.assertEquals('Oral', stored.Route__c, 'Route should persist');
         System.assertNotEquals(null, stored.Authored_On__c, 'Add should stamp authored on');
     }
 
@@ -131,17 +149,59 @@ private class MedicationPanelControllerTest {
 
         Test.startTest();
         try {
-            MedicationPanelController.addMedication(null, 'RxNorm', '197361', 'Lisinopril', null);
+            MedicationPanelController.addMedication(
+                null,
+                'RxNorm',
+                '197361',
+                'Lisinopril',
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
         } catch (AuraHandledException e) {
             missingPatient = true;
         }
         try {
-            MedicationPanelController.addMedication(patient.Id, 'RxNorm', '197361', '', null);
+            MedicationPanelController.addMedication(
+                patient.Id,
+                'RxNorm',
+                '197361',
+                '',
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
         } catch (AuraHandledException e) {
             missingDisplay = true;
         }
         try {
-            MedicationPanelController.addMedication(patient.Id, 'SNOMED', '387517004', 'Paracetamol', null);
+            MedicationPanelController.addMedication(
+                patient.Id,
+                'SNOMED',
+                '387517004',
+                'Paracetamol',
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
         } catch (AuraHandledException e) {
             wrongSystem = true;
         }
@@ -229,6 +289,46 @@ private class MedicationPanelControllerTest {
             second.Id,
             MedicationPanelController.getMedications(patient.Id).activeOrders[0].Id,
             'Renewed order should be the remaining active row'
+        );
+    }
+
+    @IsTest
+    static void deleteOrdersAndReportedMedicationsRemoveRows() {
+        Patient__c patient = insertPatient('MRN-MED-6');
+        MedicationRequest__c order = insertRequest(
+            patient.Id,
+            'Active',
+            'RxNorm',
+            '197361',
+            'Lisinopril 10 MG Oral Tablet'
+        );
+        MedicationStatement__c reported = insertStatement(
+            patient.Id,
+            'Active',
+            'Patient Reported',
+            'RxNorm',
+            '310965',
+            'Ibuprofen 200 MG Oral Tablet'
+        );
+
+        Test.startTest();
+        MedicationPanelController.deleteOrders(null);
+        MedicationPanelController.deleteOrders(new List<Id>());
+        MedicationPanelController.deleteReportedMedications(null);
+        MedicationPanelController.deleteReportedMedications(new List<Id>());
+        MedicationPanelController.deleteOrders(new List<Id>{ order.Id });
+        MedicationPanelController.deleteReportedMedications(new List<Id>{ reported.Id });
+        Test.stopTest();
+
+        System.assertEquals(
+            0,
+            [SELECT COUNT() FROM MedicationRequest__c WHERE Id = :order.Id],
+            'Order should be deleted'
+        );
+        System.assertEquals(
+            0,
+            [SELECT COUNT() FROM MedicationStatement__c WHERE Id = :reported.Id],
+            'Reported medication should be deleted'
         );
     }
 

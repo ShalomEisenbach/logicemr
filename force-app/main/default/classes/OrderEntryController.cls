@@ -37,6 +37,41 @@ public with sharing class OrderEntryController {
         public String route { get; set; }
     }
 
+    public class EncounterOrderRow implements Comparable {
+        @AuraEnabled
+        public Id id { get; set; }
+        @AuraEnabled
+        public String orderType { get; set; }
+        @AuraEnabled
+        public String display { get; set; }
+        @AuraEnabled
+        public String code { get; set; }
+        @AuraEnabled
+        public String codeSystem { get; set; }
+        @AuraEnabled
+        public String status { get; set; }
+        @AuraEnabled
+        public String detail { get; set; }
+        @AuraEnabled
+        public Datetime authoredOn { get; set; }
+        @AuraEnabled
+        public String orderedBy { get; set; }
+
+        public Integer compareTo(Object other) {
+            EncounterOrderRow that = (EncounterOrderRow) other;
+            if (this.authoredOn == that.authoredOn) {
+                return 0;
+            }
+            if (this.authoredOn == null) {
+                return 1;
+            }
+            if (that.authoredOn == null) {
+                return -1;
+            }
+            return this.authoredOn > that.authoredOn ? -1 : 1;
+        }
+    }
+
     private static final Set<String> SERVICE_CATEGORIES = new Set<String>{
         'Lab',
         'Imaging',
@@ -47,6 +82,8 @@ public with sharing class OrderEntryController {
     private static final String SERVICE_STATUS_ACTIVE = 'Active';
     private static final String MED_STATUS_ACTIVE = 'Active';
     private static final String MED_INTENT_ORDER = 'Order';
+    private static final String ORDER_TYPE_PRESCRIPTION = 'Prescription';
+    private static final Integer MAX_ORDERS = 200;
 
     @AuraEnabled
     public static List<ServiceRequest__c> createServiceOrders(
@@ -60,6 +97,7 @@ public with sharing class OrderEntryController {
 
         List<ServiceRequest__c> rows = new List<ServiceRequest__c>();
         Datetime authored = Datetime.now();
+        Id requesterId = currentPractitionerId();
         for (ServiceOrderInput input : inputs) {
             if (input == null) {
                 throw new AuraHandledException('Service order is required.');
@@ -85,6 +123,7 @@ public with sharing class OrderEntryController {
                     Service_Display__c = input.display,
                     Priority__c = input.priority,
                     Reason__c = input.reason,
+                    Requester__c = requesterId,
                     Authored_On__c = authored
                 )
             );
@@ -105,6 +144,7 @@ public with sharing class OrderEntryController {
 
         List<MedicationRequest__c> rows = new List<MedicationRequest__c>();
         Datetime authored = Datetime.now();
+        Id requesterId = currentPractitionerId();
         for (MedicationOrderInput input : inputs) {
             if (input == null) {
                 throw new AuraHandledException('Medication order is required.');
@@ -130,12 +170,132 @@ public with sharing class OrderEntryController {
                     Dose_Unit__c = input.doseUnit,
                     Frequency__c = input.frequency,
                     Route__c = input.route,
+                    Requester__c = requesterId,
                     Authored_On__c = authored
                 )
             );
         }
         insert rows;
         return rows;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<EncounterOrderRow> getEncounterOrders(Id encounterId) {
+        List<EncounterOrderRow> rows = new List<EncounterOrderRow>();
+        if (encounterId == null) {
+            return rows;
+        }
+
+        for (ServiceRequest__c request : [
+            SELECT
+                Id,
+                Category__c,
+                Service_Display__c,
+                Service_Code__c,
+                Service_Code_System__c,
+                Status__c,
+                Priority__c,
+                Reason__c,
+                Authored_On__c,
+                Requester__r.First_Name__c,
+                Requester__r.Last_Name__c,
+                CreatedBy.Name
+            FROM ServiceRequest__c
+            WHERE Encounter__c = :encounterId
+            ORDER BY Authored_On__c DESC NULLS LAST
+            LIMIT :MAX_ORDERS
+        ]) {
+            EncounterOrderRow row = new EncounterOrderRow();
+            row.id = request.Id;
+            row.orderType = request.Category__c;
+            row.display = request.Service_Display__c;
+            row.code = request.Service_Code__c;
+            row.codeSystem = request.Service_Code_System__c;
+            row.status = request.Status__c;
+            row.detail = firstNonBlank(request.Priority__c, request.Reason__c);
+            row.authoredOn = request.Authored_On__c;
+            row.orderedBy = orderedByName(
+                request.Requester__r,
+                request.CreatedBy.Name
+            );
+            rows.add(row);
+        }
+
+        for (MedicationRequest__c request : [
+            SELECT
+                Id,
+                Medication_Display__c,
+                Medication_Code__c,
+                Medication_Code_System__c,
+                Status__c,
+                Dosage_Text__c,
+                Frequency__c,
+                Route__c,
+                Authored_On__c,
+                Requester__r.First_Name__c,
+                Requester__r.Last_Name__c,
+                CreatedBy.Name
+            FROM MedicationRequest__c
+            WHERE Encounter__c = :encounterId
+            ORDER BY Authored_On__c DESC NULLS LAST
+            LIMIT :MAX_ORDERS
+        ]) {
+            EncounterOrderRow row = new EncounterOrderRow();
+            row.id = request.Id;
+            row.orderType = ORDER_TYPE_PRESCRIPTION;
+            row.display = request.Medication_Display__c;
+            row.code = request.Medication_Code__c;
+            row.codeSystem = request.Medication_Code_System__c;
+            row.status = request.Status__c;
+            row.detail = firstNonBlank(
+                request.Dosage_Text__c,
+                firstNonBlank(request.Frequency__c, request.Route__c)
+            );
+            row.authoredOn = request.Authored_On__c;
+            row.orderedBy = orderedByName(
+                request.Requester__r,
+                request.CreatedBy.Name
+            );
+            rows.add(row);
+        }
+
+        rows.sort();
+        if (rows.size() <= MAX_ORDERS) {
+            return rows;
+        }
+
+        List<EncounterOrderRow> trimmed = new List<EncounterOrderRow>();
+        for (Integer i = 0; i < MAX_ORDERS; i++) {
+            trimmed.add(rows[i]);
+        }
+        return trimmed;
+    }
+
+    private static String orderedByName(Practitioner__c requester, String createdByName) {
+        if (requester != null) {
+            String composed = ((requester.First_Name__c == null ? '' : requester.First_Name__c) +
+                    ' ' +
+                    (requester.Last_Name__c == null ? '' : requester.Last_Name__c))
+                .trim();
+            if (String.isNotBlank(composed)) {
+                return composed;
+            }
+        }
+        return createdByName;
+    }
+
+    private static Id currentPractitionerId() {
+        List<Practitioner__c> practitioners = [
+            SELECT Id
+            FROM Practitioner__c
+            WHERE User__c = :UserInfo.getUserId()
+            LIMIT 1
+        ];
+        return practitioners.isEmpty() ? null : practitioners[0].Id;
+    }
+
+    private static String firstNonBlank(String left, String right) {
+        return String.isBlank(left) ? right : left;
     }
 
     private static Encounter__c requireEncounter(Id encounterId) {

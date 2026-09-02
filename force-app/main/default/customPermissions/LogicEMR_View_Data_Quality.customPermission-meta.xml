@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>View LogicEMR data-quality tools, including the suspected duplicate patients panel.</description>
+    <isLicensed>false</isLicensed>
+    <label>LogicEMR View Data Quality</label>
+</CustomPermission>

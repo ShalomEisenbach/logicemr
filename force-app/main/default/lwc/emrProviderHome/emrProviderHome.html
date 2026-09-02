@@ -1,0 +1,133 @@
+<template>
+    <div class="home">
+        <template lwc:if={isLoading}>
+            <lightning-spinner alternative-text="Loading provider home" size="small"></lightning-spinner>
+        </template>
+        <template lwc:if={showContent}>
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+
+            <div class="metrics" role="list">
+                <template for:each={metricItems} for:item="item">
+                    <div key={item.key} class="metric" role="listitem">
+                        <p class="metric-value">{item.value}</p>
+                        <p class="metric-label">{item.label}</p>
+                    </div>
+                </template>
+            </div>
+
+            <div class="actions">
+                <lightning-button-group>
+                    <lightning-button label="New Patient" onclick={handleNewPatient}></lightning-button>
+                    <lightning-button label="New Encounter" onclick={handleNewEncounter}></lightning-button>
+                    <lightning-button label="Find Patient" onclick={handleFindPatient}></lightning-button>
+                </lightning-button-group>
+            </div>
+
+            <div class={searchPanelClass}>
+                <c-emr-patient-search></c-emr-patient-search>
+            </div>
+
+            <lightning-card title="Today's Encounters" icon-name="custom:custom71">
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <template lwc:if={hasTodaysEncounters}>
+                        <template for:each={todaysEncounters} for:item="row">
+                            <article key={row.id} class="work-row">
+                                <p class="work-title">
+                                    <c-emr-record-link
+                                        record-id={row.id}
+                                        object-api-name={row.objectApiName}
+                                        label={row.title}
+                                    ></c-emr-record-link>
+                                </p>
+                                <p class="work-meta">{row.meta}</p>
+                                <template lwc:if={row.detail}>
+                                    <p class="work-meta">{row.detail}</p>
+                                </template>
+                            </article>
+                        </template>
+                    </template>
+                    <template lwc:else>
+                        <p class="empty">No encounters today</p>
+                    </template>
+                </div>
+            </lightning-card>
+
+            <lightning-card title="Results to Review" icon-name="standard:calibration">
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <template lwc:if={hasResultsToReview}>
+                        <template for:each={resultsToReview} for:item="row">
+                            <article key={row.id} class="work-row">
+                                <p class="work-title">
+                                    <c-emr-record-link
+                                        record-id={row.id}
+                                        object-api-name={row.objectApiName}
+                                        label={row.title}
+                                    ></c-emr-record-link>
+                                </p>
+                                <p class="work-meta">{row.meta}</p>
+                                <div class="work-actions">
+                                    <lightning-button
+                                        label="Mark reviewed"
+                                        variant="neutral"
+                                        data-id={row.id}
+                                        disabled={isSaving}
+                                        onclick={handleMarkReviewed}
+                                    ></lightning-button>
+                                </div>
+                            </article>
+                        </template>
+                    </template>
+                    <template lwc:else>
+                        <p class="empty">Nothing to review</p>
+                    </template>
+                </div>
+            </lightning-card>
+
+            <lightning-card title="Unsigned Notes" icon-name="standard:note">
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <template lwc:if={hasUnsignedNotes}>
+                        <template for:each={unsignedNotes} for:item="row">
+                            <article key={row.id} class="work-row">
+                                <p class="work-title">
+                                    <c-emr-record-link
+                                        record-id={row.id}
+                                        object-api-name={row.objectApiName}
+                                        label={row.title}
+                                    ></c-emr-record-link>
+                                </p>
+                                <p class="work-meta">{row.meta}</p>
+                            </article>
+                        </template>
+                    </template>
+                    <template lwc:else>
+                        <p class="empty">No unsigned notes</p>
+                    </template>
+                </div>
+            </lightning-card>
+
+            <lightning-card title="Recent Patients" icon-name="standard:people">
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <template lwc:if={hasRecentPatients}>
+                        <template for:each={recentPatients} for:item="row">
+                            <article key={row.id} class="work-row">
+                                <p class="work-title">
+                                    <c-emr-record-link
+                                        record-id={row.id}
+                                        object-api-name={row.objectApiName}
+                                        label={row.title}
+                                    ></c-emr-record-link>
+                                </p>
+                                <p class="work-meta">{row.meta}</p>
+                            </article>
+                        </template>
+                    </template>
+                    <template lwc:else>
+                        <p class="empty">No recent patients</p>
+                    </template>
+                </div>
+            </lightning-card>
+        </template>
+    </div>
+</template>

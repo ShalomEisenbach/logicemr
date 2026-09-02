@@ -1,3 +1,82 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.team-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.team-label {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+    gap: 0.75rem;
+}
+
+.tile {
+    min-width: 0;
+    padding: 0.75rem;
+    border: 1px solid #dddbda;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+}
+
+.tile-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.tile-name {
+    min-width: 0;
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.tile-status {
+    flex: 0 0 auto;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    line-height: 1.4;
+}
+
+.tile-status_active {
+    background-color: #cdefc4;
+    color: #194e31;
+}
+
+.tile-status_inactive {
+    background-color: #e5e5e5;
+    color: #444444;
+}
+
+.tile-meta {
+    margin: 0.25rem 0 0;
+    color: #706e6b;
+    font-size: 0.75rem;
+}
+
+.tile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.5rem;
 }

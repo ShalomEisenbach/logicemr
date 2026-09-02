@@ -7,19 +7,22 @@
                         <span class="slds-truncate">{title}</span>
                     </h2>
                 </div>
-                <div class="slds-no-flex">
-                    <template lwc:if={showViewAll}>
-                        <lightning-button
-                            variant="base"
-                            label={viewAllLabel}
-                            onclick={handleViewAll}
-                        ></lightning-button>
-                    </template>
+                <div class="slds-no-flex header-actions">
+                    <slot name="actions"></slot>
                 </div>
             </header>
         </div>
         <div class="slds-card__body slds-card__body_inner">
             <slot></slot>
+            <template lwc:if={showViewAll}>
+                <div class="view-all">
+                    <lightning-button
+                        variant="base"
+                        label={viewAllLabel}
+                        onclick={handleViewAll}
+                    ></lightning-button>
+                </div>
+            </template>
         </div>
     </article>
 </template>

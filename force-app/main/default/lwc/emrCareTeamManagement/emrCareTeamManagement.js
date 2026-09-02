@@ -3,10 +3,8 @@ import getOrCreateCareTeam from '@salesforce/apex/CareTeamManagementController.g
 import addMember from '@salesforce/apex/CareTeamManagementController.addMember';
 import deactivateMembers from '@salesforce/apex/CareTeamManagementController.deactivateMembers';
 import removeMembers from '@salesforce/apex/CareTeamManagementController.removeMembers';
-import MEMBER_OBJECT from '@salesforce/schema/CareTeamMember__c';
-import PRACTITIONER_FIELD from '@salesforce/schema/CareTeamMember__c.Practitioner__c';
-import ROLE_FIELD from '@salesforce/schema/CareTeamMember__c.Role__c';
-import ACCESS_LEVEL_FIELD from '@salesforce/schema/CareTeamMember__c.Access_Level__c';
+import CARE_TEAM_OBJECT from '@salesforce/schema/CareTeam__c';
+import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
 
 const DEACTIVATE = 'deactivate';
 const REMOVE = 'remove';
@@ -20,6 +18,23 @@ export default class EmrCareTeamManagement extends LightningElement {
     errorMessage;
     isLoading = false;
     isSaving = false;
+    showAddForm = false;
+    practitionerId;
+    role = 'Attending';
+    accessLevel = 'Read';
+
+    roleOptions = [
+        { label: 'Attending', value: 'Attending' },
+        { label: 'Consulting', value: 'Consulting' },
+        { label: 'Nurse', value: 'Nurse' },
+        { label: 'Care Coordinator', value: 'Care Coordinator' },
+        { label: 'Other', value: 'Other' }
+    ];
+
+    accessLevelOptions = [
+        { label: 'Read', value: 'Read' },
+        { label: 'Edit', value: 'Edit' }
+    ];
 
     @api
     get recordId() {
@@ -32,20 +47,12 @@ export default class EmrCareTeamManagement extends LightningElement {
         }
     }
 
-    get memberObjectApiName() {
-        return MEMBER_OBJECT.objectApiName;
+    get careTeamObjectApiName() {
+        return CARE_TEAM_OBJECT.objectApiName;
     }
 
-    get practitionerFieldApiName() {
-        return PRACTITIONER_FIELD.fieldApiName;
-    }
-
-    get roleFieldApiName() {
-        return ROLE_FIELD.fieldApiName;
-    }
-
-    get accessLevelFieldApiName() {
-        return ACCESS_LEVEL_FIELD.fieldApiName;
+    get practitionerObjectApiName() {
+        return PRACTITIONER_OBJECT.objectApiName;
     }
 
     get hasMembers() {
@@ -69,23 +76,21 @@ export default class EmrCareTeamManagement extends LightningElement {
         return !!this.careTeamId && !this.isLoading;
     }
 
-    get columns() {
-        return [
-            { label: 'Practitioner', fieldName: 'practitionerName' },
-            { label: 'Role', fieldName: 'role' },
-            { label: 'Access Level', fieldName: 'accessLevel' },
-            { label: 'Active', fieldName: 'active', type: 'boolean' },
-            {
-                type: 'action',
-                typeAttributes: {
-                    rowActions: this.getRowActions.bind(this)
-                }
-            }
-        ];
-    }
-
-    getRowActions(row, doneCallback) {
-        doneCallback(this.actionsFor(row));
+    get memberCards() {
+        return (this.members || []).map((row) => {
+            const active = !!row.active;
+            return {
+                id: row.id,
+                practitionerId: row.practitionerId,
+                title: row.practitionerName || 'Member',
+                role: row.role || 'Role not set',
+                accessLabel: row.accessLevel ? `${row.accessLevel} access` : 'Access not set',
+                statusLabel: active ? 'Active' : 'Inactive',
+                statusClass: active ? 'tile-status tile-status_active' : 'tile-status tile-status_inactive',
+                canDeactivate: active,
+                objectApiName: PRACTITIONER_OBJECT.objectApiName
+            };
+        });
     }
 
     async loadCareTeam() {
@@ -111,23 +116,43 @@ export default class EmrCareTeamManagement extends LightningElement {
         this.members = view.members || [];
     }
 
-    actionsFor(row) {
-        const actions = [];
-        if (row.active) {
-            actions.push({ label: 'Deactivate', name: DEACTIVATE });
-        }
-        actions.push({ label: 'Remove', name: REMOVE });
-        return actions;
+    handleToggleAdd() {
+        this.showAddForm = true;
+        this.errorMessage = undefined;
+        this.resetAddForm();
     }
 
-    handleAddSubmit(event) {
-        event.preventDefault();
-        const fields = event.detail.fields;
-        this.saveMember(
-            fields[PRACTITIONER_FIELD.fieldApiName],
-            fields[ROLE_FIELD.fieldApiName],
-            fields[ACCESS_LEVEL_FIELD.fieldApiName]
-        );
+    handleCloseAdd() {
+        this.showAddForm = false;
+        this.errorMessage = undefined;
+        this.resetAddForm();
+    }
+
+    resetAddForm() {
+        this.practitionerId = undefined;
+        this.role = 'Attending';
+        this.accessLevel = 'Read';
+    }
+
+    handlePractitionerChange(event) {
+        this.practitionerId = event.detail.recordId;
+        this.errorMessage = undefined;
+    }
+
+    handleRoleChange(event) {
+        this.role = event.detail.value;
+    }
+
+    handleAccessLevelChange(event) {
+        this.accessLevel = event.detail.value;
+    }
+
+    handleAddClick() {
+        if (!this.practitionerId) {
+            this.errorMessage = 'Select a practitioner.';
+            return;
+        }
+        this.saveMember(this.practitionerId, this.role, this.accessLevel);
     }
 
     async saveMember(practitionerId, role, accessLevel) {
@@ -135,6 +160,7 @@ export default class EmrCareTeamManagement extends LightningElement {
             return;
         }
         this.isSaving = true;
+        this.errorMessage = undefined;
         try {
             await addMember({
                 careTeamId: this.careTeamId,
@@ -142,12 +168,23 @@ export default class EmrCareTeamManagement extends LightningElement {
                 role,
                 accessLevel
             });
+            this.showAddForm = false;
+            this.resetAddForm();
             await this.loadCareTeam();
         } catch (error) {
             this.errorMessage = this.reduceError(error);
         } finally {
             this.isSaving = false;
         }
+    }
+
+    handleMemberCardAction(event) {
+        this.handleRowAction({
+            detail: {
+                action: { name: event.currentTarget.dataset.action },
+                row: { id: event.currentTarget.dataset.id }
+            }
+        });
     }
 
     async handleRowAction(event) {

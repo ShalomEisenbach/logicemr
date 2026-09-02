@@ -69,6 +69,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Chen',
         lfemr__MRN__c = 'MRN-1001',
         lfemr__Date_of_Birth__c = Date.newInstance(1988, 3, 14),
+        lfemr__Phone__c = '555-010-1001',
         lfemr__Sex_at_Birth__c = 'Female',
         lfemr__Status__c = 'Active'
     ),
@@ -79,6 +80,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Chen',
         lfemr__MRN__c = 'MRN-1002',
         lfemr__Date_of_Birth__c = Date.newInstance(2020, 7, 22),
+        lfemr__Phone__c = '555-010-1002',
         lfemr__Sex_at_Birth__c = 'Male',
         lfemr__Status__c = 'Active'
     ),
@@ -89,6 +91,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Rivera',
         lfemr__MRN__c = 'MRN-1003',
         lfemr__Date_of_Birth__c = Date.newInstance(1975, 11, 2),
+        lfemr__Phone__c = '555-010-1003',
         lfemr__Sex_at_Birth__c = 'Female',
         lfemr__Status__c = 'Active'
     ),
@@ -99,6 +102,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Rivera',
         lfemr__MRN__c = 'MRN-1004',
         lfemr__Date_of_Birth__c = Date.newInstance(2026, 4, 18),
+        lfemr__Phone__c = '555-010-1004',
         lfemr__Sex_at_Birth__c = 'Male',
         lfemr__Status__c = 'Active'
     ),
@@ -109,6 +113,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Okonkwo',
         lfemr__MRN__c = 'MRN-1005',
         lfemr__Date_of_Birth__c = Date.newInstance(1948, 1, 9),
+        lfemr__Phone__c = '555-010-1005',
         lfemr__Sex_at_Birth__c = 'Male',
         lfemr__Status__c = 'Active'
     ),
@@ -119,6 +124,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Thompson',
         lfemr__MRN__c = 'MRN-1006',
         lfemr__Date_of_Birth__c = Date.newInstance(1992, 6, 30),
+        lfemr__Phone__c = '555-010-1006',
         lfemr__Sex_at_Birth__c = 'Female',
         lfemr__Status__c = 'Inactive'
     ),
@@ -129,6 +135,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Brooks',
         lfemr__MRN__c = 'MRN-1007',
         lfemr__Date_of_Birth__c = Date.newInstance(2025, 8, 15),
+        lfemr__Phone__c = '555-010-1007',
         lfemr__Sex_at_Birth__c = 'Male',
         lfemr__Status__c = 'Active'
     ),
@@ -139,6 +146,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Kim',
         lfemr__MRN__c = 'MRN-1008',
         lfemr__Date_of_Birth__c = Date.newInstance(2001, 12, 1),
+        lfemr__Phone__c = '555-010-1008',
         lfemr__Sex_at_Birth__c = 'Female',
         lfemr__Status__c = 'Active'
     ),
@@ -149,6 +157,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Alvarez',
         lfemr__MRN__c = 'MRN-1009',
         lfemr__Date_of_Birth__c = Date.newInstance(1963, 5, 18),
+        lfemr__Phone__c = '555-010-1009',
         lfemr__Sex_at_Birth__c = 'Male',
         lfemr__Status__c = 'Active'
     ),
@@ -159,6 +168,7 @@ List<lfemr__Patient__c> patients = new List<lfemr__Patient__c>{
         lfemr__Last_Name__c = 'Nguyen',
         lfemr__MRN__c = 'MRN-1010',
         lfemr__Date_of_Birth__c = Date.newInstance(2010, 9, 8),
+        lfemr__Phone__c = '555-010-1010',
         lfemr__Sex_at_Birth__c = 'Unknown',
         lfemr__Status__c = 'Active'
     )

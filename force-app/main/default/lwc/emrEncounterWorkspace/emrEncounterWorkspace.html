@@ -9,21 +9,26 @@
                 </template>
                 <template lwc:if={hasEncounter}>
                     <div class="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-center">
-                        <div class="slds-col slds-grow">
-                            <p class="slds-text-heading_medium">{patientName}</p>
-                            <template lwc:if={encounterClass}>
-                                <p class="slds-text-body_regular slds-text-color_weak">
-                                    {encounterClass}
-                                </p>
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12">
+                            <p class="context-label">Encounter</p>
+                            <p class="slds-text-heading_medium">
+                                <c-emr-record-link
+                                    record-id={patientId}
+                                    object-api-name={patientObjectApiName}
+                                    label={patientName}
+                                ></c-emr-record-link>
+                            </p>
+                            <template lwc:if={identitySubtitle}>
+                                <p class="slds-text-body_regular slds-text-color_weak">{identitySubtitle}</p>
                             </template>
                         </div>
-                        <div class="slds-col">
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-12 slds-m-top_small">
                             <p class="slds-text-title_caps">Status</p>
                             <template lwc:if={status}>
-                                <lightning-badge label={status}></lightning-badge>
+                                <span class={statusBadgeClass}>{status}</span>
                             </template>
                         </div>
-                        <div class="slds-col">
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-12 slds-m-top_small">
                             <p class="slds-text-title_caps">Start</p>
                             <template lwc:if={startValue}>
                                 <lightning-formatted-date-time
@@ -36,7 +41,7 @@
                                 ></lightning-formatted-date-time>
                             </template>
                         </div>
-                        <div class="slds-col">
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-12 slds-m-top_small">
                             <p class="slds-text-title_caps">End</p>
                             <template lwc:if={endValue}>
                                 <lightning-formatted-date-time
@@ -51,11 +56,57 @@
                         </div>
                         <div class="slds-col">
                             <p class="slds-text-title_caps">Attending</p>
-                            <p class="slds-text-body_regular">{attendingName}</p>
+                            <p class="slds-text-body_regular">
+                                <template lwc:if={attendingId}>
+                                    <c-emr-record-link
+                                        record-id={attendingId}
+                                        object-api-name={practitionerObjectApiName}
+                                        label={attendingName}
+                                    ></c-emr-record-link>
+                                </template>
+                                <template lwc:else>{attendingName}</template>
+                            </p>
                         </div>
                         <div class="slds-col">
                             <p class="slds-text-title_caps">Location</p>
                             <p class="slds-text-body_regular">{locationName}</p>
+                        </div>
+                    </div>
+                    <div class="patient-facts">
+                        <div class="fact">
+                            <p class="slds-text-title_caps">MRN</p>
+                            <p class="slds-text-body_regular">{mrn}</p>
+                        </div>
+                        <div class="fact">
+                            <p class="slds-text-title_caps">DOB</p>
+                            <template lwc:if={dateOfBirth}>
+                                <p class="slds-text-body_regular">
+                                    <lightning-formatted-date-time
+                                        value={dateOfBirth}
+                                        year="numeric"
+                                        month="short"
+                                        day="2-digit"
+                                    ></lightning-formatted-date-time>
+                                </p>
+                            </template>
+                            <template lwc:else>
+                                <p class="slds-text-body_regular">{emptyValue}</p>
+                            </template>
+                        </div>
+                        <div class="fact">
+                            <p class="slds-text-title_caps">Sex</p>
+                            <p class="slds-text-body_regular">{sexAtBirth}</p>
+                        </div>
+                        <div class="fact">
+                            <p class="slds-text-title_caps">Phone</p>
+                            <template lwc:if={phone}>
+                                <p class="slds-text-body_regular">
+                                    <lightning-formatted-phone value={phone}></lightning-formatted-phone>
+                                </p>
+                            </template>
+                            <template lwc:else>
+                                <p class="slds-text-body_regular">{emptyValue}</p>
+                            </template>
                         </div>
                     </div>
 
@@ -78,53 +129,51 @@
                             </template>
                         </div>
                     </div>
+                    <div class="alerts">
+                        <c-emr-alert-bar record-id={recordId}></c-emr-alert-bar>
+                    </div>
                 </template>
             </div>
         </lightning-card>
 
         <div class="slds-grid slds-gutters slds-wrap slds-m-top_medium">
             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_medium">
+                <c-emr-vitals-capture record-id={recordId}></c-emr-vitals-capture>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_medium">
                 <c-emr-chart-panel
                     title="Diagnoses"
                     view-all-label="View All"
+                    has-records={hasDiagnoses}
                     onviewall={handleViewAllDiagnoses}
                 >
+                    <lightning-button
+                        slot="actions"
+                        label="Add"
+                        variant="neutral"
+                        onclick={handleToggleAddDiagnosis}
+                    ></lightning-button>
                     <template lwc:if={diagnosisError}>
                         <div class="slds-text-color_error slds-m-bottom_small" role="alert">
                             {diagnosisError}
                         </div>
                     </template>
-                    <div class="slds-m-bottom_small">
-                        <lightning-button
-                            label="Add"
-                            variant="neutral"
-                            onclick={handleToggleAddDiagnosis}
-                        ></lightning-button>
-                    </div>
                     <template lwc:if={showAddDiagnosisForm}>
-                        <div class="slds-m-bottom_medium">
-                            <lightning-combobox
-                                name="dxCodeSystem"
-                                label="Code System"
-                                value={dxCodeSystem}
-                                options={dxCodeSystemOptions}
-                                onchange={handleDxCodeSystemChange}
-                            ></lightning-combobox>
-                            <lightning-input
-                                name="dxCode"
-                                label="Code"
-                                value={dxCode}
-                                onchange={handleDxCodeChange}
-                                max-length="50"
-                            ></lightning-input>
-                            <lightning-input
-                                name="dxDisplay"
-                                label="Display"
-                                value={dxDisplay}
-                                onchange={handleDxDisplayChange}
-                                max-length="255"
+                        <c-emr-modal title="Add diagnosis" onclose={handleCloseAddDiagnosis}>
+                            <template lwc:if={diagnosisError}>
+                                <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+                                    {diagnosisError}
+                                </div>
+                            </template>
+                            <c-emr-code-search
+                                label="Diagnosis"
+                                placeholder="Search ICD-10 or SNOMED"
                                 required
-                            ></lightning-input>
+                                include-record-id
+                                code-systems={codeSystems}
+                                value={codeSearchValue}
+                                oncodeselected={handleCodeSelected}
+                            ></c-emr-code-search>
                             <lightning-combobox
                                 name="dxType"
                                 label="Type"
@@ -140,7 +189,13 @@
                                 onchange={handleDxRankChange}
                                 step="1"
                             ></lightning-input>
-                            <div class="slds-m-top_small">
+                            <div slot="footer">
+                                <lightning-button
+                                    label="Cancel"
+                                    variant="neutral"
+                                    onclick={handleCloseAddDiagnosis}
+                                    class="slds-m-right_small"
+                                ></lightning-button>
                                 <lightning-button
                                     label="Save diagnosis"
                                     variant="brand"
@@ -148,7 +203,7 @@
                                     onclick={handleSaveDiagnosis}
                                 ></lightning-button>
                             </div>
-                        </div>
+                        </c-emr-modal>
                     </template>
                     <template lwc:if={hasDiagnoses}>
                         <lightning-datatable
@@ -156,6 +211,7 @@
                             data={diagnoses}
                             columns={diagnosisColumns}
                             hide-checkbox-column
+                            onrowaction={handleDiagnosisRowAction}
                         ></lightning-datatable>
                     </template>
                     <template lwc:elseif={showEmptyDiagnoses}>
@@ -165,9 +221,6 @@
             </div>
             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_medium">
                 <c-emr-order-entry record-id={recordId}></c-emr-order-entry>
-            </div>
-            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_medium">
-                <c-emr-vitals-capture record-id={recordId}></c-emr-vitals-capture>
             </div>
         </div>
     </div>

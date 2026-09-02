@@ -1,0 +1,14 @@
+:host {
+    position: relative;
+    z-index: 9001;
+}
+
+.slds-modal,
+.slds-modal__container,
+.slds-modal__content {
+    overflow: visible;
+}
+
+.slds-modal__content {
+    max-height: none;
+}

@@ -3,13 +3,19 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Patient Search</masterLabel>
-    <description>Search patients by last name, first name, or MRN and open the patient chart.</description>
+    <description>Search patients by name, MRN, date of birth, or phone and open the patient chart.</description>
     <targets>
         <target>lightning__AppPage</target>
         <target>lightning__HomePage</target>
         <target>lightning__UtilityBar</target>
     </targets>
     <targetConfigs>
+        <targetConfig targets="lightning__AppPage,lightning__HomePage">
+            <supportedFormFactors>
+                <supportedFormFactor type="Large" />
+                <supportedFormFactor type="Small" />
+            </supportedFormFactors>
+        </targetConfig>
         <targetConfig targets="lightning__UtilityBar">
             <property name="eager" type="Boolean" default="false" />
             <property name="height" type="Integer" default="480" />

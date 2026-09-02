@@ -2,6 +2,7 @@ import { LightningElement, api, wire } from 'lwc';
 import { refreshApex } from '@salesforce/apex';
 import { registerRefreshHandler, unregisterRefreshHandler } from 'lightning/refresh';
 import getActiveAllergies from '@salesforce/apex/AlertBarController.getActiveAllergies';
+import ALLERGY_OBJECT from '@salesforce/schema/AllergyIntolerance__c';
 import DISPLAY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Display__c';
 import CODE_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Code__c';
 import CRITICALITY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Criticality__c';
@@ -54,6 +55,10 @@ export default class EmrAlertBar extends LightningElement {
         return this.allergies.some((row) => row[CRITICALITY_FIELD.fieldApiName] === CRITICALITY_HIGH);
     }
 
+    get allergyObjectApiName() {
+        return ALLERGY_OBJECT.objectApiName;
+    }
+
     get allergyItems() {
         return this.allergies.map((row) => {
             const criticality = row[CRITICALITY_FIELD.fieldApiName];
@@ -63,6 +68,7 @@ export default class EmrAlertBar extends LightningElement {
                 name: row[DISPLAY_FIELD.fieldApiName] || row[CODE_FIELD.fieldApiName] || 'Allergy',
                 criticality,
                 isHigh,
+                objectApiName: ALLERGY_OBJECT.objectApiName,
                 cssClass: isHigh ? 'allergy-chip allergy-chip_high' : 'allergy-chip'
             };
         });

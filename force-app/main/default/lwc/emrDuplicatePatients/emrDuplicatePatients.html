@@ -1,0 +1,53 @@
+<template>
+    <template lwc:if={canView}>
+        <lightning-card title="Suspected Duplicate Patients" icon-name="standard:people">
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Exact match on last name, first name, and date of birth. Open a record to compare and
+                    resolve manually.
+                </p>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <template lwc:if={isLoading}>
+                    <lightning-spinner alternative-text="Loading suspected duplicates" size="small"></lightning-spinner>
+                </template>
+                <template lwc:if={showTruncated}>
+                    <p class="slds-text-body_small slds-m-bottom_small" role="status">{truncatedMessage}</p>
+                </template>
+                <template lwc:if={hasGroups}>
+                    <template for:each={groups} for:item="group">
+                        <section key={group.key} class="group">
+                            <header class="group-header">
+                                <h3 class="group-title">{group.heading}</h3>
+                                <p class="group-count">{group.countLabel}</p>
+                            </header>
+                            <ul class="member-list">
+                                <template for:each={group.members} for:item="member">
+                                    <li key={member.id} class="member">
+                                        <p class="member-name">
+                                            <c-emr-record-link
+                                                record-id={member.id}
+                                                object-api-name={member.objectApiName}
+                                                label={member.label}
+                                            ></c-emr-record-link>
+                                        </p>
+                                        <p class="member-meta">
+                                            <template lwc:if={member.mrn}>MRN {member.mrn}</template>
+                                            <template lwc:if={member.dob}> · {member.dob}</template>
+                                            <template lwc:if={member.status}> · {member.status}</template>
+                                            <template lwc:if={member.created}> · Created {member.created}</template>
+                                        </p>
+                                    </li>
+                                </template>
+                            </ul>
+                        </section>
+                    </template>
+                </template>
+                <template lwc:elseif={showEmpty}>
+                    <p class="slds-text-body_regular">No suspected duplicates</p>
+                </template>
+            </div>
+        </lightning-card>
+    </template>
+</template>

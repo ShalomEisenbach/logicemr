@@ -9,8 +9,10 @@ import { LightningElement, api } from 'lwc';
  *
  * Public API
  * - title (String): header text
- * - viewAllLabel (String, optional): when set, a header action is shown
- * - viewall event: fired when the header action is clicked
+ * - viewAllLabel (String, optional): when set with hasRecords, View All is shown under the table
+ * - hasRecords (Boolean): View All is shown only when true
+ * - viewall event: fired when View All is clicked
+ * - actions slot: optional header buttons (Add) on the top right
  * - default slot: panel body
  *
  * Example — later panels should follow emrEncounterPanel:
@@ -24,14 +26,15 @@ import { LightningElement, api } from 'lwc';
  *   </c-emr-chart-panel>
  *
  * handleViewAll() navigates or opens a related list. Leave view-all-label
- * unset to hide the action.
+ * unset, or pass has-records={false}, to hide the action.
  */
 export default class EmrChartPanel extends LightningElement {
     @api title;
     @api viewAllLabel;
+    @api hasRecords = false;
 
     get showViewAll() {
-        return !!this.viewAllLabel;
+        return !!this.viewAllLabel && this.hasRecords;
     }
 
     handleViewAll() {

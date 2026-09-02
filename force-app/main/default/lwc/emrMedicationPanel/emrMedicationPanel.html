@@ -1,17 +1,19 @@
 <template>
-    <c-emr-chart-panel title="Medications" view-all-label="View All" onviewall={handleViewAll}>
+    <c-emr-chart-panel title="Medications" view-all-label="View All" has-records={hasRecords} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>
-        <div class="slds-m-bottom_small">
-            <lightning-button
-                label="Add"
-                variant="neutral"
-                onclick={handleToggleAdd}
-            ></lightning-button>
-        </div>
         <template lwc:if={showAddForm}>
-            <div class="slds-m-bottom_medium">
+            <c-emr-modal title="Add medication" size="large" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
                 <c-emr-code-search
                     label="Medication"
                     placeholder="Search RxNorm"
@@ -21,7 +23,78 @@
                     value={codeSearchValue}
                     oncodeselected={handleCodeSelected}
                 ></c-emr-code-search>
-                <div class="slds-m-top_small">
+                <lightning-input
+                    name="dosageText"
+                    label="Dosage text"
+                    value={dosageText}
+                    onchange={handleDosageTextChange}
+                    max-length="255"
+                    class="slds-m-top_small"
+                ></lightning-input>
+                <lightning-input
+                    name="doseQuantity"
+                    label="Dose quantity"
+                    type="number"
+                    value={doseQuantity}
+                    onchange={handleDoseQuantityChange}
+                    step="0.001"
+                    class="slds-m-top_small"
+                ></lightning-input>
+                <lightning-input
+                    name="doseUnit"
+                    label="Dose unit"
+                    value={doseUnit}
+                    onchange={handleDoseUnitChange}
+                    max-length="20"
+                    class="slds-m-top_small"
+                ></lightning-input>
+                <lightning-input
+                    name="frequency"
+                    label="Frequency"
+                    value={frequency}
+                    onchange={handleFrequencyChange}
+                    max-length="100"
+                    class="slds-m-top_small"
+                ></lightning-input>
+                <lightning-combobox
+                    name="route"
+                    label="Route"
+                    value={route}
+                    options={routeOptions}
+                    onchange={handleRouteChange}
+                    class="slds-m-top_small"
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="intent"
+                    label="Intent"
+                    value={intent}
+                    options={intentOptions}
+                    onchange={handleIntentChange}
+                    class="slds-m-top_small"
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="status"
+                    label="Status"
+                    value={status}
+                    options={statusOptions}
+                    onchange={handleStatusChange}
+                    class="slds-m-top_small"
+                ></lightning-combobox>
+                <lightning-record-picker
+                    label="Requester"
+                    placeholder="Search practitioners"
+                    object-api-name={practitionerObjectApiName}
+                    value={requesterId}
+                    class="slds-m-top_small"
+                    onchange={handleRequesterChange}
+                ></lightning-record-picker>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
                     <lightning-button
                         label="Save medication"
                         variant="brand"
@@ -29,29 +102,98 @@
                         onclick={handleAdd}
                     ></lightning-button>
                 </div>
-            </div>
+            </c-emr-modal>
         </template>
         <template lwc:if={showEmpty}>
             <p class="slds-text-body_regular">No medications.</p>
         </template>
         <template lwc:if={hasActiveOrders}>
             <h3 class="slds-text-title_caps slds-m-bottom_xx-small">Active orders</h3>
-            <lightning-datatable
-                key-field="Id"
-                data={activeOrders}
-                columns={orderColumns}
-                hide-checkbox-column
-                onrowaction={handleRowAction}
-            ></lightning-datatable>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={activeOrders}
+                    columns={orderColumns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={activeOrderCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Renew"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-action="renew"
+                                disabled={isSaving}
+                                onclick={handleOrderCardAction}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Discontinue"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-action="discontinue"
+                                disabled={isSaving}
+                                onclick={handleOrderCardAction}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-action="delete"
+                                disabled={isSaving}
+                                onclick={handleOrderCardAction}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
         <template lwc:if={hasReported}>
             <h3 class="slds-text-title_caps slds-m-top_medium slds-m-bottom_xx-small">Reported</h3>
-            <lightning-datatable
-                key-field="Id"
-                data={reportedMedications}
-                columns={reportedColumns}
-                hide-checkbox-column
-            ></lightning-datatable>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={reportedMedications}
+                    columns={reportedColumns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={reportedCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-action="deleteReported"
+                                disabled={isSaving}
+                                onclick={handleOrderCardAction}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
     </c-emr-chart-panel>
 </template>

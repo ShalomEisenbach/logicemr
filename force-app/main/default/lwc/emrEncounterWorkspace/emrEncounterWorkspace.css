@@ -1,5 +1,106 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.table-wide {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+.stack-narrow {
+    display: none;
+}
+
+.stack-card {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.stack-card:last-child {
+    border-bottom: none;
+}
+
+.stack-title {
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+}
+
+.stack-meta {
+    margin: 0;
+    color: var(--slds-g-color-neutral-base-30, #706e6b);
+    font-size: 0.8125rem;
+}
+
+@media (max-width: 47.9375rem) {
+    .table-wide {
+        display: none;
+    }
+
+    .stack-narrow {
+        display: block;
+    }
+}
+
+.context-label {
+    margin: 0 0 0.125rem;
+    color: #0176d3;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.patient-facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 1.75rem;
+    margin-top: 0.75rem;
+}
+
+.fact {
+    min-width: 4.5rem;
+}
+
+.alerts {
+    margin-top: 0.75rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.status-badge_planned {
+    background: #e5e5e5;
+    color: #181818;
+}
+
+.status-badge_arrived {
+    background: #c9e7d3;
+    color: #2e844a;
+}
+
+.status-badge_progress {
+    background: #0176d3;
+    color: #ffffff;
+}
+
+.status-badge_finished {
+    background: #2e844a;
+    color: #ffffff;
+}
+
+.status-badge_cancelled {
+    background: #ba0517;
+    color: #ffffff;
 }
 
 .status-path {

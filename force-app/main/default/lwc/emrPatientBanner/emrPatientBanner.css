@@ -1,3 +1,84 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 2rem;
+}
+
+.identity {
+    min-width: 10rem;
+    flex: 0 1 auto;
+}
+
+.facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 1.75rem;
+    flex: 1 1 auto;
+}
+
+.fact {
+    min-width: 4.5rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25;
+    background-color: #e5e5e5;
+    color: #181818;
+}
+
+.status-badge_active {
+    background-color: #2e844a;
+    color: #ffffff;
+}
+
+.status-badge_inactive {
+    background-color: #706e6b;
+    color: #ffffff;
+}
+
+.alerts {
+    margin-top: 0.75rem;
+}
+
+.vitals {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #dddbda;
+}
+
+.vitals-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.vital-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+}
+
+.vital {
+    min-width: 4.25rem;
+}
+
+.vital-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
 }

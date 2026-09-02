@@ -1,8 +1,7 @@
 <template>
     <c-emr-chart-panel title="Care Team">
-        <p class="slds-text-body_regular slds-m-bottom_small" role="note">
-            Care team membership controls who can see this patient. Adding a
-            member grants access; deactivating or removing a member revokes it.
+        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small" role="note">
+            Members can see this patient. Add to grant access; deactivate or remove to revoke it.
         </p>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">
@@ -12,46 +11,113 @@
         <template lwc:if={isLoading}>
             <lightning-spinner alternative-text="Loading care team" size="small"></lightning-spinner>
         </template>
-        <template lwc:if={teamLabel}>
-            <p class="slds-text-title_caps slds-m-bottom_small">{teamLabel}</p>
-        </template>
+        <div class="team-bar">
+            <template lwc:if={teamLabel}>
+                <p class="slds-text-title_caps team-label">
+                    <c-emr-record-link
+                        record-id={careTeamId}
+                        object-api-name={careTeamObjectApiName}
+                        label={teamLabel}
+                    ></c-emr-record-link>
+                </p>
+            </template>
+            <template lwc:if={showForm}>
+                <lightning-button
+                    label="Add member"
+                    variant="neutral"
+                    onclick={handleToggleAdd}
+                ></lightning-button>
+            </template>
+        </div>
         <template lwc:if={hasMembers}>
-            <lightning-datatable
-                key-field="id"
-                data={members}
-                columns={columns}
-                hide-checkbox-column
-                onrowaction={handleRowAction}
-            ></lightning-datatable>
+            <div class="tile-grid">
+                <template for:each={memberCards} for:item="row">
+                    <article key={row.id} class="tile">
+                        <div class="tile-top">
+                            <p class="tile-name">
+                                <c-emr-record-link
+                                    record-id={row.practitionerId}
+                                    object-api-name={row.objectApiName}
+                                    label={row.title}
+                                ></c-emr-record-link>
+                            </p>
+                            <span class={row.statusClass}>{row.statusLabel}</span>
+                        </div>
+                        <p class="tile-meta">{row.role}</p>
+                        <p class="tile-meta">{row.accessLabel}</p>
+                        <div class="tile-actions">
+                            <template lwc:if={row.canDeactivate}>
+                                <lightning-button
+                                    label="Deactivate"
+                                    variant="base"
+                                    data-id={row.id}
+                                    data-action="deactivate"
+                                    disabled={isSaving}
+                                    onclick={handleMemberCardAction}
+                                ></lightning-button>
+                            </template>
+                            <lightning-button
+                                label="Remove"
+                                variant="base"
+                                data-id={row.id}
+                                data-action="remove"
+                                disabled={isSaving}
+                                onclick={handleMemberCardAction}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
         </template>
         <template lwc:elseif={showEmpty}>
             <p class="slds-text-body_regular slds-m-bottom_small">No care team members.</p>
         </template>
-        <template lwc:if={showForm}>
-            <h3 class="slds-text-heading_small slds-m-top_medium slds-m-bottom_small">
-                Add a member
-            </h3>
-            <lightning-record-edit-form
-                object-api-name={memberObjectApiName}
-                onsubmit={handleAddSubmit}
-            >
-                <lightning-input-field
-                    field-name={practitionerFieldApiName}
+        <template lwc:if={showAddForm}>
+            <c-emr-modal title="Add care team member" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+                        {errorMessage}
+                    </div>
+                </template>
+                <lightning-record-picker
+                    label="Practitioner"
+                    placeholder="Search practitioners"
+                    object-api-name={practitionerObjectApiName}
+                    value={practitionerId}
                     required
-                ></lightning-input-field>
-                <lightning-input-field field-name={roleFieldApiName}></lightning-input-field>
-                <lightning-input-field
-                    field-name={accessLevelFieldApiName}
-                ></lightning-input-field>
-                <div class="slds-m-top_small">
+                    onchange={handlePractitionerChange}
+                ></lightning-record-picker>
+                <lightning-combobox
+                    name="role"
+                    label="Role"
+                    value={role}
+                    options={roleOptions}
+                    onchange={handleRoleChange}
+                    class="slds-m-top_small"
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="accessLevel"
+                    label="Access Level"
+                    value={accessLevel}
+                    options={accessLevelOptions}
+                    onchange={handleAccessLevelChange}
+                    class="slds-m-top_small"
+                ></lightning-combobox>
+                <div slot="footer">
                     <lightning-button
-                        type="submit"
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
                         label="Add member"
                         variant="brand"
                         disabled={isSaving}
+                        onclick={handleAddClick}
                     ></lightning-button>
                 </div>
-            </lightning-record-edit-form>
+            </c-emr-modal>
         </template>
     </c-emr-chart-panel>
 </template>

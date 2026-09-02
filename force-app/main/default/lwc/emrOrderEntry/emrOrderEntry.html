@@ -1,85 +1,137 @@
 <template>
     <c-emr-chart-panel title="Orders">
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleOpenAdd}
+        ></lightning-button>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>
-        <lightning-combobox
-            name="orderType"
-            label="Order type"
-            value={orderType}
-            options={typeOptions}
-            onchange={handleTypeChange}
-        ></lightning-combobox>
-        <c-emr-code-search
-            label="Code"
-            placeholder={codeSearchPlaceholder}
-            required
-            include-record-id
-            code-systems={codeSearchSystems}
-            value={codeSearchValue}
-            oncodeselected={handleCodeSelected}
-        ></c-emr-code-search>
-        <template lwc:if={isService}>
-            <lightning-combobox
-                name="priority"
-                label="Priority"
-                value={priority}
-                options={priorityOptions}
-                onchange={handlePriorityChange}
-            ></lightning-combobox>
-            <lightning-input
-                name="reason"
-                label="Reason"
-                value={reason}
-                onchange={handleReasonChange}
-                max-length="255"
-            ></lightning-input>
+        <template lwc:if={showEmpty}>
+            <p class="slds-text-body_regular">No orders.</p>
         </template>
-        <template lwc:if={isPrescription}>
-            <lightning-input
-                name="dosageText"
-                label="Dosage text"
-                value={dosageText}
-                onchange={handleDosageTextChange}
-                max-length="255"
-            ></lightning-input>
-            <lightning-input
-                name="doseQuantity"
-                label="Dose quantity"
-                type="number"
-                value={doseQuantity}
-                onchange={handleDoseQuantityChange}
-                step="0.001"
-            ></lightning-input>
-            <lightning-input
-                name="doseUnit"
-                label="Dose unit"
-                value={doseUnit}
-                onchange={handleDoseUnitChange}
-                max-length="20"
-            ></lightning-input>
-            <lightning-input
-                name="frequency"
-                label="Frequency"
-                value={frequency}
-                onchange={handleFrequencyChange}
-                max-length="100"
-            ></lightning-input>
-            <lightning-combobox
-                name="route"
-                label="Route"
-                value={route}
-                options={routeOptions}
-                onchange={handleRouteChange}
-            ></lightning-combobox>
+        <template lwc:if={hasOrders}>
+            <template for:each={orderCards} for:item="row">
+                <article key={row.id} class="stack-card">
+                    <p class="stack-title">
+                        <c-emr-record-link
+                            record-id={row.id}
+                            object-api-name={row.objectApiName}
+                            label={row.title}
+                        ></c-emr-record-link>
+                    </p>
+                    <p class="stack-meta">{row.meta}</p>
+                    <template lwc:if={row.hasOrderInfo}>
+                        <p class="stack-meta">
+                            <template lwc:if={row.authoredOn}>
+                                <lightning-formatted-date-time
+                                    value={row.authoredOn}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                ></lightning-formatted-date-time>
+                            </template>
+                            <template lwc:if={row.orderedBy}>
+                                <template lwc:if={row.authoredOn}> · </template>
+                                Ordered by {row.orderedBy}
+                            </template>
+                        </p>
+                    </template>
+                </article>
+            </template>
         </template>
-        <div class="slds-m-top_small">
-            <lightning-button
-                label={saveLabel}
-                variant="brand"
-                disabled={isSaving}
-                onclick={handleSave}
-            ></lightning-button>
-        </div>
+        <template lwc:if={showAddForm}>
+            <c-emr-modal title="Add order" size="large" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <lightning-combobox
+                    name="orderType"
+                    label="Order type"
+                    value={orderType}
+                    options={typeOptions}
+                    onchange={handleTypeChange}
+                ></lightning-combobox>
+                <c-emr-code-search
+                    label="Code"
+                    placeholder={codeSearchPlaceholder}
+                    required
+                    include-record-id
+                    code-systems={codeSearchSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <template lwc:if={isService}>
+                    <lightning-combobox
+                        name="priority"
+                        label="Priority"
+                        value={priority}
+                        options={priorityOptions}
+                        onchange={handlePriorityChange}
+                    ></lightning-combobox>
+                    <lightning-input
+                        name="reason"
+                        label="Reason"
+                        value={reason}
+                        onchange={handleReasonChange}
+                        max-length="255"
+                    ></lightning-input>
+                </template>
+                <template lwc:if={isPrescription}>
+                    <lightning-input
+                        name="dosageText"
+                        label="Dosage text"
+                        value={dosageText}
+                        onchange={handleDosageTextChange}
+                        max-length="255"
+                    ></lightning-input>
+                    <lightning-input
+                        name="doseQuantity"
+                        label="Dose quantity"
+                        type="number"
+                        value={doseQuantity}
+                        onchange={handleDoseQuantityChange}
+                        step="0.001"
+                    ></lightning-input>
+                    <lightning-input
+                        name="doseUnit"
+                        label="Dose unit"
+                        value={doseUnit}
+                        onchange={handleDoseUnitChange}
+                        max-length="20"
+                    ></lightning-input>
+                    <lightning-input
+                        name="frequency"
+                        label="Frequency"
+                        value={frequency}
+                        onchange={handleFrequencyChange}
+                        max-length="100"
+                    ></lightning-input>
+                    <lightning-combobox
+                        name="route"
+                        label="Route"
+                        value={route}
+                        options={routeOptions}
+                        onchange={handleRouteChange}
+                    ></lightning-combobox>
+                </template>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label={saveLabel}
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleSave}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
     </c-emr-chart-panel>
 </template>

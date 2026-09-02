@@ -17,7 +17,12 @@
                 <span class="alert-label">Allergies</span>
                 <template for:each={allergyItems} for:item="item">
                     <span key={item.id} class={item.cssClass} title={item.criticality}>
-                        {item.name}
+                        <c-emr-record-link
+                            record-id={item.id}
+                            object-api-name={item.objectApiName}
+                            label={item.name}
+                            inverse={item.isHigh}
+                        ></c-emr-record-link>
                         <template lwc:if={item.isHigh}>
                             <span class="high-flag"> High</span>
                         </template>

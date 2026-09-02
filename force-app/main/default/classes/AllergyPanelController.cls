@@ -73,6 +73,14 @@ public with sharing class AllergyPanelController {
         }
     }
 
+    @AuraEnabled
+    public static void deleteAllergies(List<Id> allergyIds) {
+        if (allergyIds == null || allergyIds.isEmpty()) {
+            return;
+        }
+        delete [SELECT Id FROM AllergyIntolerance__c WHERE Id IN :allergyIds];
+    }
+
     private static List<AllergyIntolerance__c> queryAllergies(Set<Id> patientIds, Boolean activeOnly) {
         if (activeOnly) {
             return [

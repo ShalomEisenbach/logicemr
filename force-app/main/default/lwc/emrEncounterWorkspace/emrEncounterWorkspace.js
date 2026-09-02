@@ -4,12 +4,23 @@ import { refreshApex } from '@salesforce/apex';
 import { getRecord, getFieldValue, notifyRecordUpdateAvailable } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { RefreshEvent } from 'lightning/refresh';
+import LightningConfirm from 'lightning/confirm';
 import transitionStatus from '@salesforce/apex/EncounterWorkspaceController.transitionStatus';
 import getDiagnoses from '@salesforce/apex/EncounterWorkspaceController.getDiagnoses';
 import addDiagnosis from '@salesforce/apex/EncounterWorkspaceController.addDiagnosis';
+import deleteDiagnoses from '@salesforce/apex/EncounterWorkspaceController.deleteDiagnoses';
 import ENCOUNTER_OBJECT from '@salesforce/schema/Encounter__c';
+import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
+import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
+import CONDITION_OBJECT from '@salesforce/schema/Condition__c';
+import PATIENT_FIELD from '@salesforce/schema/Encounter__c.Patient__c';
+import PRACTITIONER_FIELD from '@salesforce/schema/Encounter__c.Practitioner__c';
 import PATIENT_FIRST_NAME_FIELD from '@salesforce/schema/Encounter__c.Patient__r.First_Name__c';
 import PATIENT_LAST_NAME_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Last_Name__c';
+import PATIENT_DOB_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Date_of_Birth__c';
+import PATIENT_SEX_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Sex_at_Birth__c';
+import PATIENT_MRN_FIELD from '@salesforce/schema/Encounter__c.Patient__r.MRN__c';
+import PATIENT_PHONE_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Phone__c';
 import STATUS_FIELD from '@salesforce/schema/Encounter__c.Status__c';
 import CLASS_FIELD from '@salesforce/schema/Encounter__c.Class__c';
 import START_FIELD from '@salesforce/schema/Encounter__c.Start__c';
@@ -17,7 +28,9 @@ import END_FIELD from '@salesforce/schema/Encounter__c.End__c';
 import LOCATION_FIELD from '@salesforce/schema/Encounter__c.Location_Name__c';
 import ATTENDING_FIRST_NAME_FIELD from '@salesforce/schema/Encounter__c.Practitioner__r.First_Name__c';
 import ATTENDING_LAST_NAME_FIELD from '@salesforce/schema/Encounter__c.Practitioner__r.Last_Name__c';
+import { urlColumn, withRecordUrls } from 'c/emrNavigationUtils';
 
+const DELETE = 'delete';
 const STATUS_PATH = ['Planned', 'Arrived', 'In Progress', 'Finished'];
 const NEXT_STATUS = {
     Planned: 'Arrived',
@@ -26,8 +39,14 @@ const NEXT_STATUS = {
 };
 
 const ENCOUNTER_FIELDS = [
+    PATIENT_FIELD,
+    PRACTITIONER_FIELD,
     PATIENT_FIRST_NAME_FIELD,
     PATIENT_LAST_NAME_FIELD,
+    PATIENT_DOB_FIELD,
+    PATIENT_SEX_FIELD,
+    PATIENT_MRN_FIELD,
+    PATIENT_PHONE_FIELD,
     STATUS_FIELD,
     CLASS_FIELD,
     START_FIELD,
@@ -50,14 +69,12 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
     dxCodeSystem = 'ICD-10';
     dxCode = '';
     dxDisplay = '';
+    dxCodeReferenceId;
+    codeSearchValue;
+    codeSystems = ['ICD-10', 'SNOMED'];
     dxType = 'Principal';
     dxRank = '';
     wiredDiagnosesResult;
-
-    dxCodeSystemOptions = [
-        { label: 'ICD-10', value: 'ICD-10' },
-        { label: 'SNOMED', value: 'SNOMED' }
-    ];
 
     dxTypeOptions = [
         { label: 'Principal', value: 'Principal' },
@@ -66,14 +83,30 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
         { label: 'Discharge', value: 'Discharge' }
     ];
 
-    diagnosisColumns = [
-        { label: 'Diagnosis', fieldName: 'display', wrapText: true },
-        { label: 'Code', fieldName: 'code' },
-        { label: 'System', fieldName: 'codeSystem' },
-        { label: 'Type', fieldName: 'diagnosisType' },
-        { label: 'Rank', fieldName: 'rank', type: 'number' },
-        { label: 'Status', fieldName: 'status' }
-    ];
+    get diagnosisColumns() {
+        return [
+            urlColumn('Diagnosis', 'recordUrl', 'recordLabel'),
+            { label: 'Code', fieldName: 'code' },
+            { label: 'System', fieldName: 'codeSystem' },
+            { label: 'Type', fieldName: 'diagnosisType' },
+            { label: 'Rank', fieldName: 'rank', type: 'number' },
+            { label: 'Status', fieldName: 'status' },
+            {
+                type: 'action',
+                typeAttributes: {
+                    rowActions: [{ label: 'Delete', name: DELETE }]
+                }
+            }
+        ];
+    }
+
+    get patientObjectApiName() {
+        return PATIENT_OBJECT.objectApiName;
+    }
+
+    get practitionerObjectApiName() {
+        return PRACTITIONER_OBJECT.objectApiName;
+    }
 
     @wire(getRecord, { recordId: '$recordId', fields: ENCOUNTER_FIELDS })
     wiredEncounter({ data, error }) {
@@ -86,12 +119,24 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
         this.wiredDiagnosesResult = result;
         const { data, error } = result;
         if (data) {
-            this.diagnoses = data;
+            this.applyDiagnoses(data);
             this.diagnosisError = undefined;
         } else if (error) {
             this.diagnoses = [];
             this.diagnosisError = this.reduceError(error);
         }
+    }
+
+    async applyDiagnoses(data) {
+        this.diagnoses = await withRecordUrls(
+            this,
+            data || [],
+            CONDITION_OBJECT.objectApiName,
+            {
+                idField: 'conditionId',
+                labelField: 'display'
+            }
+        );
     }
 
     get hasDiagnoses() {
@@ -112,18 +157,102 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
         return !!this.encounter;
     }
 
+    get patientId() {
+        return getFieldValue(this.encounter, PATIENT_FIELD);
+    }
+
+    get attendingId() {
+        return getFieldValue(this.encounter, PRACTITIONER_FIELD);
+    }
+
     get patientName() {
         const first = getFieldValue(this.encounter, PATIENT_FIRST_NAME_FIELD) || '';
         const last = getFieldValue(this.encounter, PATIENT_LAST_NAME_FIELD) || '';
         return `${first} ${last}`.trim() || 'Patient';
     }
 
+    get emptyValue() {
+        return '—';
+    }
+
+    get ageLabel() {
+        const dob = getFieldValue(this.encounter, PATIENT_DOB_FIELD);
+        if (!dob) {
+            return '';
+        }
+        const birth = new Date(dob);
+        if (Number.isNaN(birth.getTime())) {
+            return '';
+        }
+        const today = new Date();
+        let years = today.getFullYear() - birth.getFullYear();
+        let months = today.getMonth() - birth.getMonth();
+        if (today.getDate() < birth.getDate()) {
+            months -= 1;
+        }
+        if (months < 0) {
+            years -= 1;
+            months += 12;
+        }
+        if (years < 0) {
+            return '';
+        }
+        if (years === 0) {
+            return months === 1 ? '1 month' : `${months} months`;
+        }
+        return years === 1 ? '1 year' : `${years} years`;
+    }
+
+    get mrn() {
+        return getFieldValue(this.encounter, PATIENT_MRN_FIELD) || this.emptyValue;
+    }
+
+    get dateOfBirth() {
+        return getFieldValue(this.encounter, PATIENT_DOB_FIELD) || '';
+    }
+
+    get sexAtBirth() {
+        return getFieldValue(this.encounter, PATIENT_SEX_FIELD) || this.emptyValue;
+    }
+
+    get phone() {
+        return getFieldValue(this.encounter, PATIENT_PHONE_FIELD) || '';
+    }
+
     get status() {
         return getFieldValue(this.encounter, STATUS_FIELD) || '';
     }
 
+    get statusBadgeClass() {
+        const normalized = (this.status || '').toLowerCase();
+        if (normalized === 'in progress') {
+            return 'status-badge status-badge_progress';
+        }
+        if (normalized === 'arrived') {
+            return 'status-badge status-badge_arrived';
+        }
+        if (normalized === 'finished') {
+            return 'status-badge status-badge_finished';
+        }
+        if (normalized === 'cancelled') {
+            return 'status-badge status-badge_cancelled';
+        }
+        return 'status-badge status-badge_planned';
+    }
+
     get encounterClass() {
         return getFieldValue(this.encounter, CLASS_FIELD) || '';
+    }
+
+    get identitySubtitle() {
+        const parts = [];
+        if (this.ageLabel) {
+            parts.push(this.ageLabel);
+        }
+        if (this.encounterClass) {
+            parts.push(this.encounterClass);
+        }
+        return parts.join(' · ');
     }
 
     get startValue() {
@@ -229,20 +358,32 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
     }
 
     handleToggleAddDiagnosis() {
-        this.showAddDiagnosisForm = !this.showAddDiagnosisForm;
+        this.showAddDiagnosisForm = true;
         this.diagnosisError = undefined;
     }
 
-    handleDxCodeSystemChange(event) {
-        this.dxCodeSystem = event.detail.value;
+    handleCloseAddDiagnosis() {
+        this.showAddDiagnosisForm = false;
+        this.diagnosisError = undefined;
+        this.resetDiagnosisForm();
     }
 
-    handleDxCodeChange(event) {
-        this.dxCode = event.detail.value;
+    resetDiagnosisForm() {
+        this.dxCode = '';
+        this.dxDisplay = '';
+        this.dxCodeReferenceId = undefined;
+        this.codeSearchValue = undefined;
+        this.dxRank = '';
     }
 
-    handleDxDisplayChange(event) {
-        this.dxDisplay = event.detail.value;
+    handleCodeSelected(event) {
+        this.dxCodeSystem = event.detail.system;
+        this.dxCode = event.detail.code;
+        this.dxDisplay = event.detail.display;
+        this.dxCodeReferenceId = event.detail.recordId;
+        if (event.detail.code || event.detail.display) {
+            this.codeSearchValue = event.detail;
+        }
     }
 
     handleDxTypeChange(event) {
@@ -251,6 +392,31 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
 
     handleDxRankChange(event) {
         this.dxRank = event.detail.value;
+    }
+
+    async handleDiagnosisRowAction(event) {
+        if (event.detail.action.name !== DELETE || this.isSavingDiagnosis) {
+            return;
+        }
+        const confirmed = await LightningConfirm.open({
+            message: 'Delete this diagnosis?',
+            label: 'Delete diagnosis',
+            theme: 'error'
+        });
+        if (!confirmed) {
+            return;
+        }
+        this.isSavingDiagnosis = true;
+        this.diagnosisError = undefined;
+        try {
+            await deleteDiagnoses({ encounterDiagnosisIds: [event.detail.row.id] });
+            await refreshApex(this.wiredDiagnosesResult);
+            this.dispatchEvent(new RefreshEvent());
+        } catch (error) {
+            this.diagnosisError = this.reduceError(error);
+        } finally {
+            this.isSavingDiagnosis = false;
+        }
     }
 
     async handleSaveDiagnosis() {
@@ -265,12 +431,11 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
                 codeSystem: this.dxCodeSystem,
                 code: this.dxCode,
                 display: this.dxDisplay,
+                codeReferenceId: this.dxCodeReferenceId,
                 diagnosisType: this.dxType,
                 rank: this.dxRank === '' || this.dxRank === null ? null : Number(this.dxRank)
             });
-            this.dxCode = '';
-            this.dxDisplay = '';
-            this.dxRank = '';
+            this.resetDiagnosisForm();
             this.showAddDiagnosisForm = false;
             await refreshApex(this.wiredDiagnosesResult);
             this.dispatchEvent(new RefreshEvent());

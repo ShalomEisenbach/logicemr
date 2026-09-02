@@ -1,8 +1,12 @@
-import { LightningElement, api } from 'lwc';
+import { LightningElement, api, wire } from 'lwc';
+import { refreshApex } from '@salesforce/apex';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { RefreshEvent } from 'lightning/refresh';
 import createServiceOrders from '@salesforce/apex/OrderEntryController.createServiceOrders';
 import createMedicationOrders from '@salesforce/apex/OrderEntryController.createMedicationOrders';
+import getEncounterOrders from '@salesforce/apex/OrderEntryController.getEncounterOrders';
+import SERVICE_REQUEST_OBJECT from '@salesforce/schema/ServiceRequest__c';
+import MEDICATION_REQUEST_OBJECT from '@salesforce/schema/MedicationRequest__c';
 
 const TYPE_LAB = 'Lab';
 const TYPE_IMAGING = 'Imaging';
@@ -12,6 +16,8 @@ const TYPE_PRESCRIPTION = 'Prescription';
 export default class EmrOrderEntry extends LightningElement {
     @api recordId;
 
+    orders = [];
+    wiredOrdersResult;
     orderType = TYPE_LAB;
     codeSystem = 'LOINC';
     code = '';
@@ -27,6 +33,7 @@ export default class EmrOrderEntry extends LightningElement {
     route = '';
     errorMessage;
     isSaving = false;
+    showAddForm = false;
 
     typeOptions = [
         { label: 'Lab', value: TYPE_LAB },
@@ -71,6 +78,63 @@ export default class EmrOrderEntry extends LightningElement {
 
     get saveLabel() {
         return this.isPrescription ? 'Save prescription' : 'Save order';
+    }
+
+    get hasOrders() {
+        return this.orders && this.orders.length > 0;
+    }
+
+    get showEmpty() {
+        return !this.errorMessage && this.wiredOrdersResult?.data && !this.hasOrders;
+    }
+
+    get orderCards() {
+        return (this.orders || []).map((row) => {
+            const parts = [row.orderType, row.code, row.detail, row.status].filter((part) => part);
+            return {
+                id: row.id,
+                title: row.display || 'Order',
+                meta: parts.join(' · '),
+                authoredOn: row.authoredOn,
+                orderedBy: row.orderedBy,
+                hasOrderInfo: !!(row.authoredOn || row.orderedBy),
+                objectApiName: row.objectApiName
+            };
+        });
+    }
+
+    @wire(getEncounterOrders, { encounterId: '$recordId' })
+    wiredOrders(result) {
+        this.wiredOrdersResult = result;
+        const { data, error } = result;
+        if (data) {
+            this.applyOrders(data);
+            this.errorMessage = undefined;
+        } else if (error) {
+            this.orders = [];
+            this.errorMessage = this.reduceError(error);
+        }
+    }
+
+    applyOrders(data) {
+        this.orders = (data || []).map((row) => ({
+            ...row,
+            objectApiName:
+                row.orderType === TYPE_PRESCRIPTION
+                    ? MEDICATION_REQUEST_OBJECT.objectApiName
+                    : SERVICE_REQUEST_OBJECT.objectApiName
+        }));
+    }
+
+    handleOpenAdd() {
+        this.showAddForm = true;
+        this.errorMessage = undefined;
+    }
+
+    handleCloseAdd() {
+        this.showAddForm = false;
+        this.errorMessage = undefined;
+        this.resetFormFields();
     }
 
     handleTypeChange(event) {
@@ -134,8 +198,9 @@ export default class EmrOrderEntry extends LightningElement {
         }
         this.isSaving = true;
         this.errorMessage = undefined;
+        const savedPrescription = this.isPrescription;
         try {
-            if (this.isPrescription) {
+            if (savedPrescription) {
                 await createMedicationOrders({
                     encounterId: this.recordId,
                     inputs: [
@@ -169,11 +234,13 @@ export default class EmrOrderEntry extends LightningElement {
                 });
             }
             this.resetFormFields();
+            this.showAddForm = false;
+            await refreshApex(this.wiredOrdersResult);
             this.dispatchEvent(new RefreshEvent());
             this.dispatchEvent(
                 new ShowToastEvent({
                     title: 'Order saved',
-                    message: this.isPrescription
+                    message: savedPrescription
                         ? 'Prescription was created for this encounter.'
                         : 'Service request was created for this encounter.',
                     variant: 'success'

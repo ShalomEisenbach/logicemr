@@ -5,13 +5,17 @@
         </template>
         <div class="filter-row slds-m-bottom_small" role="group" aria-label="Event type filters">
             <template for:each={filterChips} for:item="chip">
-                <lightning-button
+                <button
                     key={chip.type}
-                    label={chip.label}
-                    variant={chip.variant}
+                    type="button"
+                    class={chip.className}
+                    title={chip.label}
+                    aria-pressed={chip.pressed}
                     data-type={chip.type}
                     onclick={handleFilterClick}
-                ></lightning-button>
+                >
+                    {chip.shortLabel}
+                </button>
             </template>
         </div>
         <template lwc:if={hasEvents}>
@@ -36,7 +40,7 @@
                             </span>
                             <div class="timeline-body">
                                 <div class="timeline-heading">
-                                    <span class="timeline-title slds-truncate">{event.title}</span>
+                                    <span class="timeline-title slds-truncate slds-text-link">{event.title}</span>
                                     <template lwc:if={event.hasDateTime}>
                                         <lightning-relative-date-time
                                             class="timeline-when"

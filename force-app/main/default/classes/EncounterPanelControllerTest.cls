@@ -61,6 +61,165 @@ private class EncounterPanelControllerTest {
         System.assertEquals(0, none.size(), 'A patient with no encounters should return no rows');
     }
 
+    @IsTest
+    static void createEncounterPersistsRequiredAndOptionalFields() {
+        Patient__c patient = insertPatient('MRN-ENC-4');
+        Practitioner__c attending = insertPractitioner('Elena', 'Vasquez');
+        Datetime startTime = Datetime.newInstance(2026, 9, 2, 13, 0, 0);
+        Datetime endTime = Datetime.newInstance(2026, 9, 2, 14, 0, 0);
+
+        Test.startTest();
+        Encounter__c created = EncounterPanelController.createEncounter(
+            patient.Id,
+            'Outpatient',
+            'Arrived',
+            startTime,
+            endTime,
+            attending.Id,
+            'Clinic A',
+            'Follow-up'
+        );
+        Test.stopTest();
+
+        Encounter__c stored = [
+            SELECT
+                Patient__c,
+                Class__c,
+                Status__c,
+                Start__c,
+                End__c,
+                Practitioner__c,
+                Location_Name__c,
+                Reason__c
+            FROM Encounter__c
+            WHERE Id = :created.Id
+        ];
+        System.assertEquals(patient.Id, stored.Patient__c, 'Encounter should belong to the patient');
+        System.assertEquals('Outpatient', stored.Class__c, 'Class should persist');
+        System.assertEquals('Arrived', stored.Status__c, 'Status should persist');
+        System.assertEquals(startTime, stored.Start__c, 'Start should persist');
+        System.assertEquals(endTime, stored.End__c, 'End should persist');
+        System.assertEquals(attending.Id, stored.Practitioner__c, 'Attending should persist');
+        System.assertEquals('Clinic A', stored.Location_Name__c, 'Location should persist');
+        System.assertEquals('Follow-up', stored.Reason__c, 'Chief complaint should persist');
+    }
+
+    @IsTest
+    static void createEncounterDefaultsStatusAndStartAndRejectsInvalid() {
+        Patient__c patient = insertPatient('MRN-ENC-5');
+        Boolean missingPatient = false;
+        Boolean missingClass = false;
+        Boolean wrongClass = false;
+        Boolean wrongStatus = false;
+        Boolean endBeforeStart = false;
+
+        Test.startTest();
+        Encounter__c created = EncounterPanelController.createEncounter(
+            patient.Id,
+            'Virtual',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+        try {
+            EncounterPanelController.createEncounter(null, 'Outpatient', null, null, null, null, null, null);
+        } catch (AuraHandledException e) {
+            missingPatient = true;
+        }
+        try {
+            EncounterPanelController.createEncounter(patient.Id, null, null, null, null, null, null, null);
+        } catch (AuraHandledException e) {
+            missingClass = true;
+        }
+        try {
+            EncounterPanelController.createEncounter(patient.Id, 'Home', null, null, null, null, null, null);
+        } catch (AuraHandledException e) {
+            wrongClass = true;
+        }
+        try {
+            EncounterPanelController.createEncounter(
+                patient.Id,
+                'Outpatient',
+                'Unknown',
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+        } catch (AuraHandledException e) {
+            wrongStatus = true;
+        }
+        try {
+            EncounterPanelController.createEncounter(
+                patient.Id,
+                'Outpatient',
+                'Planned',
+                Datetime.newInstance(2026, 9, 2, 14, 0, 0),
+                Datetime.newInstance(2026, 9, 2, 13, 0, 0),
+                null,
+                null,
+                null
+            );
+        } catch (AuraHandledException e) {
+            endBeforeStart = true;
+        }
+        Test.stopTest();
+
+        Encounter__c stored = [
+            SELECT Status__c, Start__c, Class__c
+            FROM Encounter__c
+            WHERE Id = :created.Id
+        ];
+        System.assertEquals('Planned', stored.Status__c, 'Blank status should default to Planned');
+        System.assertEquals('Virtual', stored.Class__c, 'Class should persist on the defaulted insert');
+        System.assertEquals(true, stored.Start__c != null, 'Blank start should default to now');
+        System.assertEquals(true, missingPatient, 'Blank patient Id should be rejected');
+        System.assertEquals(true, missingClass, 'Blank class should be rejected');
+        System.assertEquals(true, wrongClass, 'Unknown class should be rejected');
+        System.assertEquals(true, wrongStatus, 'Unknown status should be rejected');
+        System.assertEquals(true, endBeforeStart, 'End before start should be rejected');
+        System.assertEquals(
+            1,
+            [SELECT COUNT() FROM Encounter__c WHERE Patient__c = :patient.Id],
+            'Rejected creates must not insert extra rows'
+        );
+    }
+
+    @IsTest
+    static void deleteEncountersRemovesRowsAndIgnoresBlankIds() {
+        Patient__c patient = insertPatient('MRN-ENC-DEL');
+        Encounter__c first = insertEncounter(
+            patient.Id,
+            'Finished',
+            'Outpatient',
+            Datetime.newInstance(2026, 7, 22, 10, 0, 0),
+            null
+        );
+        Encounter__c second = insertEncounter(
+            patient.Id,
+            'Finished',
+            'Virtual',
+            Datetime.newInstance(2026, 1, 15, 9, 0, 0),
+            null
+        );
+
+        Test.startTest();
+        EncounterPanelController.deleteEncounters(null);
+        EncounterPanelController.deleteEncounters(new List<Id>());
+        EncounterPanelController.deleteEncounters(new List<Id>{ first.Id, second.Id });
+        Test.stopTest();
+
+        System.assertEquals(
+            0,
+            [SELECT COUNT() FROM Encounter__c WHERE Id IN :new List<Id>{ first.Id, second.Id }],
+            'Both encounters should be deleted'
+        );
+    }
+
     private static Patient__c insertPatient(String mrn) {
         Patient__c patient = new Patient__c(MRN__c = mrn, Last_Name__c = 'Chart');
         insert patient;

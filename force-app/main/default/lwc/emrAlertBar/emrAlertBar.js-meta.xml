@@ -13,6 +13,10 @@
                 <object>Patient__c</object>
                 <object>Encounter__c</object>
             </objects>
+            <supportedFormFactors>
+                <supportedFormFactor type="Large" />
+                <supportedFormFactor type="Small" />
+            </supportedFormFactors>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

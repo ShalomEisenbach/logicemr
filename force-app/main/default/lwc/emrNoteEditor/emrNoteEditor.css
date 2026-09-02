@@ -1,5 +1,57 @@
 :host {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.note-body {
+    max-width: 100%;
+    --slds-c-textarea-sizing-min-height: 22rem;
+}
+
+.note-card {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.note-card:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.note-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.note-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.note-inline-body {
+    max-width: 100%;
+    --slds-c-textarea-sizing-min-height: 8rem;
+}
+
+.note-preview {
+    margin-top: 0.5rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 16rem;
+    overflow: auto;
+    font-size: 0.8125rem;
+    line-height: 1.4;
 }
 
 .template-panel {
@@ -8,6 +60,11 @@
     padding: 0.75rem;
     background: #f3f3f3;
     min-height: 8rem;
+}
+
+.template-list-wrap {
+    max-height: 22rem;
+    overflow: auto;
 }
 
 .template-list {

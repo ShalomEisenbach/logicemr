@@ -10,30 +10,35 @@ import PROCEDURE_OBJECT from '@salesforce/schema/Procedure__c';
 const TYPE_META = {
     Encounter: {
         label: 'Encounters',
+        shortLabel: 'Enc',
         typeLabel: 'Encounter',
         iconName: 'standard:event',
         iconClass: 'timeline-icon timeline-icon_encounter'
     },
     Condition: {
         label: 'Conditions',
+        shortLabel: 'Cond',
         typeLabel: 'Condition',
         iconName: 'standard:first_non_empty',
         iconClass: 'timeline-icon timeline-icon_condition'
     },
     Observation: {
         label: 'Observations',
+        shortLabel: 'Obs',
         typeLabel: 'Observation',
         iconName: 'standard:metrics',
         iconClass: 'timeline-icon timeline-icon_observation'
     },
     MedicationRequest: {
         label: 'Medications',
+        shortLabel: 'Meds',
         typeLabel: 'Medication',
         iconName: 'standard:product',
         iconClass: 'timeline-icon timeline-icon_medication'
     },
     Procedure: {
         label: 'Procedures',
+        shortLabel: 'Proc',
         typeLabel: 'Procedure',
         iconName: 'standard:procedure',
         iconClass: 'timeline-icon timeline-icon_procedure'
@@ -73,11 +78,16 @@ export default class EmrClinicalTimeline extends NavigationMixin(LightningElemen
     }
 
     get filterChips() {
-        return Object.keys(TYPE_META).map((type) => ({
-            type,
-            label: TYPE_META[type].label,
-            variant: this.enabledTypes[type] ? 'brand' : 'neutral'
-        }));
+        return Object.keys(TYPE_META).map((type) => {
+            const enabled = this.enabledTypes[type];
+            return {
+                type,
+                label: TYPE_META[type].label,
+                shortLabel: TYPE_META[type].shortLabel,
+                pressed: enabled ? 'true' : 'false',
+                className: enabled ? 'filter-chip filter-chip_on' : 'filter-chip'
+            };
+        });
     }
 
     get visibleEvents() {
@@ -137,17 +147,37 @@ export default class EmrClinicalTimeline extends NavigationMixin(LightningElemen
 
     toViewEvent(row) {
         const meta = TYPE_META[row.type] || TYPE_META.Encounter;
+        const dateTime = this.normalizeDateTime(row.eventDateTime);
         return {
             type: row.type,
-            dateTime: row.eventDateTime,
+            dateTime,
             title: row.title,
             subtitle: row.subtitle,
             recordId: row.recordId,
             typeLabel: meta.typeLabel,
             iconName: meta.iconName,
             iconClass: meta.iconClass,
-            hasDateTime: !!row.eventDateTime
+            hasDateTime: dateTime != null
         };
+    }
+
+    /**
+     * Apex serializes Datetime as 2024-03-15T10:00:00.000+0000.
+     * lightning-relative-date-time needs ISO 8601 (+00:00 or Z) or a timestamp.
+     */
+    normalizeDateTime(value) {
+        if (value == null || value === '') {
+            return null;
+        }
+        if (value instanceof Date) {
+            return Number.isNaN(value.getTime()) ? null : value.getTime();
+        }
+        if (typeof value === 'number') {
+            return Number.isNaN(value) ? null : value;
+        }
+        const iso = String(value).replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+        const parsed = new Date(iso);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
     }
 
     reduceError(error) {

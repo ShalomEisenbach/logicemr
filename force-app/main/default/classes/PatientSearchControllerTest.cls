@@ -70,6 +70,113 @@ private class PatientSearchControllerTest {
     }
 
     @IsTest
+    static void searchByDobPhoneAndExternalIds() {
+        Date dob = Date.newInstance(1973, 2, 28);
+        Patient__c patient = new Patient__c(
+            Last_Name__c = 'Hale',
+            First_Name__c = 'Nora',
+            MRN__c = 'MRN-SRCH-DOB',
+            Date_of_Birth__c = dob,
+            Phone__c = '555-010-4477',
+            FHIR_Id__c = 'fhir-nora-hale',
+            Source_System_Id__c = 'src-nora-hale',
+            Status__c = 'Active'
+        );
+        insert patient;
+
+        Test.startTest();
+        List<Patient__c> byIso = PatientSearchController.search('1973-02-28');
+        List<Patient__c> byUs = PatientSearchController.search('2/28/1973');
+        List<Patient__c> byYear = PatientSearchController.search('1973');
+        List<Patient__c> byPhone = PatientSearchController.search('555-010-4477');
+        List<Patient__c> byDigits = PatientSearchController.search('5550104477');
+        List<Patient__c> byFhir = PatientSearchController.search('fhir-nora-hale');
+        List<Patient__c> bySource = PatientSearchController.search('src-nora-hale');
+        List<Patient__c> byFullName = PatientSearchController.search('Nora Hale');
+        Test.stopTest();
+
+        System.assertEquals(1, byIso.size(), 'ISO DOB search should return one match');
+        System.assertEquals(patient.Id, byIso[0].Id, 'ISO DOB search should return the inserted patient');
+        System.assertEquals('555-010-4477', byIso[0].Phone__c, 'Results should include Phone__c');
+        System.assertEquals(1, byUs.size(), 'US DOB search should return one match');
+        System.assertEquals(patient.Id, byUs[0].Id, 'US DOB search should return the inserted patient');
+        System.assertEquals(1, byYear.size(), 'Birth year search should return one match');
+        System.assertEquals(patient.Id, byYear[0].Id, 'Birth year search should return the inserted patient');
+        System.assertEquals(1, byPhone.size(), 'Formatted phone search should return one match');
+        System.assertEquals(patient.Id, byPhone[0].Id, 'Formatted phone search should return the inserted patient');
+        System.assertEquals(1, byDigits.size(), 'Digit-only phone search should return one match');
+        System.assertEquals(patient.Id, byDigits[0].Id, 'Digit-only phone search should return the inserted patient');
+        System.assertEquals(1, byFhir.size(), 'FHIR Id search should return one match');
+        System.assertEquals(patient.Id, byFhir[0].Id, 'FHIR Id search should return the inserted patient');
+        System.assertEquals(1, bySource.size(), 'Source system Id search should return one match');
+        System.assertEquals(patient.Id, bySource[0].Id, 'Source system Id search should return the inserted patient');
+        System.assertEquals(1, byFullName.size(), 'First and last name search should return one match');
+        System.assertEquals(patient.Id, byFullName[0].Id, 'First and last name search should return the inserted patient');
+    }
+
+    @IsTest
+    static void searchByDobAcceptsAnyCommonFormat() {
+        Date dob = Date.newInstance(1973, 2, 28);
+        Patient__c patient = insertPatient('Hale', 'Nora', 'MRN-SRCH-FMT', dob, 'Active');
+
+        List<String> terms = new List<String>{
+            '1973-02-28',
+            '1973/2/28',
+            '1973.02.28',
+            '02/28/1973',
+            '2-28-1973',
+            '28/02/1973',
+            '28-02-1973',
+            '28.02.1973',
+            '19730228',
+            '02281973',
+            '28021973',
+            '022873',
+            '2/28/73',
+            '28 Feb 1973',
+            'February 28, 1973',
+            'Feb. 28 1973',
+            '28-Feb-1973',
+            'Feb-28-1973',
+            'February 28th, 1973',
+            '  02 / 28 / 1973  '
+        };
+
+        Test.startTest();
+        for (String term : terms) {
+            List<Patient__c> results = PatientSearchController.search(term);
+            System.assertEquals(1, results.size(), 'DOB search should match for "' + term + '"');
+            System.assertEquals(patient.Id, results[0].Id, 'DOB search "' + term + '" should return the inserted patient');
+        }
+        List<Patient__c> byMonthYear = PatientSearchController.search('Feb 1973');
+        List<Patient__c> byIsoMonth = PatientSearchController.search('1973-02');
+        Test.stopTest();
+
+        System.assertEquals(1, byMonthYear.size(), 'Month and year search should return one match');
+        System.assertEquals(patient.Id, byMonthYear[0].Id, 'Month and year search should return the inserted patient');
+        System.assertEquals(1, byIsoMonth.size(), 'ISO month search should return one match');
+        System.assertEquals(patient.Id, byIsoMonth[0].Id, 'ISO month search should return the inserted patient');
+    }
+
+    @IsTest
+    static void searchByAmbiguousDobTriesMonthFirstAndDayFirst() {
+        Patient__c monthFirst = insertPatient('Able', 'Pat', 'MRN-SRCH-MDY', Date.newInstance(1973, 1, 2), 'Active');
+        Patient__c dayFirst = insertPatient('Baker', 'Pat', 'MRN-SRCH-DMY', Date.newInstance(1973, 2, 1), 'Active');
+        insertPatient('Chase', 'Pat', 'MRN-SRCH-INV', Date.newInstance(1973, 3, 3), 'Active');
+
+        Test.startTest();
+        List<Patient__c> ambiguous = PatientSearchController.search('1/2/1973');
+        List<Patient__c> invalid = PatientSearchController.search('2/31/1973');
+        Test.stopTest();
+
+        System.assertEquals(2, ambiguous.size(), 'Ambiguous numeric DOB should match both MDY and DMY patients');
+        Set<Id> ids = new Set<Id>{ ambiguous[0].Id, ambiguous[1].Id };
+        System.assertEquals(true, ids.contains(monthFirst.Id), 'Ambiguous DOB should include January 2');
+        System.assertEquals(true, ids.contains(dayFirst.Id), 'Ambiguous DOB should include February 1');
+        System.assertEquals(0, invalid.size(), 'Invalid calendar dates should not roll over to another day');
+    }
+
+    @IsTest
     static void blankOrUnmatchedSearchReturnsEmpty() {
         insertPatient('Rivera', 'Ana', 'MRN-SRCH-003', Date.newInstance(1984, 3, 12), 'Active');
 

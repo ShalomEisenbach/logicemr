@@ -18,17 +18,10 @@
                         message-when-range-overflow={vital.rangeMessage}
                         message-when-range-underflow={vital.rangeMessage}
                         onchange={handleChange}
+                        oncommit={handleChange}
                     ></lightning-input>
                 </div>
             </template>
-        </div>
-        <div class="slds-m-top_small">
-            <lightning-button
-                label="Save vitals"
-                variant="brand"
-                disabled={isSaving}
-                onclick={handleSave}
-            ></lightning-button>
         </div>
     </c-emr-chart-panel>
 </template>

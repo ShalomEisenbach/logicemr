@@ -137,13 +137,15 @@ private class EncounterWorkspaceControllerTest {
     @IsTest
     static void addDiagnosisCreatesConditionAndJunction() {
         Encounter__c encounter = insertEncounter('In Progress');
+        Code_Reference__c codeRef = insertCode('SNOMED', '44054006', 'Diabetes mellitus type 2');
 
         Test.startTest();
         EncounterDiagnosis__c created = EncounterWorkspaceController.addDiagnosis(
             encounter.Id,
-            'SNOMED',
-            '44054006',
-            'Diabetes mellitus type 2',
+            codeRef.Code_System__c,
+            codeRef.Code__c,
+            codeRef.Display__c,
+            codeRef.Id,
             'Secondary',
             2
         );
@@ -159,6 +161,7 @@ private class EncounterWorkspaceControllerTest {
                 Condition__r.Encounter__c,
                 Condition__r.Category__c,
                 Condition__r.Clinical_Status__c,
+                Condition__r.Diagnosis_Ref__c,
                 Condition__r.Diagnosis_Code_System__c,
                 Condition__r.Diagnosis_Code__c,
                 Condition__r.Diagnosis_Display__c
@@ -182,10 +185,19 @@ private class EncounterWorkspaceControllerTest {
             'Category should be Encounter Diagnosis'
         );
         System.assertEquals('Active', stored.Condition__r.Clinical_Status__c, 'New dx should be Active');
-        System.assertEquals('SNOMED', stored.Condition__r.Diagnosis_Code_System__c, 'Code system');
-        System.assertEquals('44054006', stored.Condition__r.Diagnosis_Code__c, 'Code');
         System.assertEquals(
-            'Diabetes mellitus type 2',
+            codeRef.Id,
+            stored.Condition__r.Diagnosis_Ref__c,
+            'Lookup should point at the Code Reference'
+        );
+        System.assertEquals(
+            codeRef.Code_System__c,
+            stored.Condition__r.Diagnosis_Code_System__c,
+            'Code system'
+        );
+        System.assertEquals(codeRef.Code__c, stored.Condition__r.Diagnosis_Code__c, 'Code');
+        System.assertEquals(
+            codeRef.Display__c,
             stored.Condition__r.Diagnosis_Display__c,
             'Display'
         );
@@ -208,7 +220,15 @@ private class EncounterWorkspaceControllerTest {
 
         Test.startTest();
         try {
-            EncounterWorkspaceController.addDiagnosis(null, 'ICD-10', 'E11.9', 'Diabetes', 'Principal', 1);
+            EncounterWorkspaceController.addDiagnosis(
+                null,
+                'ICD-10',
+                'E11.9',
+                'Diabetes',
+                null,
+                'Principal',
+                1
+            );
         } catch (AuraHandledException e) {
             missingEncounter = true;
         }
@@ -218,6 +238,7 @@ private class EncounterWorkspaceControllerTest {
                 'ICD-10',
                 'E11.9',
                 'Diabetes',
+                null,
                 'Principal',
                 1
             );
@@ -225,7 +246,15 @@ private class EncounterWorkspaceControllerTest {
             unknownEncounter = true;
         }
         try {
-            EncounterWorkspaceController.addDiagnosis(encounter.Id, 'ICD-10', 'E11.9', '', 'Principal', 1);
+            EncounterWorkspaceController.addDiagnosis(
+                encounter.Id,
+                'ICD-10',
+                'E11.9',
+                '',
+                null,
+                'Principal',
+                1
+            );
         } catch (AuraHandledException e) {
             missingDisplay = true;
         }
@@ -235,6 +264,7 @@ private class EncounterWorkspaceControllerTest {
                 'CPT',
                 '99213',
                 'Office visit',
+                null,
                 'Principal',
                 1
             );
@@ -256,6 +286,30 @@ private class EncounterWorkspaceControllerTest {
             0,
             [SELECT COUNT() FROM Condition__c WHERE Patient__c = :encounter.Patient__c],
             'Rejected adds must not insert conditions'
+        );
+    }
+
+    @IsTest
+    static void deleteDiagnosesRemovesJunctionAndEncounterCondition() {
+        Encounter__c encounter = insertEncounter('In Progress');
+        Condition__c condition = insertCondition(encounter, 'ICD-10', 'J06.9', 'URI');
+        EncounterDiagnosis__c link = insertEncounterDiagnosis(encounter.Id, condition.Id, 'Principal', 1);
+
+        Test.startTest();
+        EncounterWorkspaceController.deleteDiagnoses(null);
+        EncounterWorkspaceController.deleteDiagnoses(new List<Id>());
+        EncounterWorkspaceController.deleteDiagnoses(new List<Id>{ link.Id });
+        Test.stopTest();
+
+        System.assertEquals(
+            0,
+            [SELECT COUNT() FROM EncounterDiagnosis__c WHERE Id = :link.Id],
+            'Encounter diagnosis junction should be deleted'
+        );
+        System.assertEquals(
+            0,
+            [SELECT COUNT() FROM Condition__c WHERE Id = :condition.Id],
+            'Encounter diagnosis condition should be deleted'
         );
     }
 
@@ -349,6 +403,18 @@ private class EncounterWorkspaceControllerTest {
         );
         insert condition;
         return condition;
+    }
+
+    private static Code_Reference__c insertCode(String codeSystem, String code, String display) {
+        Code_Reference__c row = new Code_Reference__c(
+            Name = display.left(80),
+            Code_System__c = codeSystem,
+            Code__c = code,
+            Display__c = display,
+            Active__c = true
+        );
+        insert row;
+        return row;
     }
 
     private static EncounterDiagnosis__c insertEncounterDiagnosis(

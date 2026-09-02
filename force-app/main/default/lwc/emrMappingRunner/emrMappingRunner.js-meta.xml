@@ -15,6 +15,10 @@
                 label="Mapping Definition Id"
                 description="Active Mapping Definition to preselect. Leave blank to choose one in the UI."
             />
+            <supportedFormFactors>
+                <supportedFormFactor type="Large" />
+                <supportedFormFactor type="Small" />
+            </supportedFormFactors>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
