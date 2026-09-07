@@ -8,12 +8,19 @@ import {
     applyOptimisticPaint,
     confirmBook,
     confirmMove,
+    civilDateKey,
+    datetimeOnDay,
     findFreeSlotAt,
+    formatClock,
+    isInsideOpenPopover,
+    minutesOfDay,
+    positionStyle,
     revertBook,
     revertMove,
     revertPaint,
     snapshotMove,
-    stateFromGrid
+    stateFromGrid,
+    timeBounds
 } from '../emrEnhancedCalendarLogic';
 
 function at(hours, minutes) {
@@ -204,6 +211,80 @@ describe('emrEnhancedCalendar optimistic client logic', () => {
             const reverted = revertPaint(painted, ['temp-slot-1']);
             expect(reverted.slots).toHaveLength(2);
             expect(reverted.slots.find((row) => row.id === 'temp-slot-1')).toBeUndefined();
+        });
+    });
+
+    describe('booking popover click-outside', () => {
+        it('keeps the popover open when the click is inside a nested input', () => {
+            const popover = { classList: { contains: (name) => name === 'popover' } };
+            const input = { tagName: 'INPUT', parentNode: popover, classList: { contains: () => false } };
+            const event = { target: input, composedPath: () => [input] };
+
+            expect(isInsideOpenPopover(event, [popover])).toBe(true);
+        });
+
+        it('keeps the popover open for a portaled listbox overlay', () => {
+            const option = {
+                tagName: 'SPAN',
+                getAttribute: (name) => (name === 'role' ? 'option' : null),
+                classList: { contains: () => false }
+            };
+            const event = { target: option, composedPath: () => [option, document.body] };
+
+            expect(isInsideOpenPopover(event, [])).toBe(true);
+        });
+
+        it('closes when the click is outside the popover and overlays', () => {
+            const page = {
+                tagName: 'DIV',
+                classList: { contains: () => false },
+                getAttribute: () => null
+            };
+            const event = { target: page, composedPath: () => [page] };
+
+            expect(isInsideOpenPopover(event, [{ classList: { contains: () => false } }])).toBe(false);
+        });
+    });
+
+    describe('org timezone clock', () => {
+        const mayaUtc = '2026-09-02T16:00:00.000Z';
+        const mayaEndUtc = '2026-09-02T16:20:00.000Z';
+        const pacific = 'America/Los_Angeles';
+
+        it('reads 9:00 AM Pacific from the seeded UTC instant', () => {
+            expect(minutesOfDay(mayaUtc, pacific)).toBe(9 * 60);
+            expect(civilDateKey(mayaUtc, pacific)).toBe('2026-09-02');
+            expect(formatClock(mayaUtc, pacific)).toMatch(/9:00/);
+        });
+
+        it('does not label the same instant as 12:00 PM when the org is Pacific', () => {
+            expect(minutesOfDay(mayaUtc, 'America/New_York')).toBe(12 * 60);
+            expect(formatClock(mayaUtc, pacific)).not.toMatch(/12:00/);
+        });
+
+        it('positions a 9:00 AM Pacific appointment on the 9:00 row', () => {
+            expect(positionStyle(mayaUtc, mayaEndUtc, 8 * 60, 20, 28, pacific)).toContain('top:84px');
+        });
+
+        it('converts a Pacific civil time back to the original UTC instant', () => {
+            const instant = datetimeOnDay(new Date(2026, 8, 2), 9 * 60, pacific);
+            expect(instant.toISOString()).toBe(mayaUtc);
+        });
+
+        it('finds a Free slot using org-zone minutes instead of the browser clock', () => {
+            const slots = [
+                {
+                    id: 'slot-maya',
+                    startTime: mayaUtc,
+                    endTime: mayaEndUtc,
+                    status: SLOT_FREE
+                }
+            ];
+            const bounds = timeBounds(slots, pacific);
+
+            expect(bounds.startMinutes).toBe(9 * 60);
+            expect(findFreeSlotAt(slots, '2026-09-02', 9 * 60 + 5, pacific)?.id).toBe('slot-maya');
+            expect(findFreeSlotAt(slots, '2026-09-02', 12 * 60 + 5, pacific)).toBeUndefined();
         });
     });
 });

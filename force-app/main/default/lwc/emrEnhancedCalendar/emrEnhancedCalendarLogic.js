@@ -287,16 +287,16 @@ export function replacePaintedSlots(state, tempIds, createdSlots) {
     return applyOptimisticPaint(next, createdSlots);
 }
 
-export function findFreeSlotAt(slots, dayKey, minutes) {
+export function findFreeSlotAt(slots, dayKey, minutes, timeZone) {
     return (slots || []).find((slot) => {
         if (slot.status !== SLOT_FREE) {
             return false;
         }
-        if (toIsoDate(new Date(slot.startTime)) !== dayKey) {
+        if (civilDateKey(slot.startTime, timeZone) !== dayKey) {
             return false;
         }
-        const start = minutesOfDay(slot.startTime);
-        const end = minutesOfDay(slot.endTime);
+        const start = minutesOfDay(slot.startTime, timeZone);
+        const end = minutesOfDay(slot.endTime, timeZone);
         return minutes >= start && minutes < end;
     });
 }
@@ -336,15 +336,15 @@ export function resolveScheduleId(schedules, slots, locationKey) {
     return rows.length ? rows[0].id : null;
 }
 
-export function timeBounds(slots) {
+export function timeBounds(slots, timeZone) {
     if (!slots || !slots.length) {
         return { startMinutes: DEFAULT_START_MINUTES, endMinutes: DEFAULT_END_MINUTES };
     }
     let minStart = Number.POSITIVE_INFINITY;
     let maxEnd = 0;
     slots.forEach((slot) => {
-        minStart = Math.min(minStart, minutesOfDay(slot.startTime));
-        maxEnd = Math.max(maxEnd, minutesOfDay(slot.endTime));
+        minStart = Math.min(minStart, minutesOfDay(slot.startTime, timeZone));
+        maxEnd = Math.max(maxEnd, minutesOfDay(slot.endTime, timeZone));
     });
     return {
         startMinutes: Math.floor(minStart / 60) * 60,
@@ -384,15 +384,29 @@ export function snapRange(startMinutes, endMinutes, rowMinutes) {
     return { startMinutes: snappedStart, endMinutes: snappedEnd };
 }
 
-export function datetimeOnDay(day, minutes) {
+export function datetimeOnDay(day, minutes, timeZone) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return new Date(day.getFullYear(), day.getMonth(), day.getDate(), hours, mins, 0, 0);
+    if (!timeZone) {
+        return new Date(day.getFullYear(), day.getMonth(), day.getDate(), hours, mins, 0, 0);
+    }
+    return civilTimeToUtc(day.getFullYear(), day.getMonth(), day.getDate(), hours, mins, timeZone);
 }
 
-export function minutesOfDay(value) {
+export function minutesOfDay(value, timeZone) {
     const date = new Date(value);
-    return date.getHours() * 60 + date.getMinutes();
+    if (!timeZone) {
+        return date.getHours() * 60 + date.getMinutes();
+    }
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(date);
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+    return hour * 60 + minute;
 }
 
 export function startOfWeek(date) {
@@ -421,6 +435,23 @@ export function toIsoDate(date) {
     return `${year}-${month}-${day}`;
 }
 
+export function civilDateKey(value, timeZone) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!timeZone) {
+        return toIsoDate(date);
+    }
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+    return `${year}-${month}-${day}`;
+}
+
 export function isSameDay(left, right) {
     return (
         left.getFullYear() === right.getFullYear() &&
@@ -437,14 +468,15 @@ export function formatMinutes(totalMinutes) {
     return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function formatClock(value) {
+export function formatClock(value, timeZone) {
     if (!value) {
         return '';
     }
-    return new Date(value).toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit'
-    });
+    const options = { hour: 'numeric', minute: '2-digit' };
+    if (timeZone) {
+        options.timeZone = timeZone;
+    }
+    return new Date(value).toLocaleTimeString(undefined, options);
 }
 
 export function formatDayHeader(date) {
@@ -487,9 +519,9 @@ export function dateRange(selectedDate, isWeek) {
     return { start: iso, end: iso };
 }
 
-export function nowLineTop(startMinutes, rowMinutes, rowHeight, now) {
+export function nowLineTop(startMinutes, rowMinutes, rowHeight, now, timeZone) {
     const current = now || new Date();
-    const minutes = minutesOfDay(current);
+    const minutes = minutesOfDay(current, timeZone);
     if (minutes < startMinutes) {
         return null;
     }
@@ -498,15 +530,103 @@ export function nowLineTop(startMinutes, rowMinutes, rowHeight, now) {
     return ((minutes - startMinutes) / increment) * height;
 }
 
-export function positionStyle(startTime, endTime, startMinutes, rowMinutes, rowHeight) {
+export function positionStyle(startTime, endTime, startMinutes, rowMinutes, rowHeight, timeZone) {
     const increment = rowMinutes > 0 ? rowMinutes : DEFAULT_DURATION;
     const height = rowHeight || ROW_HEIGHT;
-    const start = minutesOfDay(startTime);
-    const end = minutesOfDay(endTime);
+    const start = minutesOfDay(startTime, timeZone);
+    const end = minutesOfDay(endTime, timeZone);
     const duration = Math.max(end - start, increment);
     const top = ((start - startMinutes) / increment) * height;
     const blockHeight = Math.max((duration / increment) * height - 2, 18);
     return `top:${top}px;height:${blockHeight}px;`;
+}
+
+const OVERLAY_TAGS = new Set([
+    'LIGHTNING-PRIMITIVE-COMBOBOX-DROPDOWN',
+    'LIGHTNING-LOOKUP-DESKTOP',
+    'LIGHTNING-OVERLAY',
+    'LIGHTNING-DIALOG',
+    'LIGHTNING-MODAL',
+    'LIGHTNING-PICKLIST-DROPDOWN'
+]);
+
+/**
+ * True when a document-level pointer event landed in an open booking/action
+ * popover or a portaled picker/combobox overlay (shadow DOM + body portal).
+ */
+export function isInsideOpenPopover(event, popoverNodes) {
+    const popovers = (popoverNodes || []).filter(Boolean);
+    const nodes = collectEventNodes(event);
+    for (const node of nodes) {
+        if (popovers.includes(node) || hasClass(node, 'popover')) {
+            return true;
+        }
+        if (isPortaledPickerOverlay(node)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function collectEventNodes(event) {
+    const seen = new Set();
+    const nodes = [];
+    const add = (node) => {
+        if (!node || seen.has(node)) {
+            return;
+        }
+        seen.add(node);
+        nodes.push(node);
+    };
+    if (event && typeof event.composedPath === 'function') {
+        event.composedPath().forEach(add);
+    }
+    let current = event ? event.target : null;
+    while (current) {
+        add(current);
+        if (current.assignedSlot) {
+            current = current.assignedSlot;
+            continue;
+        }
+        if (current.parentNode) {
+            current = current.parentNode;
+            continue;
+        }
+        if (current.host) {
+            current = current.host;
+            continue;
+        }
+        break;
+    }
+    return nodes;
+}
+
+function hasClass(node, className) {
+    return !!(node && node.classList && node.classList.contains(className));
+}
+
+function isPortaledPickerOverlay(node) {
+    if (!node) {
+        return false;
+    }
+    const tag = (node.tagName || '').toUpperCase();
+    if (OVERLAY_TAGS.has(tag)) {
+        return true;
+    }
+    if (typeof node.getAttribute === 'function') {
+        const role = node.getAttribute('role');
+        if (role === 'listbox' || role === 'option' || role === 'listitem') {
+            return true;
+        }
+    }
+    return (
+        hasClass(node, 'slds-listbox') ||
+        hasClass(node, 'slds-dropdown') ||
+        hasClass(node, 'slds-combobox__dropdown') ||
+        hasClass(node, 'slds-lookup') ||
+        hasClass(node, 'slds-popover') ||
+        hasClass(node, 'slds-modal')
+    );
 }
 
 export function reduceError(error) {
@@ -517,6 +637,23 @@ export function reduceError(error) {
         return error.body.map((item) => item.message).join(', ');
     }
     return error?.message || error?.reason || 'Unable to update the calendar.';
+}
+
+function civilTimeToUtc(year, monthIndex, day, hours, minutes, timeZone) {
+    const utcGuess = Date.UTC(year, monthIndex, day, hours, minutes, 0);
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(new Date(utcGuess));
+    const read = (type) => Number(parts.find((part) => part.type === type)?.value || 0);
+    const actual = Date.UTC(read('year'), read('month') - 1, read('day'), read('hour'), read('minute'));
+    const desired = Date.UTC(year, monthIndex, day, hours, minutes);
+    return new Date(utcGuess + (desired - actual));
 }
 
 function slotStatus(state, slotId) {

@@ -10,6 +10,7 @@ import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
 import APPOINTMENT_OBJECT from '@salesforce/schema/Appointment__c';
 import ENCOUNTER_OBJECT from '@salesforce/schema/Encounter__c';
+import TIME_ZONE from '@salesforce/i18n/timeZone';
 
 const ANY_LOCATION = 'any';
 const VIEW_DAY = 'day';
@@ -45,7 +46,7 @@ export default class EmrAppointmentCalendar extends LightningElement {
     ];
 
     connectedCallback() {
-        this.selectedDate = toIsoDate(new Date());
+        this.selectedDate = civilDateKey(new Date());
         this.loadLocations();
     }
 
@@ -140,7 +141,7 @@ export default class EmrAppointmentCalendar extends LightningElement {
                 label: formatDayHeader(day),
                 weekday: formatWeekday(day),
                 dateLabel: String(day.getDate()),
-                headerClass: isSameDay(day, new Date()) ? 'day-header day-header_today' : 'day-header',
+                headerClass: civilDateKey(new Date()) === key ? 'day-header day-header_today' : 'day-header',
                 bodyStyle: `height:${totalHeight}px`,
                 slots: daySlots.map((slot) => this.toSlotRender(slot, bounds.startMinutes, daySlots.length ? Math.max(...daySlots.map((row) => row.laneCount)) : 1))
             };
@@ -267,7 +268,7 @@ export default class EmrAppointmentCalendar extends LightningElement {
     }
 
     handleToday() {
-        this.selectedDate = toIsoDate(new Date());
+        this.selectedDate = civilDateKey(new Date());
         this.loadGrid();
     }
 
@@ -540,7 +541,8 @@ export default class EmrAppointmentCalendar extends LightningElement {
             month: 'short',
             day: 'numeric',
             hour: 'numeric',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: TIME_ZONE
         });
     }
 
@@ -550,7 +552,8 @@ export default class EmrAppointmentCalendar extends LightningElement {
         }
         return new Date(value).toLocaleTimeString(undefined, {
             hour: 'numeric',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: TIME_ZONE
         });
     }
 
@@ -568,7 +571,7 @@ export default class EmrAppointmentCalendar extends LightningElement {
 function groupSlotsByDay(slots) {
     const grouped = {};
     (slots || []).forEach((slot) => {
-        const key = toIsoDate(new Date(slot.startTime));
+        const key = civilDateKey(slot.startTime);
         if (!grouped[key]) {
             grouped[key] = [];
         }
@@ -679,7 +682,8 @@ function formatClock(value) {
     }
     return new Date(value).toLocaleTimeString(undefined, {
         hour: 'numeric',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: TIME_ZONE
     });
 }
 
@@ -693,7 +697,35 @@ function formatMinutes(totalMinutes) {
 
 function minutesOfDay(value) {
     const date = new Date(value);
-    return date.getHours() * 60 + date.getMinutes();
+    if (!TIME_ZONE) {
+        return date.getHours() * 60 + date.getMinutes();
+    }
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: TIME_ZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(date);
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+    return hour * 60 + minute;
+}
+
+function civilDateKey(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!TIME_ZONE) {
+        return toIsoDate(date);
+    }
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+    return `${year}-${month}-${day}`;
 }
 
 function startOfWeek(date) {
@@ -724,6 +756,10 @@ function toIsoDate(date) {
 
 function isSameDay(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function formatDayHeader(date) {
+    return `${formatWeekday(date)} ${date.getDate()}`;
 }
 
 function formatWeekday(date) {

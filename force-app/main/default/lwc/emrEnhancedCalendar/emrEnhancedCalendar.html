@@ -1,23 +1,25 @@
 <template>
     <lightning-card title="Enhanced calendar" icon-name="standard:event">
         <div class="calendar-shell slds-p-horizontal_medium slds-p-bottom_medium">
-            <div class="toolbar">
-                <div class="toolbar-filters">
-                    <lightning-record-picker
-                        label="Provider"
-                        placeholder="Search practitioners"
-                        object-api-name={practitionerObjectApiName}
-                        value={practitionerId}
-                        onchange={handlePractitionerChange}
-                    ></lightning-record-picker>
-                    <lightning-combobox
-                        name="location"
-                        label="Location"
-                        value={locationKey}
-                        options={locationOptions}
-                        onchange={handleLocationChange}
-                    ></lightning-combobox>
-                </div>
+            <div class={toolbarClass}>
+                <template lwc:if={showFilters}>
+                    <div class="toolbar-filters">
+                        <lightning-record-picker
+                            label="Provider"
+                            placeholder="Search practitioners"
+                            object-api-name={practitionerObjectApiName}
+                            value={practitionerId}
+                            onchange={handlePractitionerChange}
+                        ></lightning-record-picker>
+                        <lightning-combobox
+                            name="location"
+                            label="Location"
+                            value={locationKey}
+                            options={locationOptions}
+                            onchange={handleLocationChange}
+                        ></lightning-combobox>
+                    </div>
+                </template>
                 <div class="toolbar-nav">
                     <lightning-radio-group
                         name="viewMode"
@@ -67,19 +69,21 @@
                 </div>
             </div>
 
-            <div class="manage-row">
-                <lightning-input
-                    type="toggle"
-                    label={manageToggleLabel}
-                    checked={manageAvailability}
-                    onchange={handleManageToggle}
-                ></lightning-input>
-                <template lwc:if={manageAvailability}>
-                    <p class="manage-hint" role="status">
-                        Click and drag across empty time to paint Free slots.
-                    </p>
-                </template>
-            </div>
+            <template lwc:if={showManageAvailability}>
+                <div class="manage-row">
+                    <lightning-input
+                        type="toggle"
+                        label={manageToggleLabel}
+                        checked={manageAvailability}
+                        onchange={handleManageToggle}
+                    ></lightning-input>
+                    <template lwc:if={manageAvailability}>
+                        <p class="manage-hint" role="status">
+                            Click and drag across empty time to paint Free slots.
+                        </p>
+                    </template>
+                </div>
+            </template>
 
             <template lwc:if={errorMessage}>
                 <div class="slds-text-color_error slds-m-top_small" role="alert">{errorMessage}</div>
@@ -179,17 +183,25 @@
             </template>
 
             <template lwc:if={bookingPopover}>
-                <div class="popover" role="dialog" aria-label="Book appointment" style={bookingPopover.style}>
+                <div
+                    class="popover"
+                    role="dialog"
+                    aria-label="Book appointment"
+                    style={bookingPopover.style}
+                    onpointerdown={handlePopoverPointerDown}
+                >
                     <p class="popover-title">Book appointment</p>
                     <p class="popover-meta">{bookingPopover.when}</p>
-                    <lightning-record-picker
-                        label="Patient"
-                        placeholder="Search patients"
-                        object-api-name={patientObjectApiName}
-                        value={bookingPatientId}
-                        required
-                        onchange={handleBookingPatient}
-                    ></lightning-record-picker>
+                    <template lwc:if={showBookingPatientPicker}>
+                        <lightning-record-picker
+                            label="Patient"
+                            placeholder="Search patients"
+                            object-api-name={patientObjectApiName}
+                            value={bookingPatientId}
+                            required
+                            onchange={handleBookingPatient}
+                        ></lightning-record-picker>
+                    </template>
                     <lightning-combobox
                         name="appointmentType"
                         label="Appointment type"
@@ -220,7 +232,13 @@
             </template>
 
             <template lwc:if={actionPopover}>
-                <div class="popover" role="dialog" aria-label="Appointment actions" style={actionPopover.style}>
+                <div
+                    class="popover"
+                    role="dialog"
+                    aria-label="Appointment actions"
+                    style={actionPopover.style}
+                    onpointerdown={handlePopoverPointerDown}
+                >
                     <p class="popover-title">{selectedActionTitle}</p>
                     <p class="popover-meta">{actionPopover.when}</p>
                     <p class="popover-meta">{selectedAction.status}</p>

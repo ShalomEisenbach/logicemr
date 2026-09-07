@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Patient Banner</masterLabel>
-    <description>Patient chart header showing demographics, status, latest vitals, and allergies. On Encounter, demographics and allergies only.</description>
+    <description>Patient chart header showing demographics, status, latest vitals, and clinical summaries. On Encounter, demographics and summaries only.</description>
     <targets>
         <target>lightning__RecordPage</target>
     </targets>

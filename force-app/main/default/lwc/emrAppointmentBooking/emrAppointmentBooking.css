@@ -8,3 +8,7 @@
     max-height: 24rem;
     overflow: auto;
 }
+
+.calendar-embed {
+    min-width: 0;
+}

@@ -58,13 +58,22 @@
             </template>
             <template lwc:else>
             <lightning-progress-indicator current-step={currentStep} type="base">
-                <lightning-progress-step label="Patient" value="patient"></lightning-progress-step>
-                <lightning-progress-step label="Provider" value="provider"></lightning-progress-step>
-                <lightning-progress-step label="Slot" value="slot"></lightning-progress-step>
-                <lightning-progress-step label="Book" value="book"></lightning-progress-step>
+                <template lwc:if={patientLocked}>
+                    <lightning-progress-step label="Date" value="date"></lightning-progress-step>
+                    <lightning-progress-step label="Provider" value="provider"></lightning-progress-step>
+                    <lightning-progress-step label="Calendar" value="slot"></lightning-progress-step>
+                    <lightning-progress-step label="Book" value="book"></lightning-progress-step>
+                </template>
+                <template lwc:else>
+                    <lightning-progress-step label="Patient" value="patient"></lightning-progress-step>
+                    <lightning-progress-step label="Date" value="date"></lightning-progress-step>
+                    <lightning-progress-step label="Provider" value="provider"></lightning-progress-step>
+                    <lightning-progress-step label="Calendar" value="slot"></lightning-progress-step>
+                    <lightning-progress-step label="Book" value="book"></lightning-progress-step>
+                </template>
             </lightning-progress-indicator>
 
-            <template lwc:if={isStepPatient}>
+            <template lwc:if={showPatientStep}>
                 <div class="slds-m-top_medium">
                     <lightning-record-picker
                         label="Patient"
@@ -77,29 +86,11 @@
                 </div>
             </template>
 
-            <template lwc:if={isStepProvider}>
+            <template lwc:if={isStepDate}>
                 <div class="slds-m-top_medium">
-                    <lightning-record-picker
-                        label="Provider"
-                        placeholder="Search practitioners"
-                        object-api-name={practitionerObjectApiName}
-                        value={practitionerId}
-                        required
-                        onchange={handlePractitionerChange}
-                    ></lightning-record-picker>
-                    <lightning-combobox
-                        name="location"
-                        label="Location"
-                        value={locationKey}
-                        options={locationOptions}
-                        onchange={handleLocationChange}
-                        class="slds-m-top_small"
-                    ></lightning-combobox>
-                </div>
-            </template>
-
-            <template lwc:if={isStepSlot}>
-                <div class="slds-m-top_medium">
+                    <p class="slds-text-body_regular slds-m-bottom_small">
+                        Choose the dates first. Next you will see which providers have free slots.
+                    </p>
                     <div class="slds-grid slds-gutters slds-wrap">
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                             <lightning-input
@@ -118,40 +109,63 @@
                                 type="date"
                                 value={rangeEnd}
                                 required
+                                min={rangeStart}
                                 onchange={handleRangeEndChange}
                             ></lightning-input>
                         </div>
                     </div>
-                    <div class="slds-m-top_small">
+                    <lightning-combobox
+                        name="location"
+                        label="Location"
+                        value={locationKey}
+                        options={locationOptions}
+                        onchange={handleLocationChange}
+                        class="slds-m-top_small"
+                    ></lightning-combobox>
+                </div>
+            </template>
+
+            <template lwc:if={isStepProvider}>
+                <div class="slds-m-top_medium">
+                    <p class="slds-text-body_regular slds-m-bottom_small">{dateRangeSummary}</p>
+                    <div class="slds-m-bottom_small">
                         <lightning-button
-                            label="Refresh free slots"
+                            label="Refresh available providers"
                             variant="neutral"
                             disabled={isBusy}
-                            onclick={handleRefreshSlots}
+                            onclick={handleRefreshProviders}
                         ></lightning-button>
                     </div>
-                    <template lwc:if={hasMoreSlots}>
-                        <p class="slds-text-body_small slds-m-top_small" role="status">
-                            Showing the first 200 free slots. Narrow the date range to see more.
-                        </p>
-                    </template>
-                    <template lwc:if={hasSlots}>
-                        <div class="slot-table slds-m-top_small">
+                    <template lwc:if={hasProviders}>
+                        <div class="slot-table">
                             <lightning-datatable
-                                key-field="id"
-                                data={slots}
-                                columns={slotColumns}
+                                key-field="practitionerId"
+                                data={providers}
+                                columns={providerColumns}
                                 max-row-selection="1"
-                                selected-rows={selectedSlotIds}
-                                onrowselection={handleSlotSelection}
+                                selected-rows={selectedProviderIds}
+                                onrowselection={handleProviderSelection}
                             ></lightning-datatable>
                         </div>
                     </template>
-                    <template lwc:elseif={showSlotsEmpty}>
-                        <p class="slds-text-body_regular slds-m-top_small">
-                            No free slots for this provider in the selected range.
+                    <template lwc:elseif={showProvidersEmpty}>
+                        <p class="slds-text-body_regular">
+                            No providers have free slots in the selected dates. Try a different range or location.
                         </p>
                     </template>
+                </div>
+            </template>
+
+            <template lwc:if={isStepSlot}>
+                <div class="slds-m-top_medium calendar-embed">
+                    <p class="slds-text-body_regular slds-m-bottom_small">
+                        {dateRangeSummary}
+                        <template lwc:if={selectedProviderName}> · {selectedProviderName}</template>
+                    </p>
+                    <p class="slds-text-body_small slds-m-bottom_small">
+                        Click a Free slot on the calendar to book.
+                    </p>
+                    <c-emr-enhanced-calendar onbooked={handleCalendarBooked}></c-emr-enhanced-calendar>
                 </div>
             </template>
 

@@ -32,6 +32,7 @@ private class EncounterPanelControllerTest {
         System.assertEquals(2, results.size(), 'Should return only this patient\'s encounters');
         System.assertEquals(newer.Id, results[0].Id, 'Newest Start__c should be first');
         System.assertEquals(older.Id, results[1].Id, 'Older encounter should be second');
+        System.assertEquals(true, String.isNotBlank(results[0].Name), 'Name should be populated');
         System.assertEquals('In Progress', results[0].Status__c, 'Status__c should be populated');
         System.assertEquals('Outpatient', results[0].Class__c, 'Class__c should be populated');
         System.assertEquals(newerStart, results[0].Start__c, 'Start__c should be populated');

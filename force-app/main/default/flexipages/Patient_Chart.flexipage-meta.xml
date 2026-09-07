@@ -197,6 +197,12 @@
         </itemInstances>
         <itemInstances>
             <componentInstance>
+                <componentName>emrAppointmentPanel</componentName>
+                <identifier>emrAppointmentPanel</identifier>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
                 <componentInstanceProperties>
                     <name>tabs</name>
                     <value>clinicalTabs</value>

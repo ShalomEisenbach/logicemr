@@ -1,4 +1,4 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, api } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getLocations from '@salesforce/apex/AppointmentCalendarController.getLocations';
@@ -14,6 +14,7 @@ import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
 import ENCOUNTER_OBJECT from '@salesforce/schema/Encounter__c';
 import { recordViewPageRef } from 'c/emrNavigationUtils';
+import TIME_ZONE from '@salesforce/i18n/timeZone';
 import {
     APPT_ARRIVED,
     APPT_CANCELLED,
@@ -33,6 +34,7 @@ import {
     canCancel,
     canDragBlock,
     canNoShow,
+    civilDateKey,
     confirmBook,
     confirmMove,
     confirmStatus,
@@ -43,6 +45,7 @@ import {
     formatClock,
     formatDayHeader,
     formatRangeLabel,
+    isInsideOpenPopover,
     minutesFromOffset,
     nowLineTop,
     parseIsoDate,
@@ -81,6 +84,10 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     isLoading = false;
     isWorking = false;
     manageAvailability = false;
+    hideFilters = false;
+    hideManageAvailability = false;
+    lockedPatientId;
+    embedded = false;
     state = emptyState();
 
     bookingPopover;
@@ -106,7 +113,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     ];
 
     connectedCallback() {
-        this.selectedDate = toIsoDate(new Date());
+        this.selectedDate = civilDateKey(new Date(), TIME_ZONE);
         this._onKeyDown = (event) => this.handleDocumentKey(event);
         this._onPointerDown = (event) => this.handleDocumentPointer(event);
         document.addEventListener('keydown', this._onKeyDown);
@@ -162,8 +169,49 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         return this.isWeek ? 'grid grid_week' : 'grid grid_day';
     }
 
+    get toolbarClass() {
+        return this.hideFilters ? 'toolbar toolbar_nav-only' : 'toolbar';
+    }
+
+    get showFilters() {
+        return !this.hideFilters;
+    }
+
+    get showManageAvailability() {
+        return !this.hideManageAvailability;
+    }
+
+    get showBookingPatientPicker() {
+        return !this.lockedPatientId;
+    }
+
     get manageToggleLabel() {
         return this.manageAvailability ? 'Managing availability' : 'Manage availability';
+    }
+
+    /**
+     * Opens the calendar for guided booking (used by emrAppointmentBooking).
+     * Locks the chosen provider/location/date and optional patient.
+     * @param {object} context practitionerId, locationKey, selectedDate, patientId
+     */
+    @api
+    beginBooking(context) {
+        if (!context) {
+            return;
+        }
+        this.embedded = true;
+        this.hideFilters = true;
+        this.hideManageAvailability = true;
+        this.manageAvailability = false;
+        this.practitionerId = context.practitionerId;
+        this.locationKey = context.locationKey || ANY_LOCATION;
+        this.selectedDate = context.selectedDate || civilDateKey(new Date(), TIME_ZONE);
+        this.viewMode = context.viewMode === VIEW_DAY ? VIEW_DAY : VIEW_WEEK;
+        this.lockedPatientId = context.patientId;
+        this.bookingPatientId = context.patientId;
+        this.closePopovers();
+        this.loadLocations();
+        this.loadGrid();
     }
 
     get isBookDisabled() {
@@ -199,7 +247,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     }
 
     get timeLabels() {
-        const bounds = timeBounds(this.state.slots);
+        const bounds = timeBounds(this.state.slots, TIME_ZONE);
         return buildTimeRows(bounds.startMinutes, bounds.endMinutes, this.slotDurationMinutes).map((row) => ({
             key: String(row.minutes),
             label: row.label,
@@ -210,16 +258,16 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     get dayColumns() {
         const days = visibleDays(this.selectedDate, this.isWeek);
-        const bounds = timeBounds(this.state.slots);
+        const bounds = timeBounds(this.state.slots, TIME_ZONE);
         const totalHeight =
             buildTimeRows(bounds.startMinutes, bounds.endMinutes, this.slotDurationMinutes).length * ROW_HEIGHT;
         const today = new Date();
-        const nowTop = nowLineTop(bounds.startMinutes, this.slotDurationMinutes, ROW_HEIGHT, today);
+        const nowTop = nowLineTop(bounds.startMinutes, this.slotDurationMinutes, ROW_HEIGHT, today, TIME_ZONE);
 
         return days.map((day) => {
             const key = toIsoDate(day);
             const header = formatDayHeader(day);
-            const isToday = toIsoDate(today) === key;
+            const isToday = civilDateKey(today, TIME_ZONE) === key;
             return {
                 key,
                 weekday: header.weekday,
@@ -237,17 +285,18 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     slotsForDay(dayKey, startMinutes) {
         return this.state.slots
-            .filter((slot) => toIsoDate(new Date(slot.startTime)) === dayKey)
+            .filter((slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey)
             .map((slot) => ({
                 id: slot.id,
-                title: `${slot.status} · ${formatClock(slot.startTime)}–${formatClock(slot.endTime)}`,
+                title: `${slot.status} · ${formatClock(slot.startTime, TIME_ZONE)}–${formatClock(slot.endTime, TIME_ZONE)}`,
                 className: slotClass(slot.status),
                 style: positionStyle(
                     slot.startTime,
                     slot.endTime,
                     startMinutes,
                     this.slotDurationMinutes,
-                    ROW_HEIGHT
+                    ROW_HEIGHT,
+                    TIME_ZONE
                 ),
                 status: slot.status
             }));
@@ -255,14 +304,14 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     blocksForDay(dayKey, startMinutes) {
         return this.state.blocks
-            .filter((block) => toIsoDate(new Date(block.startTime)) === dayKey)
+            .filter((block) => civilDateKey(block.startTime, TIME_ZONE) === dayKey)
             .map((block) => {
                 const dragging = this.drag?.appointmentId === block.id;
                 return {
                     id: block.id,
                     slotId: block.slotId,
                     label: block.patientName || block.name || 'Appointment',
-                    meta: `${formatClock(block.startTime)} · ${block.status}`,
+                    meta: `${formatClock(block.startTime, TIME_ZONE)} · ${block.status}`,
                     title: `${block.patientName || block.name || 'Appointment'} · ${block.status}`,
                     className: [
                         'block',
@@ -280,7 +329,8 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                               block.endTime,
                               startMinutes,
                               this.slotDurationMinutes,
-                              ROW_HEIGHT
+                              ROW_HEIGHT,
+                              TIME_ZONE
                           )
                 };
             });
@@ -295,7 +345,8 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             this.drag.previewEnd,
             startMinutes,
             this.slotDurationMinutes,
-            ROW_HEIGHT
+            ROW_HEIGHT,
+            TIME_ZONE
         )}left:2px;right:2px;`;
     }
 
@@ -306,11 +357,12 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         const snapped = snapRange(this.paint.startMinutes, this.paint.endMinutes, this.slotDurationMinutes);
         const day = parseIsoDate(dayKey);
         return positionStyle(
-            datetimeOnDay(day, snapped.startMinutes),
-            datetimeOnDay(day, snapped.endMinutes),
+            datetimeOnDay(day, snapped.startMinutes, TIME_ZONE),
+            datetimeOnDay(day, snapped.endMinutes, TIME_ZONE),
             startMinutes,
             this.slotDurationMinutes,
-            ROW_HEIGHT
+            ROW_HEIGHT,
+            TIME_ZONE
         );
     }
 
@@ -350,7 +402,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     }
 
     handleToday() {
-        this.selectedDate = toIsoDate(new Date());
+        this.selectedDate = civilDateKey(new Date(), TIME_ZONE);
         this.closePopovers();
         this.loadGrid();
     }
@@ -404,7 +456,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             snapshot: snapshotMove(this.state, appointmentId),
             previewStart: block.startTime,
             previewEnd: block.endTime,
-            originDayKey: toIsoDate(new Date(block.startTime))
+            originDayKey: civilDateKey(block.startTime, TIME_ZONE)
         };
     }
 
@@ -422,7 +474,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         const hit = this.hitTest(event.clientX, event.clientY);
         if (hit) {
             const duration = minutesBetween(this.drag.snapshot.block.startTime, this.drag.snapshot.block.endTime);
-            this.drag.previewStart = datetimeOnDay(parseIsoDate(hit.dayKey), hit.minutes);
+            this.drag.previewStart = datetimeOnDay(parseIsoDate(hit.dayKey), hit.minutes, TIME_ZONE);
             this.drag.previewEnd = new Date(this.drag.previewStart.getTime() + duration * 60000);
             this.drag.previewDayKey = hit.dayKey;
         }
@@ -448,7 +500,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             return;
         }
         const hit = this.hitTest(event.clientX, event.clientY);
-        const target = hit ? findFreeSlotAt(this.state.slots, hit.dayKey, hit.minutes) : null;
+        const target = hit ? findFreeSlotAt(this.state.slots, hit.dayKey, hit.minutes, TIME_ZONE) : null;
         if (!target || target.id === drag.snapshot.fromSlotId) {
             this.state = revertMove(this.state, drag.snapshot);
             if (target?.id !== drag.snapshot.fromSlotId) {
@@ -467,7 +519,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             return;
         }
         const dayKey = event.currentTarget.dataset.dayKey;
-        const bounds = timeBounds(this.state.slots);
+        const bounds = timeBounds(this.state.slots, TIME_ZONE);
         const rect = event.currentTarget.getBoundingClientRect();
         const minutes = minutesFromOffset(
             event.clientY - rect.top,
@@ -484,7 +536,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         if (!this.paint) {
             return;
         }
-        const bounds = timeBounds(this.state.slots);
+        const bounds = timeBounds(this.state.slots, TIME_ZONE);
         const rect = event.currentTarget.getBoundingClientRect();
         this.paint = {
             ...this.paint,
@@ -526,7 +578,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     handleCloseBooking() {
         this.bookingPopover = undefined;
-        this.bookingPatientId = undefined;
+        this.bookingPatientId = this.lockedPatientId;
         this.bookingType = undefined;
         this.bookingReason = '';
     }
@@ -573,6 +625,18 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 appointmentStatus: result.appointmentStatus
             });
             this.toast(result.appointmentName || 'Appointment booked.', 'success');
+            this.dispatchEvent(
+                new CustomEvent('booked', {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        appointmentId: result.appointmentId,
+                        appointmentName: result.appointmentName,
+                        slotId: result.slotId || slotId,
+                        status: result.appointmentStatus
+                    }
+                })
+            );
         } catch (error) {
             this.state = revertBook(this.state, { tempId, slotId });
             this.toast(reduceError(error), 'error');
@@ -741,8 +805,8 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         }
         const snapped = snapRange(paint.startMinutes, paint.endMinutes, this.slotDurationMinutes);
         const day = parseIsoDate(paint.dayKey);
-        const startTime = datetimeOnDay(day, snapped.startMinutes);
-        const endTime = datetimeOnDay(day, snapped.endMinutes);
+        const startTime = datetimeOnDay(day, snapped.startMinutes, TIME_ZONE);
+        const endTime = datetimeOnDay(day, snapped.endMinutes, TIME_ZONE);
         const tempId = `temp-slot-${Date.now()}`;
         this.tempPaintIds = [tempId];
         this.state = applyOptimisticPaint(this.state, [
@@ -818,7 +882,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.bookingReason = '';
         this.bookingPopover = {
             slotId: slot.id,
-            when: `${formatClock(slot.startTime)} – ${formatClock(slot.endTime)}`,
+            when: `${formatClock(slot.startTime, TIME_ZONE)} – ${formatClock(slot.endTime, TIME_ZONE)}`,
             style: popoverStyle(anchor, this.template.querySelector('.calendar-shell'))
         };
     }
@@ -827,7 +891,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.bookingPopover = undefined;
         this.actionPopover = {
             block: { ...block },
-            when: `${formatClock(block.startTime)} – ${formatClock(block.endTime)}`,
+            when: `${formatClock(block.startTime, TIME_ZONE)} – ${formatClock(block.endTime, TIME_ZONE)}`,
             style: popoverStyle(anchor, this.template.querySelector('.calendar-shell'))
         };
     }
@@ -835,7 +899,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     closePopovers() {
         this.bookingPopover = undefined;
         this.actionPopover = undefined;
-        this.bookingPatientId = undefined;
+        this.bookingPatientId = this.lockedPatientId;
         this.bookingType = undefined;
         this.bookingReason = '';
     }
@@ -851,35 +915,19 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         }
     }
 
+    handlePopoverPointerDown(event) {
+        event.stopPropagation();
+    }
+
     handleDocumentPointer(event) {
         if (!this.bookingPopover && !this.actionPopover) {
             return;
         }
-        const path = event.composedPath ? event.composedPath() : [];
-        const inside = path.some((node) => {
-            if (!node) {
-                return false;
-            }
-            const tag = node.tagName || '';
-            if (
-                tag === 'LIGHTNING-RECORD-PICKER' ||
-                tag === 'LIGHTNING-COMBOBOX' ||
-                tag === 'LIGHTNING-INPUT' ||
-                tag === 'LIGHTNING-BUTTON'
-            ) {
-                return true;
-            }
-            return !!(
-                node.classList &&
-                (node.classList.contains('popover') ||
-                    node.classList.contains('block') ||
-                    node.classList.contains('slot_free') ||
-                    node.classList.contains('slds-listbox'))
-            );
-        });
-        if (!inside) {
-            this.closePopovers();
+        const popovers = [...this.template.querySelectorAll('.popover')];
+        if (isInsideOpenPopover(event, popovers)) {
+            return;
         }
+        this.closePopovers();
     }
 
     hitTest(clientX, clientY) {
@@ -887,7 +935,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         for (const body of bodies) {
             const rect = body.getBoundingClientRect();
             if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
-                const bounds = timeBounds(this.state.slots);
+                const bounds = timeBounds(this.state.slots, TIME_ZONE);
                 return {
                     dayKey: body.dataset.dayKey,
                     minutes: minutesFromOffset(

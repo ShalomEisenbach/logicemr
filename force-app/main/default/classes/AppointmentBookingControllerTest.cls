@@ -141,6 +141,7 @@ private class AppointmentBookingControllerTest {
         };
 
         Test.startTest();
+        List<String> allLocations = AppointmentBookingController.getLocations(null);
         List<String> locations = AppointmentBookingController.getLocations(practitioner.Id);
         AppointmentBookingController.SlotListView allFree = AppointmentBookingController.getFreeSlots(
             practitioner.Id,
@@ -156,6 +157,7 @@ private class AppointmentBookingControllerTest {
         );
         Test.stopTest();
 
+        System.assertEquals(new List<String>{ 'Clinic A', 'Clinic B' }, allLocations, 'Locations without a provider should include every active schedule location');
         System.assertEquals(new List<String>{ 'Clinic A', 'Clinic B' }, locations, 'Active schedule locations should be distinct and sorted');
         System.assertEquals(2, allFree.slots.size(), 'Only Free slots for the chosen provider should be returned');
         System.assertEquals(false, allFree.hasMore, 'Two slots should not exceed the list limit');
@@ -163,6 +165,113 @@ private class AppointmentBookingControllerTest {
         System.assertEquals('Clinic A', clinicAOnly.slots[0].locationName, 'Slot view should include the schedule location');
         System.assertEquals(practitioner.Id, clinicAOnly.slots[0].practitionerId, 'Slot view should include the provider');
         System.assertEquals(freeStart, clinicAOnly.slots[0].startTime, 'Slot view start should match the Free slot');
+    }
+
+    @IsTest
+    static void getAvailableProvidersReturnsProvidersWithFreeSlotsOnDates() {
+        Practitioner__c ada = insertPractitioner('Ada', 'Lopez');
+        ada.Specialty__c = 'Primary Care';
+        update ada;
+        Practitioner__c ben = insertPractitioner('Ben', 'Ng');
+        ben.Specialty__c = 'Cardiology';
+        update ben;
+        Practitioner__c inactive = insertPractitioner('Cara', 'Singh');
+        inactive.Active__c = false;
+        update inactive;
+        Schedule__c adaClinicA = insertSchedule(ada.Id, 'Clinic A');
+        Schedule__c adaClinicB = insertSchedule(ada.Id, 'Clinic B');
+        Schedule__c benClinicA = insertSchedule(ben.Id, 'Clinic A');
+        Schedule__c inactiveSchedule = insertSchedule(inactive.Id, 'Clinic A');
+        Datetime inRange = DateTime.newInstance(SLOT_DAY, Time.newInstance(9, 0, 0, 0));
+        Datetime laterSameDay = DateTime.newInstance(SLOT_DAY, Time.newInstance(14, 0, 0, 0));
+        Datetime outsideRange = DateTime.newInstance(SLOT_DAY.addDays(3), Time.newInstance(9, 0, 0, 0));
+        insert new List<Slot__c>{
+            new Slot__c(
+                Schedule__c = adaClinicA.Id,
+                Start__c = inRange,
+                End__c = inRange.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = adaClinicB.Id,
+                Start__c = laterSameDay,
+                End__c = laterSameDay.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = adaClinicA.Id,
+                Start__c = inRange.addHours(1),
+                End__c = inRange.addHours(1).addMinutes(20),
+                Status__c = 'Busy'
+            ),
+            new Slot__c(
+                Schedule__c = benClinicA.Id,
+                Start__c = inRange,
+                End__c = inRange.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = benClinicA.Id,
+                Start__c = outsideRange,
+                End__c = outsideRange.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = inactiveSchedule.Id,
+                Start__c = inRange,
+                End__c = inRange.addMinutes(20),
+                Status__c = 'Free'
+            )
+        };
+
+        Test.startTest();
+        List<AppointmentBookingController.ProviderAvailabilityView> allProviders = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY,
+            SLOT_DAY,
+            null
+        );
+        List<AppointmentBookingController.ProviderAvailabilityView> clinicBOnly = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY,
+            SLOT_DAY,
+            'Clinic B'
+        );
+        List<AppointmentBookingController.ProviderAvailabilityView> emptyDay = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY.addDays(1),
+            SLOT_DAY.addDays(1),
+            null
+        );
+        Boolean missingDates = false;
+        try {
+            AppointmentBookingController.getAvailableProviders(null, SLOT_DAY, null);
+        } catch (AuraHandledException e) {
+            missingDates = true;
+        }
+        Boolean invertedRange = false;
+        try {
+            AppointmentBookingController.getAvailableProviders(SLOT_DAY, SLOT_DAY.addDays(-1), null);
+        } catch (AuraHandledException e) {
+            invertedRange = true;
+        }
+        Test.stopTest();
+
+        System.assertEquals(2, allProviders.size(), 'Only active providers with Free slots on the chosen dates should be returned');
+        AppointmentBookingController.ProviderAvailabilityView adaView = findProvider(allProviders, ada.Id);
+        AppointmentBookingController.ProviderAvailabilityView benView = findProvider(allProviders, ben.Id);
+        System.assertNotEquals(null, adaView, 'Ada should appear because she has Free slots on the chosen date');
+        System.assertNotEquals(null, benView, 'Ben should appear because he has a Free slot on the chosen date');
+        System.assertEquals(null, findProvider(allProviders, inactive.Id), 'Inactive providers must not appear even if they have Free slots');
+        System.assertEquals('Primary Care', adaView.specialty, 'Specialty should come from the practitioner');
+        System.assertEquals('Clinic A, Clinic B', adaView.locationNames, 'Locations with Free slots should be merged and sorted');
+        System.assertEquals(2, adaView.freeSlotCount, 'Busy slots and other providers must not count toward Ada');
+        System.assertEquals(inRange, adaView.earliestStart, 'Earliest Free slot should be returned');
+        System.assertEquals(laterSameDay, adaView.latestStart, 'Latest Free slot should be returned');
+        System.assertEquals(1, benView.freeSlotCount, 'Ben should count only the in-range Free slot');
+        System.assertEquals(1, clinicBOnly.size(), 'Location filter should hide providers without Free slots there');
+        System.assertEquals(ada.Id, clinicBOnly[0].practitionerId, 'Clinic B filter should return Ada only');
+        System.assertEquals('Clinic B', clinicBOnly[0].locationNames, 'Filtered result should list the selected location');
+        System.assertEquals(0, emptyDay.size(), 'A day with no Free slots should return no providers');
+        System.assertEquals(true, missingDates, 'getAvailableProviders without dates should throw');
+        System.assertEquals(true, invertedRange, 'Inverted provider date range should throw');
     }
 
     @IsTest
@@ -203,12 +312,6 @@ private class AppointmentBookingControllerTest {
         }
         Boolean unknownSlot = threwOnBook(patient.Id, missingSlotId, TYPE_CHECKUP);
         Boolean noProvider = threwOnBook(patient.Id, orphanSlot.Id, TYPE_CHECKUP);
-        Boolean locationsBlank = false;
-        try {
-            AppointmentBookingController.getLocations(null);
-        } catch (AuraHandledException e) {
-            locationsBlank = true;
-        }
         Boolean slotsBlank = false;
         try {
             AppointmentBookingController.getFreeSlots(null, null, SLOT_DAY, SLOT_DAY);
@@ -236,12 +339,23 @@ private class AppointmentBookingControllerTest {
         System.assertEquals(true, unknownPatient, 'Unknown patient Id should throw');
         System.assertEquals(true, unknownSlot, 'Deleted slot should throw');
         System.assertEquals(true, noProvider, 'Slot without a provider should throw');
-        System.assertEquals(true, locationsBlank, 'getLocations without a provider should throw');
         System.assertEquals(true, slotsBlank, 'getFreeSlots without a provider should throw');
         System.assertEquals(true, slotsDates, 'getFreeSlots without dates should throw');
         System.assertEquals(true, slotsRange, 'Inverted slot date range should throw');
         System.assertEquals(0, [SELECT COUNT() FROM Appointment__c], 'Validation failures must not insert appointments');
         System.assertEquals('Free', [SELECT Status__c FROM Slot__c WHERE Id = :freeSlot.Id].Status__c, 'Failed books must leave the Free slot Free');
+    }
+
+    private static AppointmentBookingController.ProviderAvailabilityView findProvider(
+        List<AppointmentBookingController.ProviderAvailabilityView> providers,
+        Id practitionerId
+    ) {
+        for (AppointmentBookingController.ProviderAvailabilityView view : providers) {
+            if (view.practitionerId == practitionerId) {
+                return view;
+            }
+        }
+        return null;
     }
 
     private static Boolean threwOnBook(Id patientId, Id slotId, String appointmentType) {

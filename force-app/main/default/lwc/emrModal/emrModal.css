@@ -12,3 +12,8 @@
 .slds-modal__content {
     max-height: none;
 }
+
+.modal_full .slds-modal__container {
+    width: min(96vw, 90rem);
+    max-width: 90rem;
+}

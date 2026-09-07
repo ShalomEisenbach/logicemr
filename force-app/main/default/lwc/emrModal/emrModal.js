@@ -5,7 +5,7 @@ import { LightningElement, api } from 'lwc';
  *
  * Public API
  * - title (String): header text
- * - size (String, optional): 'small' | 'medium' | 'large' (default medium)
+ * - size (String, optional): 'small' | 'medium' | 'large' | 'full' (default medium)
  * - close event: fired on X, Cancel, Escape, or backdrop click
  * - default slot: modal body
  * - footer slot: action buttons
@@ -28,9 +28,11 @@ export default class EmrModal extends LightningElement {
         const sizeClass =
             size === 'small'
                 ? 'slds-modal_small'
-                : size === 'large'
-                  ? 'slds-modal_large'
-                  : 'slds-modal_medium';
+                : size === 'full'
+                  ? 'slds-modal_large modal_full'
+                  : size === 'large'
+                    ? 'slds-modal_large'
+                    : 'slds-modal_medium';
         return `slds-modal slds-fade-in-open ${sizeClass}`;
     }
 

@@ -23,6 +23,7 @@ public with sharing class EncounterPanelController {
         return [
             SELECT
                 Id,
+                Name,
                 Status__c,
                 Class__c,
                 Start__c,

@@ -11,6 +11,7 @@
  *   sf apex run --file scripts/apex/seedClinicalOrdersAndResults.apex
  *   sf apex run --file scripts/apex/seedNoteTemplates.apex
  *   sf apex run --file scripts/apex/seedClinicalNotesAndProcedures.apex
+ *   sf apex run --file scripts/apex/seedAppointmentsAndScheduling.apex
  *
  * Re-running upserts on Source_System_Id__c refreshes composed Names.
  */

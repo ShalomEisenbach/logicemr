@@ -15,6 +15,10 @@
     align-items: start;
 }
 
+.toolbar_nav-only {
+    grid-template-columns: 1fr;
+}
+
 .toolbar-filters,
 .toolbar-nav {
     display: flex;

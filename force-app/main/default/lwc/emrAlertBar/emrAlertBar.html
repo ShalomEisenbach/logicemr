@@ -1,36 +1,54 @@
 <template>
     <template lwc:if={hasLoaded}>
-        <div class={stripClass} role={stripRole}>
-            <template lwc:if={showIcon}>
-                <lightning-icon
-                    icon-name={iconName}
-                    size="x-small"
-                    variant={iconVariant}
-                    alternative-text="Allergies"
-                    class="slds-m-right_x-small"
-                ></lightning-icon>
-            </template>
+        <div class="summary-stack">
             <template lwc:if={errorMessage}>
-                <span>{errorMessage}</span>
-            </template>
-            <template lwc:elseif={hasAllergies}>
-                <span class="alert-label">Allergies</span>
-                <template for:each={allergyItems} for:item="item">
-                    <span key={item.id} class={item.cssClass} title={item.criticality}>
-                        <c-emr-record-link
-                            record-id={item.id}
-                            object-api-name={item.objectApiName}
-                            label={item.name}
-                            inverse={item.isHigh}
-                        ></c-emr-record-link>
-                        <template lwc:if={item.isHigh}>
-                            <span class="high-flag"> High</span>
-                        </template>
-                    </span>
-                </template>
+                <div class="alert-strip alert-strip_error" role="alert">
+                    <lightning-icon
+                        icon-name="utility:error"
+                        size="x-small"
+                        variant="error"
+                        alternative-text="Error"
+                        class="slds-m-right_x-small"
+                    ></lightning-icon>
+                    <span>{errorMessage}</span>
+                </div>
             </template>
             <template lwc:else>
-                <span class="nka">No known allergies</span>
+                <template for:each={displaySections} for:item="section">
+                    <div key={section.key} class={section.stripClass} role={section.role}>
+                        <template lwc:if={section.showIcon}>
+                            <lightning-icon
+                                icon-name={section.iconName}
+                                size="x-small"
+                                variant={section.iconVariant}
+                                alternative-text={section.label}
+                                class="slds-m-right_x-small"
+                            ></lightning-icon>
+                        </template>
+                        <span class="alert-label">{section.label}</span>
+                        <template lwc:if={section.hasItems}>
+                            <template for:each={section.items} for:item="item">
+                                <span key={item.id} class={item.cssClass} title={item.title}>
+                                    <c-emr-record-link
+                                        record-id={item.id}
+                                        object-api-name={item.objectApiName}
+                                        label={item.name}
+                                        inverse={item.emphasize}
+                                    ></c-emr-record-link>
+                                    <template lwc:if={item.showFlag}>
+                                        <span class="chip-flag"> {item.flag}</span>
+                                    </template>
+                                </span>
+                            </template>
+                            <template lwc:if={section.overflowLabel}>
+                                <span class="overflow">{section.overflowLabel}</span>
+                            </template>
+                        </template>
+                        <template lwc:else>
+                            <span class="empty-copy">{section.emptyLabel}</span>
+                        </template>
+                    </div>
+                </template>
             </template>
         </div>
     </template>

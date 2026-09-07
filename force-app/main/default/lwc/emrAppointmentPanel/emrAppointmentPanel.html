@@ -1,0 +1,66 @@
+<template>
+    <c-emr-chart-panel
+        title="Appointments"
+        view-all-label="View All"
+        has-records={hasAppointments}
+        onviewall={handleViewAll}
+    >
+        <lightning-button
+            slot="actions"
+            label="Schedule"
+            variant="neutral"
+            onclick={handleSchedule}
+        ></lightning-button>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={showScheduleForm}>
+            <c-emr-modal title="Schedule appointment" size="full" onclose={handleCloseSchedule}>
+                <c-emr-appointment-booking onbooked={handleBooked}></c-emr-appointment-booking>
+                <div slot="footer">
+                    <lightning-button
+                        label="Close"
+                        variant="neutral"
+                        onclick={handleCloseSchedule}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={hasAppointments}>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={appointments}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={appointmentCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Open"
+                                variant="neutral"
+                                data-id={row.id}
+                                onclick={handleOpenCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No appointments.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

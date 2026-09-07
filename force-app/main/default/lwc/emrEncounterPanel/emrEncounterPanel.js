@@ -9,6 +9,7 @@ import deleteEncounters from '@salesforce/apex/EncounterPanelController.deleteEn
 import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import ENCOUNTER_OBJECT from '@salesforce/schema/Encounter__c';
 import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
+import NAME_FIELD from '@salesforce/schema/Encounter__c.Name';
 import STATUS_FIELD from '@salesforce/schema/Encounter__c.Status__c';
 import CLASS_FIELD from '@salesforce/schema/Encounter__c.Class__c';
 import START_FIELD from '@salesforce/schema/Encounter__c.Start__c';
@@ -57,9 +58,21 @@ export default class EmrEncounterPanel extends NavigationMixin(LightningElement)
 
     get columns() {
         return [
+            urlColumn('Name', 'recordUrl', 'recordLabel'),
             { label: 'Status', fieldName: STATUS_FIELD.fieldApiName },
             { label: 'Class', fieldName: CLASS_FIELD.fieldApiName },
-            urlColumn('Start', 'recordUrl', 'startLabel'),
+            {
+                label: 'Start',
+                fieldName: START_FIELD.fieldApiName,
+                type: 'date',
+                typeAttributes: {
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }
+            },
             urlColumn('Attending', 'attendingUrl', 'attendingName'),
             {
                 type: 'action',
@@ -93,14 +106,14 @@ export default class EmrEncounterPanel extends NavigationMixin(LightningElement)
                 ...row,
                 attendingName: this.formatAttending(row),
                 attendingId: row[PRACTITIONER_FIELD.fieldApiName],
-                startLabel: start ? this.formatStartLabel(start) : 'Encounter'
+                recordLabel: row[NAME_FIELD.fieldApiName] || (start ? this.formatStartLabel(start) : 'Encounter')
             };
         });
         const withEncounterUrls = await withRecordUrls(
             this,
             withNames,
             ENCOUNTER_OBJECT.objectApiName,
-            { labelField: 'startLabel', labelOutField: 'startLabel' }
+            { labelField: 'recordLabel' }
         );
         this.encounters = await Promise.all(
             withEncounterUrls.map(async (row) => {
@@ -152,8 +165,8 @@ export default class EmrEncounterPanel extends NavigationMixin(LightningElement)
             );
             return {
                 id: row.Id,
-                title: parts[0] || 'Encounter',
-                meta: parts.slice(1).join(' · '),
+                title: row.recordLabel || 'Encounter',
+                meta: parts.join(' · '),
                 objectApiName: ENCOUNTER_OBJECT.objectApiName
             };
         });

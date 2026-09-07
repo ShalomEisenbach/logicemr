@@ -1,21 +1,27 @@
 import { LightningElement, api, wire } from 'lwc';
 import { refreshApex } from '@salesforce/apex';
 import { registerRefreshHandler, unregisterRefreshHandler } from 'lightning/refresh';
-import getActiveAllergies from '@salesforce/apex/AlertBarController.getActiveAllergies';
-import ALLERGY_OBJECT from '@salesforce/schema/AllergyIntolerance__c';
-import DISPLAY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Display__c';
-import CODE_FIELD from '@salesforce/schema/AllergyIntolerance__c.Allergen_Code__c';
-import CRITICALITY_FIELD from '@salesforce/schema/AllergyIntolerance__c.Criticality__c';
+import getClinicalSummary from '@salesforce/apex/AlertBarController.getClinicalSummary';
 
-const CRITICALITY_HIGH = 'High';
+const ICON_BY_TONE = {
+    high: 'utility:error',
+    warning: 'utility:warning',
+    attention: 'utility:info'
+};
+
+const ICON_VARIANT_BY_TONE = {
+    high: 'error',
+    warning: 'warning',
+    attention: 'inverse'
+};
 
 export default class EmrAlertBar extends LightningElement {
     @api recordId;
 
-    allergies = [];
+    sections = [];
     errorMessage;
     hasLoaded = false;
-    wiredAllergiesResult;
+    wiredSummaryResult;
     refreshHandlerId;
 
     connectedCallback() {
@@ -27,89 +33,70 @@ export default class EmrAlertBar extends LightningElement {
     }
 
     refreshHandler() {
-        if (!this.wiredAllergiesResult) {
+        if (!this.wiredSummaryResult) {
             return Promise.resolve();
         }
-        return refreshApex(this.wiredAllergiesResult);
+        return refreshApex(this.wiredSummaryResult);
     }
 
-    @wire(getActiveAllergies, { recordId: '$recordId' })
-    wiredAllergies(result) {
-        this.wiredAllergiesResult = result;
+    @wire(getClinicalSummary, { recordId: '$recordId' })
+    wiredSummary(result) {
+        this.wiredSummaryResult = result;
         if (result.data) {
-            this.allergies = result.data;
+            this.sections = result.data.sections || [];
             this.errorMessage = undefined;
             this.hasLoaded = true;
         } else if (result.error) {
-            this.allergies = [];
+            this.sections = [];
             this.errorMessage = this.reduceError(result.error);
             this.hasLoaded = true;
         }
     }
 
-    get hasAllergies() {
-        return this.allergies.length > 0;
-    }
-
-    get hasHighCriticality() {
-        return this.allergies.some((row) => row[CRITICALITY_FIELD.fieldApiName] === CRITICALITY_HIGH);
-    }
-
-    get allergyObjectApiName() {
-        return ALLERGY_OBJECT.objectApiName;
-    }
-
-    get allergyItems() {
-        return this.allergies.map((row) => {
-            const criticality = row[CRITICALITY_FIELD.fieldApiName];
-            const isHigh = criticality === CRITICALITY_HIGH;
+    get displaySections() {
+        return (this.sections || []).map((section) => {
+            const items = section.items || [];
+            const overflow = Math.max(0, (section.totalCount || 0) - items.length);
             return {
-                id: row.Id,
-                name: row[DISPLAY_FIELD.fieldApiName] || row[CODE_FIELD.fieldApiName] || 'Allergy',
-                criticality,
-                isHigh,
-                objectApiName: ALLERGY_OBJECT.objectApiName,
-                cssClass: isHigh ? 'allergy-chip allergy-chip_high' : 'allergy-chip'
+                key: section.key,
+                label: section.label,
+                emptyLabel: section.emptyLabel,
+                hasItems: items.length > 0,
+                overflowLabel: overflow > 0 ? `+${overflow} more` : '',
+                stripClass: this.stripClassFor(section.tone),
+                role: section.tone === 'high' ? 'alert' : 'status',
+                iconName: ICON_BY_TONE[section.tone] || '',
+                iconVariant: ICON_VARIANT_BY_TONE[section.tone] || 'inverse',
+                showIcon: Boolean(ICON_BY_TONE[section.tone]),
+                items: items.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    objectApiName: item.objectApiName,
+                    flag: item.flag,
+                    title: item.title || item.flag || item.name,
+                    emphasize: item.emphasize === true,
+                    showFlag: Boolean(item.flag),
+                    cssClass: item.emphasize ? 'summary-chip summary-chip_emphasis' : 'summary-chip'
+                }))
             };
         });
     }
 
-    get stripClass() {
-        if (this.errorMessage) {
-            return 'alert-strip alert-strip_error';
+    stripClassFor(tone) {
+        switch (tone) {
+            case 'high':
+                return 'alert-strip alert-strip_high';
+            case 'warning':
+                return 'alert-strip alert-strip_warning';
+            case 'success':
+                return 'alert-strip alert-strip_success';
+            case 'attention':
+                return 'alert-strip alert-strip_attention';
+            case 'info':
+                return 'alert-strip alert-strip_info';
+            default:
+                return 'alert-strip alert-strip_empty';
         }
-        if (!this.hasAllergies) {
-            return 'alert-strip alert-strip_empty';
-        }
-        if (this.hasHighCriticality) {
-            return 'alert-strip alert-strip_high';
-        }
-        return 'alert-strip alert-strip_warning';
-    }
-
-    get stripRole() {
-        return this.hasHighCriticality || this.errorMessage ? 'alert' : 'status';
-    }
-
-    get iconName() {
-        if (this.errorMessage || this.hasHighCriticality) {
-            return 'utility:error';
-        }
-        if (this.hasAllergies) {
-            return 'utility:warning';
-        }
-        return '';
-    }
-
-    get iconVariant() {
-        if (this.errorMessage || this.hasHighCriticality) {
-            return 'error';
-        }
-        return 'warning';
-    }
-
-    get showIcon() {
-        return !!this.iconName;
     }
 
     reduceError(error) {
@@ -119,6 +106,6 @@ export default class EmrAlertBar extends LightningElement {
         if (Array.isArray(error?.body)) {
             return error.body.map((item) => item.message).join(', ');
         }
-        return error?.message || 'Unable to load allergies.';
+        return error?.message || 'Unable to load clinical summary.';
     }
 }
