@@ -1,0 +1,172 @@
+<template>
+    <c-emr-chart-panel title="Coverage" view-all-label="View All" has-records={hasCoverages} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={showForm}>
+            <c-emr-modal title={formTitle} onclose={handleCloseForm}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <lightning-record-picker
+                    label="Payer"
+                    placeholder="Search payers"
+                    object-api-name={payerObjectApiName}
+                    value={payerId}
+                    filter={payerFilter}
+                    required
+                    onchange={handlePayerChange}
+                ></lightning-record-picker>
+                <lightning-input
+                    name="memberId"
+                    label="Member ID"
+                    value={memberId}
+                    maxlength="50"
+                    class="slds-m-top_small"
+                    onchange={handleMemberChange}
+                ></lightning-input>
+                <lightning-input
+                    name="groupNumber"
+                    label="Group number"
+                    value={groupNumber}
+                    maxlength="50"
+                    class="slds-m-top_small"
+                    onchange={handleGroupChange}
+                ></lightning-input>
+                <lightning-input
+                    name="planName"
+                    label="Plan name"
+                    value={planName}
+                    maxlength="120"
+                    class="slds-m-top_small"
+                    onchange={handlePlanChange}
+                ></lightning-input>
+                <lightning-combobox
+                    name="coverageType"
+                    label="Type"
+                    value={coverageType}
+                    options={typeOptions}
+                    class="slds-m-top_small"
+                    onchange={handleTypeChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="priority"
+                    label="Priority"
+                    value={priority}
+                    options={priorityOptions}
+                    class="slds-m-top_small"
+                    onchange={handlePriorityChange}
+                ></lightning-combobox>
+                <lightning-combobox
+                    name="relationship"
+                    label="Relationship to subscriber"
+                    value={relationshipToSubscriber}
+                    options={relationshipOptions}
+                    class="slds-m-top_small"
+                    onchange={handleRelationshipChange}
+                ></lightning-combobox>
+                <lightning-input
+                    name="subscriberName"
+                    label="Subscriber name"
+                    value={subscriberName}
+                    maxlength="120"
+                    class="slds-m-top_small"
+                    onchange={handleSubscriberChange}
+                ></lightning-input>
+                <lightning-input
+                    type="date"
+                    name="effectiveStart"
+                    label="Effective start"
+                    value={effectiveStart}
+                    class="slds-m-top_small"
+                    onchange={handleStartChange}
+                ></lightning-input>
+                <lightning-input
+                    type="date"
+                    name="effectiveEnd"
+                    label="Effective end"
+                    value={effectiveEnd}
+                    class="slds-m-top_small"
+                    onchange={handleEndChange}
+                ></lightning-input>
+                <lightning-combobox
+                    name="status"
+                    label="Status"
+                    value={status}
+                    options={statusOptions}
+                    class="slds-m-top_small"
+                    onchange={handleStatusChange}
+                ></lightning-combobox>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseForm}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save coverage"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleSave}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={hasCoverages}>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={coverages}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={coverageCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <template lwc:if={row.detail}>
+                            <p class="stack-detail">{row.detail}</p>
+                        </template>
+                        <div class="stack-actions">
+                            <lightning-button
+                                label="Edit"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleEditCard}
+                            ></lightning-button>
+                            <template lwc:if={row.canInactivate}>
+                                <lightning-button
+                                    label="Inactivate"
+                                    variant="neutral"
+                                    data-id={row.id}
+                                    disabled={isSaving}
+                                    onclick={handleInactivateCard}
+                                ></lightning-button>
+                            </template>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No coverage on file.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

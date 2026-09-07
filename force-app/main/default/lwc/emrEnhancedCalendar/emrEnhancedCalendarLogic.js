@@ -67,6 +67,9 @@ export function blockFromSlot(slot) {
         patientName: appointment.patientName,
         encounterId: appointment.encounterId,
         encounterName: appointment.encounterName,
+        practitionerId: slot.practitionerId,
+        practitionerName: slot.practitionerName,
+        locationName: slot.locationName,
         pending: false,
         temporary: false
     };
@@ -106,6 +109,9 @@ export function applyOptimisticBook(state, payload) {
         patientName: payload.patientName,
         encounterId: null,
         encounterName: null,
+        practitionerId: slot.practitionerId,
+        practitionerName: slot.practitionerName,
+        locationName: slot.locationName,
         pending: true,
         temporary: true
     });
@@ -165,6 +171,9 @@ export function applyOptimisticMove(state, payload) {
     block.slotId = target.id;
     block.startTime = target.startTime;
     block.endTime = target.endTime;
+    block.practitionerId = target.practitionerId;
+    block.practitionerName = target.practitionerName;
+    block.locationName = target.locationName;
     block.pending = true;
     return next;
 }
@@ -303,6 +312,36 @@ export function findFreeSlotAt(slots, dayKey, minutes, timeZone) {
 
 export function findSlotById(slots, slotId) {
     return (slots || []).find((slot) => slot.id === slotId);
+}
+
+export function assignLanes(items) {
+    const sorted = [...(items || [])].sort((left, right) => {
+        const startDelta = new Date(left.startTime).getTime() - new Date(right.startTime).getTime();
+        if (startDelta !== 0) {
+            return startDelta;
+        }
+        return String(left.id || '').localeCompare(String(right.id || ''));
+    });
+    const laneEnds = [];
+    const lanes = new Map();
+    sorted.forEach((item) => {
+        const start = new Date(item.startTime).getTime();
+        let lane = laneEnds.findIndex((end) => end <= start);
+        if (lane === -1) {
+            lane = laneEnds.length;
+            laneEnds.push(0);
+        }
+        laneEnds[lane] = new Date(item.endTime).getTime();
+        lanes.set(item.id, lane);
+    });
+    return { lanes, laneCount: Math.max(1, laneEnds.length) };
+}
+
+export function laneInsetStyle(lane, laneCount) {
+    const lanes = Math.max(1, laneCount || 1);
+    const widthPct = 100 / lanes;
+    const index = lane || 0;
+    return `left:calc(${index * widthPct}% + 2px);width:calc(${widthPct}% - 4px);right:auto;`;
 }
 
 export function canDragBlock(block) {

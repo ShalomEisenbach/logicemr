@@ -54,6 +54,26 @@
                                 data-id={row.id}
                                 onclick={handleOpenCard}
                             ></lightning-button>
+                            <lightning-button
+                                label="Confirm"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-type="Confirmation"
+                                onclick={handleNotifyCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Remind"
+                                variant="neutral"
+                                data-id={row.id}
+                                data-type="Reminder"
+                                onclick={handleNotifyCard}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Print"
+                                variant="neutral"
+                                data-id={row.id}
+                                onclick={handlePrintCard}
+                            ></lightning-button>
                         </div>
                     </article>
                 </template>
@@ -61,6 +81,27 @@
         </template>
         <template lwc:elseif={showEmpty}>
             <p class="slds-text-body_regular">No appointments.</p>
+        </template>
+        <template lwc:if={showNotifyModal}>
+            <c-emr-modal title={notifyModalTitle} size="small" onclose={handleCloseNotify}>
+                <c-emr-appointment-notify
+                    appointment-id={notifyAppointmentId}
+                    message-type={notifyMessageType}
+                    onsent={handleNotifySent}
+                    oncancel={handleCloseNotify}
+                ></c-emr-appointment-notify>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={showPrintModal}>
+            <c-emr-modal title="Print appointment" size="medium" onclose={handleClosePrint}>
+                <c-emr-appointment-print
+                    appointment-id={printAppointmentId}
+                    onprinted={handleClosePrint}
+                ></c-emr-appointment-print>
+                <div slot="footer">
+                    <lightning-button label="Close" onclick={handleClosePrint}></lightning-button>
+                </div>
+            </c-emr-modal>
         </template>
     </c-emr-chart-panel>
 </template>

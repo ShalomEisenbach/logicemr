@@ -32,6 +32,8 @@ public with sharing class AlertBarController {
         @AuraEnabled
         public String tone;
         @AuraEnabled
+        public String variant;
+        @AuraEnabled
         public Integer totalCount;
         @AuraEnabled
         public List<SummaryItem> items;
@@ -48,6 +50,12 @@ public with sharing class AlertBarController {
         public String flag;
         @AuraEnabled
         public String title;
+        @AuraEnabled
+        public String value;
+        @AuraEnabled
+        public String unit;
+        @AuraEnabled
+        public String detail;
         @AuraEnabled
         public Boolean emphasize;
     }
@@ -80,13 +88,13 @@ public with sharing class AlertBarController {
         if (patientId == null) {
             return new List<AllergyIntolerance__c>();
         }
-        return [
+        return sortAllergies([
             SELECT Id, Allergen_Display__c, Allergen_Code__c, Criticality__c, Clinical_Status__c
             FROM AllergyIntolerance__c
             WHERE Patient__c = :patientId AND Clinical_Status__c = :STATUS_ACTIVE
-            ORDER BY Criticality__c ASC NULLS LAST, Allergen_Display__c ASC NULLS LAST
+            ORDER BY Allergen_Display__c ASC NULLS LAST
             LIMIT :MAX_RESULTS
-        ];
+        ]);
     }
 
     @AuraEnabled(cacheable=true)
@@ -133,13 +141,13 @@ public with sharing class AlertBarController {
     }
 
     private static List<AllergyIntolerance__c> queryAllergies(Id patientId) {
-        return [
+        return sortAllergies([
             SELECT Id, Allergen_Display__c, Allergen_Code__c, Criticality__c
             FROM AllergyIntolerance__c
             WHERE Patient__c = :patientId AND Clinical_Status__c = :STATUS_ACTIVE
-            ORDER BY Criticality__c ASC NULLS LAST, Allergen_Display__c ASC NULLS LAST
+            ORDER BY Allergen_Display__c ASC NULLS LAST
             LIMIT :MAX_QUERY
-        ];
+        ]);
     }
 
     private static List<MedicationRequest__c> queryMedicationOrders(Id patientId) {
@@ -215,7 +223,14 @@ public with sharing class AlertBarController {
                 )
             );
         }
-        return newSection('problems', 'Problems', 'No active problems', items.isEmpty() ? 'empty' : 'info', items);
+        return newSection(
+            'problems',
+            'Problems',
+            'No active problems',
+            items.isEmpty() ? 'empty' : 'info',
+            'chips',
+            items
+        );
     }
 
     private static SummarySection buildAllergies(List<AllergyIntolerance__c> rows) {
@@ -242,7 +257,7 @@ public with sharing class AlertBarController {
         } else if (!items.isEmpty()) {
             tone = 'warning';
         }
-        return newSection('allergies', 'Allergies', 'No known allergies', tone, items);
+        return newSection('allergies', 'Allergies', 'No known allergies', tone, 'chips', items);
     }
 
     private static SummarySection buildMedications(
@@ -253,34 +268,35 @@ public with sharing class AlertBarController {
         String orderObject = objectName(MedicationRequest__c.SObjectType);
         String statementObject = objectName(MedicationStatement__c.SObjectType);
         for (MedicationRequest__c row : orders) {
-            items.add(
-                newItem(
-                    row.Id,
-                    firstNonBlank(row.Medication_Display__c, row.Medication_Code__c, 'Medication'),
-                    orderObject,
-                    null,
-                    firstNonBlank(row.Dosage_Text__c, row.Medication_Display__c),
-                    false
-                )
+            SummaryItem item = newItem(
+                row.Id,
+                firstNonBlank(row.Medication_Display__c, row.Medication_Code__c, 'Medication'),
+                orderObject,
+                null,
+                firstNonBlank(row.Dosage_Text__c, row.Medication_Display__c),
+                false
             );
+            item.detail = row.Dosage_Text__c;
+            items.add(item);
         }
         for (MedicationStatement__c row : reported) {
-            items.add(
-                newItem(
-                    row.Id,
-                    firstNonBlank(row.Medication_Display__c, row.Medication_Code__c, 'Medication'),
-                    statementObject,
-                    'Reported',
-                    firstNonBlank(row.Dosage_Text__c, row.Source__c, row.Medication_Display__c),
-                    false
-                )
+            SummaryItem item = newItem(
+                row.Id,
+                firstNonBlank(row.Medication_Display__c, row.Medication_Code__c, 'Medication'),
+                statementObject,
+                'Reported',
+                firstNonBlank(row.Dosage_Text__c, row.Source__c, row.Medication_Display__c),
+                false
             );
+            item.detail = row.Dosage_Text__c;
+            items.add(item);
         }
         return newSection(
             'medications',
             'Medications',
             'No active medications',
             items.isEmpty() ? 'empty' : 'success',
+            'list',
             items
         );
     }
@@ -307,16 +323,17 @@ public with sharing class AlertBarController {
             Observation__c row = rankedRow.row;
             Boolean isCritical = row.Interpretation__c == 'Critical';
             hasCritical = hasCritical || isCritical;
-            items.add(
-                newItem(
-                    row.Id,
-                    formatObservationName(row),
-                    objectApiName,
-                    row.Interpretation__c,
-                    row.Interpretation__c,
-                    isCritical
-                )
+            SummaryItem item = newItem(
+                row.Id,
+                metricLabel(row),
+                objectApiName,
+                row.Interpretation__c,
+                firstNonBlank(row.Observation_Display__c, row.Observation_Code__c, row.Interpretation__c),
+                isCritical
             );
+            item.value = formatObservationValue(row);
+            item.unit = displayUnit(row.Value_Unit__c);
+            items.add(item);
         }
         String tone = 'empty';
         if (hasCritical) {
@@ -324,7 +341,7 @@ public with sharing class AlertBarController {
         } else if (!items.isEmpty()) {
             tone = 'warning';
         }
-        return newSection('flowsheet', 'Flowsheet', 'No abnormal findings', tone, items);
+        return newSection('flowsheet', 'Flowsheet', 'No abnormal findings', tone, 'metrics', items);
     }
 
     private static SummarySection buildResults(List<DiagnosticReport__c> rows) {
@@ -351,7 +368,7 @@ public with sharing class AlertBarController {
         } else if (!items.isEmpty()) {
             tone = 'info';
         }
-        return newSection('results', 'Results', 'No recent results', tone, items);
+        return newSection('results', 'Results', 'No recent results', tone, 'chips', items);
     }
 
     private static SummarySection buildProcedures(List<Procedure__c> rows) {
@@ -385,7 +402,7 @@ public with sharing class AlertBarController {
         } else if (!items.isEmpty()) {
             tone = 'info';
         }
-        return newSection('procedures', 'Procedures', 'No procedures', tone, items);
+        return newSection('procedures', 'Procedures', 'No procedures', tone, 'chips', items);
     }
 
     private static SummarySection newSection(
@@ -393,6 +410,7 @@ public with sharing class AlertBarController {
         String label,
         String emptyLabel,
         String tone,
+        String variant,
         List<SummaryItem> items
     ) {
         SummarySection section = new SummarySection();
@@ -400,6 +418,7 @@ public with sharing class AlertBarController {
         section.label = label;
         section.emptyLabel = emptyLabel;
         section.tone = tone;
+        section.variant = variant;
         section.totalCount = items.size();
         section.items = new List<SummaryItem>();
         Integer limitSize = Math.min(items.size(), MAX_CHIPS);
@@ -427,16 +446,89 @@ public with sharing class AlertBarController {
         return item;
     }
 
-    private static String formatObservationName(Observation__c row) {
-        String display = firstNonBlank(row.Observation_Display__c, row.Observation_Code__c, 'Observation');
-        String value = formatObservationValue(row);
-        if (String.isBlank(value)) {
+    private static String metricLabel(Observation__c row) {
+        String mapped = metricLabelForCode(row.Observation_Code__c);
+        if (String.isNotBlank(mapped)) {
+            return mapped;
+        }
+        return abbreviateDisplay(firstNonBlank(row.Observation_Display__c, row.Observation_Code__c, 'Obs'));
+    }
+
+    private static String metricLabelForCode(String code) {
+        if (code == '8480-6') {
+            return 'SBP';
+        }
+        if (code == '8462-4') {
+            return 'DBP';
+        }
+        if (code == '8867-4') {
+            return 'HR';
+        }
+        if (code == '9279-1') {
+            return 'RR';
+        }
+        if (code == '8310-5') {
+            return 'Temp';
+        }
+        if (code == '59408-5') {
+            return 'SpO2';
+        }
+        if (code == '29463-7') {
+            return 'Wt';
+        }
+        if (code == '4548-4') {
+            return 'A1c';
+        }
+        if (code == '2345-7' || code == '2339-0' || code == '1558-6') {
+            return 'Glu';
+        }
+        if (code == '2089-1' || code == '18262-6') {
+            return 'LDL';
+        }
+        if (code == '2085-9') {
+            return 'HDL';
+        }
+        if (code == '2093-3') {
+            return 'Chol';
+        }
+        if (code == '2571-8') {
+            return 'Trig';
+        }
+        if (code == '2823-3') {
+            return 'K';
+        }
+        if (code == '718-7') {
+            return 'Hgb';
+        }
+        return null;
+    }
+
+    private static String abbreviateDisplay(String display) {
+        if (String.isBlank(display) || display.length() <= 10) {
             return display;
         }
-        if (String.isBlank(row.Value_Unit__c)) {
-            return display + ' ' + value;
+        Set<String> skip = new Set<String>{ 'of', 'the', 'and', 'in', 'a' };
+        List<String> parts = display.split('\\s+');
+        if (parts.size() >= 2) {
+            String initials = '';
+            for (String part : parts) {
+                if (String.isBlank(part) || skip.contains(part.toLowerCase())) {
+                    continue;
+                }
+                initials += part.substring(0, 1).toUpperCase();
+            }
+            if (initials.length() >= 2 && initials.length() <= 5) {
+                return initials;
+            }
         }
-        return display + ' ' + value + ' ' + row.Value_Unit__c;
+        return display;
+    }
+
+    private static String displayUnit(String unit) {
+        if (unit == 'Cel') {
+            return '°C';
+        }
+        return unit;
     }
 
     private static String formatObservationValue(Observation__c row) {
@@ -444,6 +536,20 @@ public with sharing class AlertBarController {
             return row.Value_Quantity__c.stripTrailingZeros().toPlainString();
         }
         return row.Value_String__c;
+    }
+
+    private static List<AllergyIntolerance__c> sortAllergies(List<AllergyIntolerance__c> rows) {
+        List<AllergyIntolerance__c> high = new List<AllergyIntolerance__c>();
+        List<AllergyIntolerance__c> other = new List<AllergyIntolerance__c>();
+        for (AllergyIntolerance__c row : rows) {
+            if (row.Criticality__c == CRITICALITY_HIGH) {
+                high.add(row);
+            } else {
+                other.add(row);
+            }
+        }
+        high.addAll(other);
+        return high;
     }
 
     private static String objectName(Schema.SObjectType sType) {

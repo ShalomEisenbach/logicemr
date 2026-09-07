@@ -1,6 +1,6 @@
 <template>
     <lightning-card title="Enhanced calendar" icon-name="standard:event">
-        <div class="calendar-shell slds-p-horizontal_medium slds-p-bottom_medium">
+        <div class={shellClass}>
             <div class={toolbarClass}>
                 <template lwc:if={showFilters}>
                     <div class="toolbar-filters">
@@ -69,18 +69,53 @@
                 </div>
             </div>
 
+            <template lwc:if={showNextAvailability}>
+                <div class="next-availability">
+                    <h3 class="next-availability-title">Next availability</h3>
+                    <ul class="next-list">
+                        <template for:each={nextAvailabilityRows} for:item="row">
+                            <li key={row.key}>
+                                <button
+                                    type="button"
+                                    class={row.className}
+                                    data-practitioner-id={row.practitionerId}
+                                    data-day-key={row.dayKey}
+                                    onclick={handleNextAvailabilityClick}
+                                >
+                                    <span class="next-name">{row.practitionerName}</span>
+                                    <span class="next-when">{row.when}</span>
+                                    <template lwc:if={row.meta}>
+                                        <span class="next-meta">{row.meta}</span>
+                                    </template>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+
             <template lwc:if={showManageAvailability}>
                 <div class="manage-row">
                     <lightning-input
                         type="toggle"
                         label={manageToggleLabel}
                         checked={manageAvailability}
+                        disabled={isManageDisabled}
                         onchange={handleManageToggle}
                     ></lightning-input>
-                    <template lwc:if={manageAvailability}>
-                        <p class="manage-hint" role="status">
-                            Click and drag across empty time to paint Free slots.
-                        </p>
+                    <template lwc:if={showPaintMode}>
+                        <lightning-radio-group
+                            name="paintMode"
+                            label="Paint mode"
+                            options={paintModeOptions}
+                            value={paintMode}
+                            type="button"
+                            variant="label-hidden"
+                            onchange={handlePaintModeChange}
+                        ></lightning-radio-group>
+                    </template>
+                    <template lwc:if={manageHint}>
+                        <p class="manage-hint" role="status">{manageHint}</p>
                     </template>
                 </div>
             </template>
@@ -94,20 +129,16 @@
 
             <template lwc:if={hasMoreSlots}>
                 <p class="slds-text-body_small slds-m-top_small" role="status">
-                    Showing the first 400 slots. Narrow the provider, location, or date range to see more.
+                    Showing the first 2000 slots. Narrow the provider, location, or date range to see more.
                 </p>
             </template>
 
-            <template lwc:if={showEmptyFilter}>
+            <template lwc:if={showEmptySlots}>
                 <div class="empty-state">
-                    <p>Select a provider or a location to load the calendar.</p>
-                </div>
-            </template>
-            <template lwc:elseif={showEmptySlots}>
-                <div class="empty-state">
-                    <p>No availability for this provider or location in the selected range.</p>
+                    <p>No availability in the selected range.</p>
                     <p class="empty-state-hint">
-                        Generate slots from schedule management, or turn on Manage availability to paint Free slots.
+                        Set weekly hours in Schedule management, or select a provider and turn on Manage availability to
+                        paint Free or Blocked slots.
                     </p>
                 </div>
             </template>
@@ -151,7 +182,11 @@
                                             title={slot.title}
                                             data-slot-id={slot.id}
                                             onclick={handleSlotClick}
-                                        ></button>
+                                        >
+                                            <template lwc:if={slot.label}>
+                                                <span class="slot-label">{slot.label}</span>
+                                            </template>
+                                        </button>
                                     </template>
                                     <template for:each={day.blocks} for:item="block">
                                         <div
@@ -170,7 +205,7 @@
                                         </div>
                                     </template>
                                     <template lwc:if={day.paintStyle}>
-                                        <div class="paint-preview" style={day.paintStyle}></div>
+                                        <div class={day.paintClass} style={day.paintStyle}></div>
                                     </template>
                                     <template lwc:if={day.showNow}>
                                         <div class="now-line" style={day.nowStyle} aria-hidden="true"></div>
@@ -257,6 +292,25 @@
                                 onclick={handleArrive}
                             ></lightning-button>
                         </template>
+                        <template lwc:if={canNotifySelected}>
+                            <lightning-button
+                                label="Send Confirmation"
+                                disabled={isBusy}
+                                onclick={handleSendConfirmation}
+                            ></lightning-button>
+                            <lightning-button
+                                label="Send Reminder"
+                                disabled={isBusy}
+                                onclick={handleSendReminder}
+                            ></lightning-button>
+                        </template>
+                        <template lwc:if={canPrintSelected}>
+                            <lightning-button
+                                label="Print"
+                                disabled={isBusy}
+                                onclick={handlePrintAppointment}
+                            ></lightning-button>
+                        </template>
                         <template lwc:if={canCancelSelected}>
                             <lightning-button
                                 label="Cancel"
@@ -281,6 +335,27 @@
                         <lightning-button label="Close" onclick={handleCloseActions}></lightning-button>
                     </div>
                 </div>
+            </template>
+            <template lwc:if={showNotifyModal}>
+                <c-emr-modal title={notifyModalTitle} size="small" onclose={handleCloseNotify}>
+                    <c-emr-appointment-notify
+                        appointment-id={notifyAppointmentId}
+                        message-type={notifyMessageType}
+                        onsent={handleNotifySent}
+                        oncancel={handleCloseNotify}
+                    ></c-emr-appointment-notify>
+                </c-emr-modal>
+            </template>
+            <template lwc:if={showPrintModal}>
+                <c-emr-modal title="Print appointment" size="medium" onclose={handleClosePrint}>
+                    <c-emr-appointment-print
+                        appointment-id={printAppointmentId}
+                        onprinted={handleClosePrint}
+                    ></c-emr-appointment-print>
+                    <div slot="footer">
+                        <lightning-button label="Close" onclick={handleClosePrint}></lightning-button>
+                    </div>
+                </c-emr-modal>
             </template>
         </div>
     </lightning-card>

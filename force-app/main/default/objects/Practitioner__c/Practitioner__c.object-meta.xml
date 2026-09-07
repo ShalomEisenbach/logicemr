@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>LogicEMR Practitioner Schedule</comment>
+        <content>Practitioner_Schedule</content>
+        <formFactor>Large</formFactor>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>LogicEMR Practitioner Schedule</comment>
+        <content>Practitioner_Schedule</content>
+        <formFactor>Small</formFactor>
+        <type>Flexipage</type>
+    </actionOverrides>
     <deploymentStatus>Deployed</deploymentStatus>
     <externalSharingModel>Read</externalSharingModel>
     <label>Practitioner</label>

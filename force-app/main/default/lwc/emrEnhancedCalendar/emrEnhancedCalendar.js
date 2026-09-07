@@ -3,13 +3,17 @@ import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getLocations from '@salesforce/apex/AppointmentCalendarController.getLocations';
 import getGrid from '@salesforce/apex/AppointmentCalendarController.getGrid';
+import getGridForProviders from '@salesforce/apex/AppointmentCalendarController.getGridForProviders';
 import getActiveSchedules from '@salesforce/apex/AppointmentCalendarController.getActiveSchedules';
+import getActiveSchedulesForProviders from '@salesforce/apex/AppointmentCalendarController.getActiveSchedulesForProviders';
+import getNextAvailability from '@salesforce/apex/AppointmentCalendarController.getNextAvailability';
 import bookAppointment from '@salesforce/apex/AppointmentCalendarController.bookAppointment';
 import rescheduleAppointment from '@salesforce/apex/AppointmentCalendarController.rescheduleAppointment';
 import cancelAppointment from '@salesforce/apex/AppointmentCalendarController.cancelAppointment';
 import markNoShow from '@salesforce/apex/AppointmentCalendarController.markNoShow';
 import arriveAppointment from '@salesforce/apex/AppointmentCalendarController.arriveAppointment';
 import createAdHocSlots from '@salesforce/apex/AppointmentCalendarController.createAdHocSlots';
+import toggleSlotStatus from '@salesforce/apex/ScheduleManagementController.toggleSlotStatus';
 import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
 import ENCOUNTER_OBJECT from '@salesforce/schema/Encounter__c';
@@ -42,10 +46,12 @@ import {
     datetimeOnDay,
     emptyState,
     findFreeSlotAt,
+    assignLanes,
     formatClock,
     formatDayHeader,
     formatRangeLabel,
     isInsideOpenPopover,
+    laneInsetStyle,
     minutesFromOffset,
     nowLineTop,
     parseIsoDate,
@@ -69,12 +75,16 @@ import {
 const ANY_LOCATION = 'any';
 const VIEW_DAY = 'day';
 const VIEW_WEEK = 'week';
+const PAINT_FREE = 'Free';
+const PAINT_BLOCKED = 'Blocked';
 
 export default class EmrEnhancedCalendar extends NavigationMixin(LightningElement) {
-    practitionerId;
+    @api practitionerId;
+    practitionerIds = [];
     locationKey = ANY_LOCATION;
     locationOptions = [{ label: 'Any location', value: ANY_LOCATION }];
     schedules = [];
+    nextAvailability = [];
     viewMode = VIEW_WEEK;
     selectedDate;
     slotDurationMinutes = DEFAULT_DURATION;
@@ -84,17 +94,24 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     isLoading = false;
     isWorking = false;
     manageAvailability = false;
+    paintMode = PAINT_FREE;
     hideFilters = false;
     hideManageAvailability = false;
     lockedPatientId;
-    embedded = false;
+    @api embedded = false;
     state = emptyState();
+    _gridRequestId = 0;
 
     bookingPopover;
     bookingPatientId;
     bookingType;
     bookingReason = '';
     actionPopover;
+    showNotifyModal = false;
+    notifyAppointmentId;
+    notifyMessageType = 'Confirmation';
+    showPrintModal = false;
+    printAppointmentId;
 
     drag;
     paint;
@@ -111,6 +128,10 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         { label: 'Routine', value: 'Routine' },
         { label: 'Walk-in', value: 'Walk-in' }
     ];
+    paintModeOptions = [
+        { label: 'Paint Free', value: PAINT_FREE },
+        { label: 'Paint Blocked', value: PAINT_BLOCKED }
+    ];
 
     connectedCallback() {
         this.selectedDate = civilDateKey(new Date(), TIME_ZONE);
@@ -118,6 +139,12 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this._onPointerDown = (event) => this.handleDocumentPointer(event);
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('pointerdown', this._onPointerDown);
+        if (this.embedded) {
+            return;
+        }
+        this.loadLocations();
+        this.loadGrid();
+        this.loadNextAvailability();
     }
 
     disconnectedCallback() {
@@ -142,7 +169,38 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     }
 
     get canLoadGrid() {
-        return !!(this.practitionerId || (this.locationKey && this.locationKey !== ANY_LOCATION));
+        return !!this.selectedDate;
+    }
+
+    get resolvedPractitionerIds() {
+        if (this.practitionerIds && this.practitionerIds.length) {
+            return this.practitionerIds;
+        }
+        return this.practitionerId ? [this.practitionerId] : [];
+    }
+
+    get canPaintAvailability() {
+        return this.resolvedPractitionerIds.length === 1;
+    }
+
+    get isManageDisabled() {
+        return this.isBusy || !this.canPaintAvailability;
+    }
+
+    get manageHint() {
+        if (!this.canPaintAvailability) {
+            return 'Select a provider to paint availability or mark time unavailable.';
+        }
+        if (this.manageAvailability) {
+            return this.paintMode === PAINT_BLOCKED
+                ? 'Drag empty time to paint Blocked slots, or click Free/Blocked slots to toggle.'
+                : 'Drag empty time to paint Free slots, or click Free/Blocked slots to toggle.';
+        }
+        return '';
+    }
+
+    get showPaintMode() {
+        return this.manageAvailability && this.canPaintAvailability;
     }
 
     get rangeLabel() {
@@ -153,16 +211,12 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         return this.state.slots.length > 0;
     }
 
-    get showEmptyFilter() {
-        return !this.canLoadGrid && !this.isLoading;
-    }
-
     get showEmptySlots() {
         return this.canLoadGrid && !this.isLoading && !this.hasSlots && !this.manageAvailability && !this.errorMessage;
     }
 
     get showGrid() {
-        return this.canLoadGrid && (this.hasSlots || this.manageAvailability) && !this.showEmptyFilter;
+        return this.canLoadGrid && (this.hasSlots || this.manageAvailability);
     }
 
     get gridClass() {
@@ -173,8 +227,35 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         return this.hideFilters ? 'toolbar toolbar_nav-only' : 'toolbar';
     }
 
+    get shellClass() {
+        return this.embedded
+            ? 'calendar-shell calendar-shell_embedded slds-p-horizontal_medium slds-p-bottom_medium'
+            : 'calendar-shell slds-p-horizontal_medium slds-p-bottom_medium';
+    }
+
     get showFilters() {
         return !this.hideFilters;
+    }
+
+    get showNextAvailability() {
+        return this.showFilters && this.nextAvailabilityRows.length > 0;
+    }
+
+    get nextAvailabilityRows() {
+        return (this.nextAvailability || []).map((row) => ({
+            key: row.practitionerId,
+            practitionerId: row.practitionerId,
+            practitionerName: row.practitionerName || 'Provider',
+            specialty: row.specialty || '',
+            locationName: row.nextStart ? row.locationName || '' : '',
+            when: row.nextStart ? formatDateTime(row.nextStart, TIME_ZONE) : 'No upcoming openings',
+            meta: [row.specialty, row.nextStart ? row.locationName : ''].filter(Boolean).join(' · '),
+            dayKey: row.nextStart ? civilDateKey(row.nextStart, TIME_ZONE) : '',
+            className:
+                this.practitionerId && this.practitionerId === row.practitionerId
+                    ? 'next-row next-row_selected'
+                    : 'next-row'
+        }));
     }
 
     get showManageAvailability() {
@@ -192,7 +273,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     /**
      * Opens the calendar for guided booking (used by emrAppointmentBooking).
      * Locks the chosen provider/location/date and optional patient.
-     * @param {object} context practitionerId, locationKey, selectedDate, patientId
+     * @param {object} context practitionerIds, practitionerId, locationKey, selectedDate, patientId
      */
     @api
     beginBooking(context) {
@@ -203,12 +284,17 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.hideFilters = true;
         this.hideManageAvailability = true;
         this.manageAvailability = false;
-        this.practitionerId = context.practitionerId;
+        this.practitionerIds = (context.practitionerIds || []).filter(Boolean);
+        this.practitionerId = this.practitionerIds[0] || context.practitionerId;
+        if (this.practitionerId && !this.practitionerIds.includes(this.practitionerId)) {
+            this.practitionerIds = [this.practitionerId, ...this.practitionerIds];
+        }
         this.locationKey = context.locationKey || ANY_LOCATION;
         this.selectedDate = context.selectedDate || civilDateKey(new Date(), TIME_ZONE);
         this.viewMode = context.viewMode === VIEW_DAY ? VIEW_DAY : VIEW_WEEK;
         this.lockedPatientId = context.patientId;
         this.bookingPatientId = context.patientId;
+        this.nextAvailability = [];
         this.closePopovers();
         this.loadLocations();
         this.loadGrid();
@@ -240,6 +326,19 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     get canOpenChart() {
         return !!(this.selectedAction?.encounterId || this.selectedAction?.patientId);
+    }
+
+    get canNotifySelected() {
+        const status = this.selectedAction?.status;
+        return status === 'Booked' || status === 'Proposed';
+    }
+
+    get canPrintSelected() {
+        return !!this.selectedAction?.id;
+    }
+
+    get notifyModalTitle() {
+        return this.notifyMessageType === 'Reminder' ? 'Send reminder' : 'Send confirmation';
     }
 
     get openChartLabel() {
@@ -278,41 +377,54 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 blocks: this.blocksForDay(key, bounds.startMinutes),
                 showNow: isToday && nowTop != null && nowTop >= 0 && nowTop <= totalHeight,
                 nowStyle: `top:${nowTop}px`,
-                paintStyle: this.paintStyleForDay(key, bounds.startMinutes)
+                paintStyle: this.paintStyleForDay(key, bounds.startMinutes),
+                paintClass: this.paintPreviewClass
             };
         });
     }
 
+    get paintPreviewClass() {
+        return this.paintMode === PAINT_BLOCKED ? 'paint-preview paint-preview_blocked' : 'paint-preview';
+    }
+
     slotsForDay(dayKey, startMinutes) {
-        return this.state.slots
-            .filter((slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey)
-            .map((slot) => ({
+        const daySlots = this.state.slots.filter((slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey);
+        const packing = assignLanes(daySlots);
+        return daySlots.map((slot) => {
+            const context = slotContext(slot);
+            return {
                 id: slot.id,
-                title: `${slot.status} · ${formatClock(slot.startTime, TIME_ZONE)}–${formatClock(slot.endTime, TIME_ZONE)}`,
+                label: slot.status === SLOT_FREE ? slot.practitionerName || slot.locationName || '' : '',
+                title: `${slot.status} · ${formatClock(slot.startTime, TIME_ZONE)}–${formatClock(slot.endTime, TIME_ZONE)}${context}`,
                 className: slotClass(slot.status),
-                style: positionStyle(
+                style: `${positionStyle(
                     slot.startTime,
                     slot.endTime,
                     startMinutes,
                     this.slotDurationMinutes,
                     ROW_HEIGHT,
                     TIME_ZONE
-                ),
+                )}${laneInsetStyle(packing.lanes.get(slot.id), packing.laneCount)}`,
                 status: slot.status
-            }));
+            };
+        });
     }
 
     blocksForDay(dayKey, startMinutes) {
+        const daySlots = this.state.slots.filter((slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey);
+        const packing = assignLanes(daySlots);
         return this.state.blocks
             .filter((block) => civilDateKey(block.startTime, TIME_ZONE) === dayKey)
             .map((block) => {
                 const dragging = this.drag?.appointmentId === block.id;
+                const context = slotContext(block);
+                const lane = packing.lanes.get(block.slotId) || 0;
                 return {
                     id: block.id,
                     slotId: block.slotId,
                     label: block.patientName || block.name || 'Appointment',
-                    meta: `${formatClock(block.startTime, TIME_ZONE)} · ${block.status}`,
-                    title: `${block.patientName || block.name || 'Appointment'} · ${block.status}`,
+                    meta: `${formatClock(block.startTime, TIME_ZONE)} · ${block.status}${context}`,
+                    title: `${block.patientName || block.name || 'Appointment'} · ${block.status}${context}`,
                     className: [
                         'block',
                         blockStatusClass(block.status),
@@ -323,20 +435,20 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                         .filter(Boolean)
                         .join(' '),
                     style: dragging
-                        ? this.dragPreviewStyle(startMinutes)
-                        : positionStyle(
+                        ? this.dragPreviewStyle(startMinutes, lane, packing.laneCount)
+                        : `${positionStyle(
                               block.startTime,
                               block.endTime,
                               startMinutes,
                               this.slotDurationMinutes,
                               ROW_HEIGHT,
                               TIME_ZONE
-                          )
+                          )}${laneInsetStyle(lane, packing.laneCount)}`
                 };
             });
     }
 
-    dragPreviewStyle(startMinutes) {
+    dragPreviewStyle(startMinutes, lane, laneCount) {
         if (!this.drag?.previewStart) {
             return '';
         }
@@ -347,7 +459,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             this.slotDurationMinutes,
             ROW_HEIGHT,
             TIME_ZONE
-        )}left:2px;right:2px;`;
+        )}${laneInsetStyle(lane, laneCount)}`;
     }
 
     paintStyleForDay(dayKey, startMinutes) {
@@ -368,6 +480,11 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     async handlePractitionerChange(event) {
         this.practitionerId = event.detail.recordId;
+        this.practitionerIds = this.practitionerId ? [this.practitionerId] : [];
+        if (!this.practitionerId) {
+            this.manageAvailability = false;
+            this.paint = undefined;
+        }
         this.errorMessage = undefined;
         this.closePopovers();
         await this.loadLocations();
@@ -379,6 +496,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.errorMessage = undefined;
         this.closePopovers();
         this.loadGrid();
+        this.loadNextAvailability();
     }
 
     handleViewChange(event) {
@@ -409,12 +527,31 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     handleRefresh() {
         this.loadGrid();
+        this.loadNextAvailability();
+    }
+
+    handleNextAvailabilityClick(event) {
+        const practitionerId = event.currentTarget.dataset.practitionerId;
+        const dayKey = event.currentTarget.dataset.dayKey;
+        this.practitionerId = practitionerId || undefined;
+        this.practitionerIds = this.practitionerId ? [this.practitionerId] : [];
+        if (dayKey) {
+            this.selectedDate = dayKey;
+        }
+        this.errorMessage = undefined;
+        this.closePopovers();
+        this.loadLocations();
+        this.loadGrid();
     }
 
     handleManageToggle(event) {
-        this.manageAvailability = event.detail.checked;
+        this.manageAvailability = this.canPaintAvailability && event.detail.checked;
         this.closePopovers();
         this.paint = undefined;
+    }
+
+    handlePaintModeChange(event) {
+        this.paintMode = event.detail.value === PAINT_BLOCKED ? PAINT_BLOCKED : PAINT_FREE;
     }
 
     shiftDate(days) {
@@ -425,12 +562,21 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     handleSlotClick(event) {
         event.stopPropagation();
-        if (this.manageAvailability || this.drag) {
+        if (this.drag) {
             return;
         }
         const slotId = event.currentTarget.dataset.slotId;
         const slot = this.state.slots.find((row) => row.id === slotId);
-        if (!slot || slot.status !== SLOT_FREE) {
+        if (!slot) {
+            return;
+        }
+        if (this.manageAvailability) {
+            if (slot.status === SLOT_FREE || slot.status === SLOT_BLOCKED) {
+                this.commitToggleSlot(slot);
+            }
+            return;
+        }
+        if (slot.status !== SLOT_FREE) {
             return;
         }
         this.openBookingPopover(slot, event.currentTarget);
@@ -515,7 +661,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         if (!this.manageAvailability || (event.button != null && event.button !== 0)) {
             return;
         }
-        if (event.target.closest('.block')) {
+        if (event.target.closest('.block') || event.target.closest('.slot')) {
             return;
         }
         const dayKey = event.currentTarget.dataset.dayKey;
@@ -587,6 +733,52 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.actionPopover = undefined;
     }
 
+    handleSendConfirmation() {
+        const block = this.selectedAction;
+        if (!block?.id) {
+            return;
+        }
+        this.notifyAppointmentId = block.id;
+        this.notifyMessageType = 'Confirmation';
+        this.showNotifyModal = true;
+        this.actionPopover = undefined;
+    }
+
+    handleSendReminder() {
+        const block = this.selectedAction;
+        if (!block?.id) {
+            return;
+        }
+        this.notifyAppointmentId = block.id;
+        this.notifyMessageType = 'Reminder';
+        this.showNotifyModal = true;
+        this.actionPopover = undefined;
+    }
+
+    handlePrintAppointment() {
+        const block = this.selectedAction;
+        if (!block?.id) {
+            return;
+        }
+        this.printAppointmentId = block.id;
+        this.showPrintModal = true;
+        this.actionPopover = undefined;
+    }
+
+    handleCloseNotify() {
+        this.showNotifyModal = false;
+        this.notifyAppointmentId = undefined;
+    }
+
+    handleNotifySent() {
+        this.handleCloseNotify();
+    }
+
+    handleClosePrint() {
+        this.showPrintModal = false;
+        this.printAppointmentId = undefined;
+    }
+
     async handleBookSubmit() {
         if (this.isBookDisabled) {
             return;
@@ -624,7 +816,11 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 appointmentName: result.appointmentName || result.appointment?.Name,
                 appointmentStatus: result.appointmentStatus
             });
-            this.toast(result.appointmentName || 'Appointment booked.', 'success');
+            this.toast(
+                (result.appointmentName || 'Appointment booked.') + ' Confirmation queued.',
+                'success'
+            );
+            this.loadNextAvailability();
             this.dispatchEvent(
                 new CustomEvent('booked', {
                     bubbles: true,
@@ -707,6 +903,21 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this[NavigationMixin.Navigate](recordViewPageRef(recordId, objectApiName));
     }
 
+    async loadNextAvailability() {
+        if (this.hideFilters) {
+            this.nextAvailability = [];
+            return;
+        }
+        try {
+            const rows = await getNextAvailability({
+                locationName: this.locationKey === ANY_LOCATION ? null : this.locationKey
+            });
+            this.nextAvailability = rows || [];
+        } catch (error) {
+            this.nextAvailability = [];
+        }
+    }
+
     async loadLocations() {
         try {
             const names = (await getLocations({ practitionerId: this.practitionerId || null })) || [];
@@ -723,7 +934,14 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     }
 
     async loadGrid() {
+        const requestId = ++this._gridRequestId;
         if (!this.canLoadGrid || !this.selectedDate) {
+            this.state = emptyState();
+            this.hasMoreSlots = false;
+            return;
+        }
+        const providerIds = this.resolvedPractitionerIds;
+        if (this.embedded && !providerIds.length) {
             this.state = emptyState();
             this.hasMoreSlots = false;
             return;
@@ -735,17 +953,32 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         try {
             const locationName = this.locationKey === ANY_LOCATION ? null : this.locationKey;
             const [view, schedules] = await Promise.all([
-                getGrid({
-                    practitionerId: this.practitionerId || null,
-                    locationName,
-                    rangeStart: range.start,
-                    rangeEnd: range.end
-                }),
-                getActiveSchedules({
-                    practitionerId: this.practitionerId || null,
-                    locationName
-                })
+                providerIds.length > 1
+                    ? getGridForProviders({
+                          practitionerIds: providerIds,
+                          locationName,
+                          rangeStart: range.start,
+                          rangeEnd: range.end
+                      })
+                    : getGrid({
+                          practitionerId: providerIds[0] || null,
+                          locationName,
+                          rangeStart: range.start,
+                          rangeEnd: range.end
+                      }),
+                providerIds.length > 1
+                    ? getActiveSchedulesForProviders({
+                          practitionerIds: providerIds,
+                          locationName
+                      })
+                    : getActiveSchedules({
+                          practitionerId: providerIds[0] || null,
+                          locationName
+                      })
             ]);
+            if (requestId !== this._gridRequestId) {
+                return;
+            }
             this.state = stateFromGrid(view?.slots || []);
             this.hasMoreSlots = !!view?.hasMore;
             this.schedules = schedules || [];
@@ -754,11 +987,16 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 (view?.slots && view.slots.length ? view.slotDurationMinutes : this.schedules[0]?.slotDurationMinutes) ||
                 DEFAULT_DURATION;
         } catch (error) {
+            if (requestId !== this._gridRequestId) {
+                return;
+            }
             this.state = emptyState();
             this.hasMoreSlots = false;
             this.errorMessage = reduceError(error);
         } finally {
-            this.isLoading = false;
+            if (requestId === this._gridRequestId) {
+                this.isLoading = false;
+            }
         }
     }
 
@@ -785,6 +1023,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             }
             this.state = confirmMove(this.state, drag.appointmentId);
             this.toast('Appointment rescheduled.', 'success');
+            this.loadNextAvailability();
         } catch (error) {
             this.state = revertMove(this.state, snapshot);
             this.toast(reduceError(error), 'error');
@@ -807,6 +1046,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         const day = parseIsoDate(paint.dayKey);
         const startTime = datetimeOnDay(day, snapped.startMinutes, TIME_ZONE);
         const endTime = datetimeOnDay(day, snapped.endMinutes, TIME_ZONE);
+        const paintStatus = this.paintMode === PAINT_BLOCKED ? SLOT_BLOCKED : SLOT_FREE;
         const tempId = `temp-slot-${Date.now()}`;
         this.tempPaintIds = [tempId];
         this.state = applyOptimisticPaint(this.state, [
@@ -814,15 +1054,17 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 id: tempId,
                 startTime,
                 endTime,
-                status: SLOT_FREE,
-                scheduleId
+                status: paintStatus,
+                scheduleId,
+                blockReason: paintStatus === SLOT_BLOCKED ? 'Blocked' : null
             }
         ]);
         this.isWorking = true;
         try {
             const result = await createAdHocSlots({
                 scheduleId,
-                ranges: [{ startTime, endTime }]
+                ranges: [{ startTime, endTime }],
+                status: paintStatus
             });
             if (result?.success === false) {
                 this.state = revertPaint(this.state, this.tempPaintIds);
@@ -833,18 +1075,68 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 id: row.Id,
                 startTime: row.Start__c,
                 endTime: row.End__c,
-                status: row.Status__c || SLOT_FREE,
-                scheduleId: row.Schedule__c || scheduleId
+                status: row.Status__c || paintStatus,
+                scheduleId: row.Schedule__c || scheduleId,
+                blockReason: row.Block_Reason__c
             }));
             this.state = replacePaintedSlots(this.state, this.tempPaintIds, created);
             if (result.created === 0) {
                 this.toast('That range overlaps existing slots.', 'info');
+            } else {
+                this.loadNextAvailability();
             }
         } catch (error) {
             this.state = revertPaint(this.state, this.tempPaintIds);
             this.toast(reduceError(error), 'error');
         } finally {
             this.tempPaintIds = [];
+            this.isWorking = false;
+        }
+    }
+
+    async commitToggleSlot(slot) {
+        if (!slot?.id || this.isWorking) {
+            return;
+        }
+        const previousStatus = slot.status;
+        const nextStatus = previousStatus === SLOT_BLOCKED ? SLOT_FREE : SLOT_BLOCKED;
+        this.state = {
+            slots: this.state.slots.map((row) =>
+                row.id === slot.id
+                    ? {
+                          ...row,
+                          status: nextStatus,
+                          blockReason: nextStatus === SLOT_BLOCKED ? row.blockReason || 'Blocked' : null
+                      }
+                    : row
+            ),
+            blocks: this.state.blocks
+        };
+        this.isWorking = true;
+        try {
+            const updated = await toggleSlotStatus({ slotId: slot.id });
+            this.state = {
+                slots: this.state.slots.map((row) =>
+                    row.id === slot.id
+                        ? {
+                              ...row,
+                              status: updated.status,
+                              blockReason: updated.blockReason
+                          }
+                        : row
+                ),
+                blocks: this.state.blocks
+            };
+            this.loadNextAvailability();
+        } catch (error) {
+            this.state = {
+                slots: this.state.slots.map((row) =>
+                    row.id === slot.id ? { ...row, status: previousStatus } : row
+                ),
+                blocks: this.state.blocks
+            };
+            this.toast(reduceError(error), 'error');
+        } finally {
             this.isWorking = false;
         }
     }
@@ -867,6 +1159,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             }
             this.state = applyConfirm(block, result || {});
             this.toast(result?.appointmentName || successTitle, 'success');
+            this.loadNextAvailability();
         } catch (error) {
             this.state = revertStatus(this.state, snapshot);
             this.toast(reduceError(error), 'error');
@@ -877,12 +1170,12 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     openBookingPopover(slot, anchor) {
         this.actionPopover = undefined;
-        this.bookingPatientId = undefined;
+        this.bookingPatientId = this.lockedPatientId;
         this.bookingType = undefined;
         this.bookingReason = '';
         this.bookingPopover = {
             slotId: slot.id,
-            when: `${formatClock(slot.startTime, TIME_ZONE)} – ${formatClock(slot.endTime, TIME_ZONE)}`,
+            when: `${formatClock(slot.startTime, TIME_ZONE)} – ${formatClock(slot.endTime, TIME_ZONE)}${slotContext(slot)}`,
             style: popoverStyle(anchor, this.template.querySelector('.calendar-shell'))
         };
     }
@@ -891,7 +1184,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.bookingPopover = undefined;
         this.actionPopover = {
             block: { ...block },
-            when: `${formatClock(block.startTime, TIME_ZONE)} – ${formatClock(block.endTime, TIME_ZONE)}`,
+            when: `${formatClock(block.startTime, TIME_ZONE)} – ${formatClock(block.endTime, TIME_ZONE)}${slotContext(block)}`,
             style: popoverStyle(anchor, this.template.querySelector('.calendar-shell'))
         };
     }
@@ -959,6 +1252,28 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             })
         );
     }
+}
+
+function formatDateTime(value, timeZone) {
+    if (!value) {
+        return '';
+    }
+    const options = {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    };
+    if (timeZone) {
+        options.timeZone = timeZone;
+    }
+    return new Date(value).toLocaleString(undefined, options);
+}
+
+function slotContext(item) {
+    const parts = [item?.practitionerName, item?.locationName].filter(Boolean);
+    return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
 function slotClass(status) {

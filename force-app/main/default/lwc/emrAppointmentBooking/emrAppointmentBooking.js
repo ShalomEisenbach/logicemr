@@ -25,6 +25,7 @@ export default class EmrAppointmentBooking extends LightningElement {
     rangeStart;
     rangeEnd;
     providers = [];
+    showAllProviders = true;
     calendarStarted = false;
     selectedSlotId;
     selectedSlot;
@@ -77,6 +78,7 @@ export default class EmrAppointmentBooking extends LightningElement {
         const calendar = this.template.querySelector('c-emr-enhanced-calendar');
         if (calendar?.beginBooking) {
             calendar.beginBooking({
+                practitionerIds: this.selectedProviderIds,
                 practitionerId: this.practitionerId,
                 locationKey: this.locationKey,
                 selectedDate: this.rangeStart,
@@ -153,7 +155,7 @@ export default class EmrAppointmentBooking extends LightningElement {
             return this.isDateRangeInvalid;
         }
         if (this.isStepProvider) {
-            return !this.practitionerId;
+            return !this.selectedProviderIds.length;
         }
         return true;
     }
@@ -179,12 +181,23 @@ export default class EmrAppointmentBooking extends LightningElement {
             return '';
         }
         const location = this.locationKey && this.locationKey !== ANY_LOCATION ? ` · ${this.locationKey}` : '';
-        return `Free slots from ${this.formatDate(this.rangeStart)} to ${this.formatDate(this.rangeEnd)}${location}`;
+        return `Availability from ${this.formatDate(this.rangeStart)} to ${this.formatDate(this.rangeEnd)}${location}`;
     }
 
-    get selectedProviderName() {
-        const selected = this.providers.find((row) => row.practitionerId === this.practitionerId);
-        return selected?.practitionerName || '';
+    get providersEmptyMessage() {
+        if (this.showAllProviders) {
+            return 'No active providers found.';
+        }
+        return 'No providers have free slots in the selected dates. Turn on Show all providers to choose anyone.';
+    }
+
+    get selectedProviderNames() {
+        const selected = new Set(this.selectedProviderIds);
+        return this.providers
+            .filter((row) => selected.has(row.practitionerId))
+            .map((row) => row.practitionerName)
+            .filter(Boolean)
+            .join(', ');
     }
 
     get slotSummary() {
@@ -278,12 +291,16 @@ export default class EmrAppointmentBooking extends LightningElement {
 
     handleProviderSelection(event) {
         const selected = event.detail.selectedRows || [];
-        const provider = selected.length ? selected[0] : undefined;
-        this.practitionerId = provider?.practitionerId;
-        this.selectedProviderIds = this.practitionerId ? [this.practitionerId] : [];
+        this.selectedProviderIds = selected.map((row) => row.practitionerId).filter(Boolean);
+        this.practitionerId = this.selectedProviderIds[0];
         this.clearSlotSelection();
         this.calendarStarted = false;
         this.errorMessage = undefined;
+    }
+
+    async handleShowAllProvidersChange(event) {
+        this.showAllProviders = event.detail.checked;
+        await this.loadProviders();
     }
 
     handleTypeChange(event) {
@@ -360,7 +377,9 @@ export default class EmrAppointmentBooking extends LightningElement {
             this.dispatchEvent(
                 new ShowToastEvent({
                     title: 'Appointment booked',
-                    message: this.booking.appointmentName || 'The appointment was booked.',
+                    message:
+                        (this.booking.appointmentName || 'The appointment was booked.') +
+                        ' Confirmation queued.',
                     variant: 'success'
                 })
             );
@@ -429,14 +448,12 @@ export default class EmrAppointmentBooking extends LightningElement {
             this.providers = (await getAvailableProviders({
                 rangeStart: this.rangeStart,
                 rangeEnd: this.rangeEnd,
-                locationName: this.locationKey === ANY_LOCATION ? null : this.locationKey
+                locationName: this.locationKey === ANY_LOCATION ? null : this.locationKey,
+                includeUnavailable: this.showAllProviders
             })) || [];
-            if (this.practitionerId && !this.providers.some((row) => row.practitionerId === this.practitionerId)) {
-                this.practitionerId = undefined;
-                this.selectedProviderIds = [];
-                this.clearSlotSelection();
-                this.calendarStarted = false;
-            }
+            const availableIds = new Set(this.providers.map((row) => row.practitionerId));
+            this.selectedProviderIds = this.selectedProviderIds.filter((id) => availableIds.has(id));
+            this.practitionerId = this.selectedProviderIds[0];
         } catch (error) {
             this.providers = [];
             this.errorMessage = this.reduceError(error);

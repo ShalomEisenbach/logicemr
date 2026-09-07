@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Schedule_Hours__c</members>
+        <members>Schedule_Unavailability__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Slot__c.Block_Reason__c</members>
+        <members>Slot__c.Unavailability__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Schedule_Hours__c-Schedule Hours Layout</members>
+        <members>Schedule_Unavailability__c-Schedule Unavailability Layout</members>
+        <members>Schedule__c-Schedule Layout</members>
+        <members>Slot__c-Slot Layout</members>
+        <members>Practitioner__c-Practitioner Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>ScheduleManagementController</members>
+        <members>ScheduleManagementControllerTest</members>
+        <members>AppointmentCalendarController</members>
+        <members>AppointmentCalendarControllerTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>emrScheduleManagement</members>
+        <members>emrEnhancedCalendar</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <version>61.0</version>
+</Package>

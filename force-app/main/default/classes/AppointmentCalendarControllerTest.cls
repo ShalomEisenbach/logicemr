@@ -125,14 +125,17 @@ private class AppointmentCalendarControllerTest {
         Test.startTest();
         AppointmentCalendarController.AdHocSlotResult result = AppointmentCalendarController.createAdHocSlots(
             schedule.Id,
-            ranges
+            ranges,
+            'Free'
         );
         AppointmentCalendarController.AdHocSlotResult empty = AppointmentCalendarController.createAdHocSlots(
             schedule.Id,
-            new List<AppointmentCalendarController.SlotRange>()
+            new List<AppointmentCalendarController.SlotRange>(),
+            null
         );
         AppointmentCalendarController.AdHocSlotResult none = AppointmentCalendarController.createAdHocSlots(
             schedule.Id,
+            null,
             null
         );
         Schedule__c doomed = insertSchedule(practitioner.Id, 'Gone');
@@ -140,15 +143,21 @@ private class AppointmentCalendarControllerTest {
         delete doomed;
         Boolean missingSchedule = false;
         Boolean deletedSchedule = false;
+        Boolean badStatus = false;
         try {
-            AppointmentCalendarController.createAdHocSlots(null, ranges);
+            AppointmentCalendarController.createAdHocSlots(null, ranges, 'Free');
         } catch (AuraHandledException e) {
             missingSchedule = true;
         }
         try {
-            AppointmentCalendarController.createAdHocSlots(missingScheduleId, ranges);
+            AppointmentCalendarController.createAdHocSlots(missingScheduleId, ranges, 'Free');
         } catch (AuraHandledException e) {
             deletedSchedule = true;
+        }
+        try {
+            AppointmentCalendarController.createAdHocSlots(schedule.Id, ranges, 'Busy');
+        } catch (AuraHandledException e) {
+            badStatus = true;
         }
         Test.stopTest();
 
@@ -183,6 +192,33 @@ private class AppointmentCalendarControllerTest {
         System.assertEquals(0, none.created, 'Null paint list should insert nothing');
         System.assertEquals(true, missingSchedule, 'Ad-hoc create without a schedule should throw');
         System.assertEquals(true, deletedSchedule, 'Ad-hoc create against a deleted schedule should throw');
+        System.assertEquals(true, badStatus, 'Busy is not a valid paint status');
+    }
+
+    @IsTest
+    static void createAdHocSlotsCanPaintBlocked() {
+        Practitioner__c practitioner = insertPractitioner('Nora', 'Voss');
+        Schedule__c schedule = insertSchedule(practitioner.Id, 'Clinic Block');
+        Datetime nine = DateTime.newInstance(SLOT_DAY, Time.newInstance(9, 0, 0, 0));
+        List<AppointmentCalendarController.SlotRange> ranges = new List<AppointmentCalendarController.SlotRange>{
+            slotRange(nine, nine.addMinutes(40))
+        };
+
+        Test.startTest();
+        AppointmentCalendarController.AdHocSlotResult result = AppointmentCalendarController.createAdHocSlots(
+            schedule.Id,
+            ranges,
+            'Blocked'
+        );
+        Test.stopTest();
+
+        System.assertEquals(1, result.created, 'Blocked paint should insert one slot');
+        System.assertEquals('Blocked', result.slots[0].Status__c, 'Painted slot status should be Blocked');
+        System.assertEquals(
+            'Blocked',
+            [SELECT Block_Reason__c FROM Slot__c WHERE Id = :result.slots[0].Id].Block_Reason__c,
+            'Blocked paint should stamp a block reason'
+        );
     }
 
     @IsTest
@@ -427,6 +463,24 @@ private class AppointmentCalendarControllerTest {
             SLOT_DAY,
             SLOT_DAY
         );
+        AppointmentCalendarController.GridView allGrid = AppointmentCalendarController.getGrid(
+            null,
+            null,
+            SLOT_DAY,
+            SLOT_DAY
+        );
+        AppointmentCalendarController.GridView bothProviders = AppointmentCalendarController.getGridForProviders(
+            new List<Id>{ practitioner.Id, other.Id },
+            null,
+            SLOT_DAY,
+            SLOT_DAY
+        );
+        AppointmentCalendarController.GridView otherOnly = AppointmentCalendarController.getGridForProviders(
+            new List<Id>{ other.Id },
+            null,
+            SLOT_DAY,
+            SLOT_DAY
+        );
         Test.stopTest();
 
         System.assertEquals(true, allLocations.contains('Clinic A'), 'Unfiltered locations should include Clinic A');
@@ -437,6 +491,10 @@ private class AppointmentCalendarControllerTest {
         System.assertEquals(20, providerGrid.slotDurationMinutes, 'Grid should surface the schedule slot duration');
         System.assertEquals(3, clinicAGrid.slots.size(), 'Location + provider should return only Clinic A slots');
         System.assertEquals(4, locationOnly.slots.size(), 'Location-only should include both providers at Clinic A');
+        System.assertEquals(5, allGrid.slots.size(), 'Unfiltered grid should include every active-schedule slot');
+        System.assertEquals(5, bothProviders.slots.size(), 'Selecting both providers should return every slot');
+        System.assertEquals(1, otherOnly.slots.size(), 'Selecting one provider should hide the other provider slots');
+        System.assertEquals(other.Id, otherOnly.slots[0].practitionerId, 'Filtered grid should belong to the selected provider');
 
         AppointmentCalendarController.SlotView bookedView;
         AppointmentCalendarController.SlotView freeView;
@@ -472,9 +530,17 @@ private class AppointmentCalendarControllerTest {
             'Provider schedules should include both Clinic A and Clinic B'
         );
         System.assertEquals(
-            0,
+            3,
+            AppointmentCalendarController.getActiveSchedulesForProviders(
+                new List<Id>{ practitioner.Id, other.Id },
+                null
+            ).size(),
+            'Schedules for both providers should include Clinic A, Clinic B, and the other Clinic A'
+        );
+        System.assertEquals(
+            3,
             AppointmentCalendarController.getActiveSchedules(null, null).size(),
-            'Schedules without a provider or location should be empty'
+            'Unfiltered schedules should include every active schedule'
         );
         System.assertEquals(
             true,
@@ -695,7 +761,7 @@ private class AppointmentCalendarControllerTest {
         }
         Test.stopTest();
 
-        System.assertEquals(true, gridNoFilter, 'Grid without provider or location should throw');
+        System.assertEquals(false, gridNoFilter, 'Grid without provider or location should load all active slots');
         System.assertEquals(true, gridNoDates, 'Grid without dates should throw');
         System.assertEquals(true, gridRange, 'Inverted grid range should throw');
         System.assertEquals(true, rescheduleNoAppt, 'Reschedule without an appointment should throw');
@@ -712,6 +778,91 @@ private class AppointmentCalendarControllerTest {
         System.assertEquals(true, arriveMissing, 'Arrive without an appointment should throw');
         System.assertEquals('Busy', [SELECT Status__c FROM Slot__c WHERE Id = :bookedSlot.Id].Status__c, 'Failed reschedules must leave the original slot Busy');
         System.assertEquals(bookedSlot.Id, [SELECT Slot__c FROM Appointment__c WHERE Id = :appointment.Id].Slot__c, 'Failed reschedules must not move the appointment');
+    }
+
+    @IsTest
+    static void getNextAvailabilityListsSoonestFreeSlotPerProvider() {
+        Practitioner__c lee = insertPractitioner('Mina', 'Lee');
+        lee.Specialty__c = 'Primary Care';
+        update lee;
+        Practitioner__c patel = insertPractitioner('Ravi', 'Patel');
+        Practitioner__c empty = insertPractitioner('Sofia', 'Vasquez');
+        Practitioner__c inactive = insertPractitioner('Cara', 'Singh');
+        inactive.Active__c = false;
+        update inactive;
+        Schedule__c leeClinicA = insertSchedule(lee.Id, 'Clinic A');
+        Schedule__c leeClinicB = insertSchedule(lee.Id, 'Clinic B');
+        Schedule__c patelClinicA = insertSchedule(patel.Id, 'Clinic A');
+        insertSchedule(empty.Id, 'Clinic A');
+        insertSchedule(inactive.Id, 'Clinic A');
+        Datetime past = Datetime.now().addDays(-1);
+        Datetime leeSoon = Datetime.now().addDays(2);
+        Datetime leeLater = Datetime.now().addDays(5);
+        Datetime patelSoon = Datetime.now().addDays(3);
+        insert new List<Slot__c>{
+            new Slot__c(Schedule__c = leeClinicA.Id, Start__c = past, End__c = past.addMinutes(20), Status__c = 'Free'),
+            new Slot__c(
+                Schedule__c = leeClinicA.Id,
+                Start__c = leeSoon,
+                End__c = leeSoon.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = leeClinicB.Id,
+                Start__c = leeLater,
+                End__c = leeLater.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = patelClinicA.Id,
+                Start__c = patelSoon,
+                End__c = patelSoon.addMinutes(20),
+                Status__c = 'Free'
+            ),
+            new Slot__c(
+                Schedule__c = leeClinicA.Id,
+                Start__c = leeSoon.addHours(1),
+                End__c = leeSoon.addHours(1).addMinutes(20),
+                Status__c = 'Busy'
+            )
+        };
+
+        Test.startTest();
+        List<AppointmentCalendarController.NextAvailabilityView> allRows = AppointmentCalendarController.getNextAvailability(
+            null
+        );
+        List<AppointmentCalendarController.NextAvailabilityView> clinicB = AppointmentCalendarController.getNextAvailability(
+            'Clinic B'
+        );
+        Test.stopTest();
+
+        System.assertEquals(3, allRows.size(), 'Active providers with a schedule should appear');
+        AppointmentCalendarController.NextAvailabilityView leeView = findNextAvailability(allRows, lee.Id);
+        AppointmentCalendarController.NextAvailabilityView patelView = findNextAvailability(allRows, patel.Id);
+        AppointmentCalendarController.NextAvailabilityView emptyView = findNextAvailability(allRows, empty.Id);
+        System.assertNotEquals(null, leeView, 'Lee should appear');
+        System.assertEquals(leeSoon, leeView.nextStart, 'Lee should show the soonest future Free slot');
+        System.assertEquals('Clinic A', leeView.locationName, 'Next opening should use that slot location');
+        System.assertEquals('Primary Care', leeView.specialty, 'Specialty should come from the practitioner');
+        System.assertEquals(patelSoon, patelView.nextStart, 'Patel should show their next Free slot');
+        System.assertEquals(null, emptyView.nextStart, 'A provider with no upcoming Free slot should still be listed');
+        System.assertEquals(null, findNextAvailability(allRows, inactive.Id), 'Inactive providers must be omitted');
+        System.assertEquals(lee.Id, allRows[0].practitionerId, 'Soonest opening should sort first');
+        System.assertEquals(1, clinicB.size(), 'Location filter should keep providers who have a schedule there');
+        System.assertEquals(lee.Id, clinicB[0].practitionerId, 'Clinic B should return Lee');
+        System.assertEquals(leeLater, clinicB[0].nextStart, 'Clinic B should use the Free slot at that location');
+    }
+
+    private static AppointmentCalendarController.NextAvailabilityView findNextAvailability(
+        List<AppointmentCalendarController.NextAvailabilityView> rows,
+        Id practitionerId
+    ) {
+        for (AppointmentCalendarController.NextAvailabilityView row : rows) {
+            if (row.practitionerId == practitionerId) {
+                return row;
+            }
+        }
+        return null;
     }
 
     private static Boolean threwOnGrid(Id practitionerId, String locationName, Date rangeStart, Date rangeEnd) {

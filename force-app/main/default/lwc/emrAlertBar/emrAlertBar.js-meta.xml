@@ -13,6 +13,13 @@
                 <object>Patient__c</object>
                 <object>Encounter__c</object>
             </objects>
+            <property
+                name="layout"
+                type="String"
+                default="stack"
+                label="Layout"
+                description="stack keeps one column. grid tiles sections side by side for wide pages such as Encounter."
+            />
             <supportedFormFactors>
                 <supportedFormFactor type="Large" />
                 <supportedFormFactor type="Small" />

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Failed</fullName>
+    <columns>NAME</columns>
+    <columns>Appointment__c</columns>
+    <columns>Patient__c</columns>
+    <columns>Type__c</columns>
+    <columns>Channel__c</columns>
+    <columns>Status__c</columns>
+    <columns>Sent_At__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Failed</value>
+    </filters>
+    <label>Failed</label>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

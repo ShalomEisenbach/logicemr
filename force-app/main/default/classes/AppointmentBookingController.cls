@@ -100,7 +100,8 @@ public with sharing class AppointmentBookingController {
     public static List<ProviderAvailabilityView> getAvailableProviders(
         Date rangeStart,
         Date rangeEnd,
-        String locationName
+        String locationName,
+        Boolean includeUnavailable
     ) {
         DateWindow window = toDateWindow(rangeStart, rangeEnd);
         Datetime windowStart = window.startTime;
@@ -161,7 +162,82 @@ public with sharing class AppointmentBookingController {
                 ORDER BY Schedule__r.Practitioner__r.Name
             ];
         }
-        return mergeProviderAvailability(rows);
+        List<ProviderAvailabilityView> available = mergeProviderAvailability(rows);
+        if (includeUnavailable != true) {
+            return available;
+        }
+        return includeProvidersWithoutSlots(available, locationFilter);
+    }
+
+    @AuraEnabled
+    public static ProviderAvailabilityView getProviderAvailability(
+        Id practitionerId,
+        Date rangeStart,
+        Date rangeEnd,
+        String locationName
+    ) {
+        if (practitionerId == null) {
+            throw error('A provider is required.');
+        }
+        DateWindow window = toDateWindow(rangeStart, rangeEnd);
+        List<Practitioner__c> practitioners = [
+            SELECT Id, Name, Specialty__c, Active__c
+            FROM Practitioner__c
+            WHERE Id = :practitionerId
+            LIMIT 1
+        ];
+        if (practitioners.isEmpty()) {
+            throw error('Provider was not found.');
+        }
+        if (practitioners[0].Active__c != true) {
+            throw error('This provider is not active.');
+        }
+
+        Boolean filterLocation = String.isNotBlank(locationName);
+        String locationFilter = filterLocation ? locationName.trim() : null;
+        Datetime windowStart = window.startTime;
+        Datetime windowEnd = window.endTime;
+
+        List<AggregateResult> slotRows;
+        if (filterLocation) {
+            slotRows = [
+                SELECT COUNT(Id) freeSlotCount, MIN(Start__c) earliestStart, MAX(Start__c) latestStart
+                FROM Slot__c
+                WHERE
+                    Status__c = :SLOT_FREE
+                    AND Schedule__r.Active__c = TRUE
+                    AND Schedule__r.Practitioner__c = :practitionerId
+                    AND Schedule__r.Location_Name__c = :locationFilter
+                    AND Start__c >= :windowStart
+                    AND Start__c < :windowEnd
+            ];
+        } else {
+            slotRows = [
+                SELECT COUNT(Id) freeSlotCount, MIN(Start__c) earliestStart, MAX(Start__c) latestStart
+                FROM Slot__c
+                WHERE
+                    Status__c = :SLOT_FREE
+                    AND Schedule__r.Active__c = TRUE
+                    AND Schedule__r.Practitioner__c = :practitionerId
+                    AND Start__c >= :windowStart
+                    AND Start__c < :windowEnd
+            ];
+        }
+
+        ProviderAvailabilityView view = new ProviderAvailabilityView();
+        view.practitionerId = practitioners[0].Id;
+        view.practitionerName = practitioners[0].Name;
+        view.specialty = practitioners[0].Specialty__c;
+        view.freeSlotCount = 0;
+        if (!slotRows.isEmpty()) {
+            view.freeSlotCount = slotRows[0].get('freeSlotCount') == null
+                ? 0
+                : ((Decimal) slotRows[0].get('freeSlotCount')).intValue();
+            view.earliestStart = (Datetime) slotRows[0].get('earliestStart');
+            view.latestStart = (Datetime) slotRows[0].get('latestStart');
+        }
+        view.locationNames = scheduleLocationNames(practitionerId, locationFilter);
+        return view;
     }
 
     @AuraEnabled
@@ -379,6 +455,148 @@ public with sharing class AppointmentBookingController {
             result.add(view);
         }
         return result;
+    }
+
+    private static List<ProviderAvailabilityView> includeProvidersWithoutSlots(
+        List<ProviderAvailabilityView> available,
+        String locationName
+    ) {
+        Boolean filterLocation = String.isNotBlank(locationName);
+        String locationFilter = filterLocation ? locationName.trim() : null;
+        List<Practitioner__c> practitioners = queryActivePractitioners(locationFilter);
+        Map<Id, ProviderAvailabilityView> byId = new Map<Id, ProviderAvailabilityView>();
+        for (ProviderAvailabilityView view : available) {
+            byId.put(view.practitionerId, view);
+        }
+
+        Set<Id> practitionerIds = new Set<Id>();
+        for (Practitioner__c row : practitioners) {
+            practitionerIds.add(row.Id);
+        }
+        Map<Id, Set<String>> locationsByPractitioner = scheduleLocationsByPractitioner(practitionerIds, locationFilter);
+
+        List<ProviderAvailabilityView> withSlots = new List<ProviderAvailabilityView>();
+        List<ProviderAvailabilityView> withoutSlots = new List<ProviderAvailabilityView>();
+        for (Practitioner__c row : practitioners) {
+            ProviderAvailabilityView view = byId.get(row.Id);
+            if (view == null) {
+                view = new ProviderAvailabilityView();
+                view.practitionerId = row.Id;
+                view.practitionerName = row.Name;
+                view.specialty = row.Specialty__c;
+                view.freeSlotCount = 0;
+            }
+            if (String.isBlank(view.locationNames) && locationsByPractitioner.containsKey(row.Id)) {
+                List<String> locationNames = new List<String>(locationsByPractitioner.get(row.Id));
+                locationNames.sort();
+                view.locationNames = String.join(locationNames, ', ');
+            }
+            if (view.freeSlotCount != null && view.freeSlotCount > 0) {
+                withSlots.add(view);
+            } else {
+                withoutSlots.add(view);
+            }
+        }
+        withSlots.addAll(withoutSlots);
+        return withSlots;
+    }
+
+    private static List<Practitioner__c> queryActivePractitioners(String locationFilter) {
+        if (String.isNotBlank(locationFilter)) {
+            Set<Id> practitionerIds = new Set<Id>();
+            for (Schedule__c schedule : [
+                SELECT Practitioner__c
+                FROM Schedule__c
+                WHERE
+                    Active__c = TRUE
+                    AND Practitioner__c != NULL
+                    AND Practitioner__r.Active__c = TRUE
+                    AND Location_Name__c = :locationFilter
+            ]) {
+                practitionerIds.add(schedule.Practitioner__c);
+            }
+            if (practitionerIds.isEmpty()) {
+                return new List<Practitioner__c>();
+            }
+            return [
+                SELECT Id, Name, Specialty__c
+                FROM Practitioner__c
+                WHERE Id IN :practitionerIds
+                ORDER BY Name
+            ];
+        }
+        return [
+            SELECT Id, Name, Specialty__c
+            FROM Practitioner__c
+            WHERE Active__c = TRUE
+            ORDER BY Name
+            LIMIT 2000
+        ];
+    }
+
+    private static Map<Id, Set<String>> scheduleLocationsByPractitioner(
+        Set<Id> practitionerIds,
+        String locationFilter
+    ) {
+        Map<Id, Set<String>> locationsByPractitioner = new Map<Id, Set<String>>();
+        if (practitionerIds == null || practitionerIds.isEmpty()) {
+            return locationsByPractitioner;
+        }
+        List<Schedule__c> schedules;
+        if (String.isNotBlank(locationFilter)) {
+            schedules = [
+                SELECT Practitioner__c, Location_Name__c
+                FROM Schedule__c
+                WHERE
+                    Active__c = TRUE
+                    AND Practitioner__c IN :practitionerIds
+                    AND Location_Name__c = :locationFilter
+            ];
+        } else {
+            schedules = [
+                SELECT Practitioner__c, Location_Name__c
+                FROM Schedule__c
+                WHERE Active__c = TRUE AND Practitioner__c IN :practitionerIds AND Location_Name__c != NULL
+            ];
+        }
+        for (Schedule__c schedule : schedules) {
+            if (!locationsByPractitioner.containsKey(schedule.Practitioner__c)) {
+                locationsByPractitioner.put(schedule.Practitioner__c, new Set<String>());
+            }
+            if (String.isNotBlank(schedule.Location_Name__c)) {
+                locationsByPractitioner.get(schedule.Practitioner__c).add(schedule.Location_Name__c);
+            }
+        }
+        return locationsByPractitioner;
+    }
+
+    private static String scheduleLocationNames(Id practitionerId, String locationFilter) {
+        List<AggregateResult> locationRows;
+        if (String.isNotBlank(locationFilter)) {
+            locationRows = [
+                SELECT Location_Name__c locationName
+                FROM Schedule__c
+                WHERE Practitioner__c = :practitionerId AND Active__c = TRUE AND Location_Name__c = :locationFilter
+                GROUP BY Location_Name__c
+                ORDER BY Location_Name__c
+            ];
+        } else {
+            locationRows = [
+                SELECT Location_Name__c locationName
+                FROM Schedule__c
+                WHERE Practitioner__c = :practitionerId AND Active__c = TRUE AND Location_Name__c != NULL
+                GROUP BY Location_Name__c
+                ORDER BY Location_Name__c
+            ];
+        }
+        List<String> locationNames = new List<String>();
+        for (AggregateResult row : locationRows) {
+            String locationName = (String) row.get('locationName');
+            if (String.isNotBlank(locationName)) {
+                locationNames.add(locationName);
+            }
+        }
+        return String.join(locationNames, ', ');
     }
 
     private static SlotView toSlotView(Slot__c row) {

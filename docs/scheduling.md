@@ -33,3 +33,7 @@ This is intentional: a scheduling desk works across the day’s book, not only t
 Patient-scoped appointment sharing (mirroring the care-team model used for clinical chart objects) can be added later if a client requires it. That would mean dropping object-level View All / Modify All for appointments and introducing care-team (or equivalent) Apex/sharing-set grants instead.
 
 Slots use `writeRequiresMasterRead` so staff with read access to a Schedule can create and update its Slots without owning the Schedule record.
+
+## Appointment communications
+
+Patient confirmations, reminders (email/SMS), and print slips are documented in [appointment-communications.md](appointment-communications.md).

@@ -85,7 +85,8 @@ public with sharing class PatientSearchController {
             'MRN__c LIKE :likePattern',
             'FHIR_Id__c LIKE :likePattern',
             'Source_System_Id__c LIKE :likePattern',
-            'Phone__c LIKE :likePattern'
+            'Phone__c LIKE :likePattern',
+            'Email__c LIKE :likePattern'
         };
         if (String.isNotBlank(digitsLike) && digitsLike != likePattern) {
             filters.add('Phone__c LIKE :digitsLike');
@@ -105,7 +106,7 @@ public with sharing class PatientSearchController {
         }
 
         String soql =
-            'SELECT Id, Last_Name__c, First_Name__c, MRN__c, Date_of_Birth__c, Phone__c, Status__c ' +
+            'SELECT Id, Last_Name__c, First_Name__c, MRN__c, Date_of_Birth__c, Phone__c, Email__c, Status__c ' +
             'FROM Patient__c WHERE ' +
             String.join(filters, ' OR ') +
             ' ORDER BY Last_Name__c, First_Name__c, MRN__c LIMIT :MAX_RESULTS';

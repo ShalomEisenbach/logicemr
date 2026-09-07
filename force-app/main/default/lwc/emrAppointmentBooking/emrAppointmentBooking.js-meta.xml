@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Appointment Booking</masterLabel>
-    <description>Guided booking: choose dates, see available providers, then book from the enhanced calendar.</description>
+    <description>Guided booking: choose dates, select any provider, then book from the enhanced calendar.</description>
     <targets>
         <target>lightning__AppPage</target>
     </targets>

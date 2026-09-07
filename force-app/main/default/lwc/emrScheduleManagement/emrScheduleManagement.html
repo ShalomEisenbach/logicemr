@@ -2,8 +2,7 @@
     <lightning-card title="Schedule management" icon-name="standard:event">
         <div class="slds-p-horizontal_medium slds-p-bottom_medium">
             <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
-                Create or select a provider schedule, generate slots for a date range and daily window, then
-                block or free individual slots.
+                Set weekly hours for a provider, generate slots through the planning horizon, and mark time off.
             </p>
 
             <template lwc:if={errorMessage}>
@@ -17,14 +16,24 @@
                 <h2 class="slds-text-heading_small slds-m-bottom_small">Schedule</h2>
                 <div class="slds-grid slds-gutters slds-wrap">
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                        <lightning-record-picker
-                            label="Provider"
-                            placeholder="Search practitioners"
-                            object-api-name={practitionerObjectApiName}
-                            value={practitionerId}
-                            required
-                            onchange={handlePractitionerChange}
-                        ></lightning-record-picker>
+                        <template lwc:if={isPractitionerRecordPage}>
+                            <p class="slds-form-element__label">Provider</p>
+                            <c-emr-record-link
+                                record-id={practitionerId}
+                                object-api-name={practitionerObjectApiName}
+                                label="Current provider"
+                            ></c-emr-record-link>
+                        </template>
+                        <template lwc:else>
+                            <lightning-record-picker
+                                label="Provider"
+                                placeholder="Search practitioners"
+                                object-api-name={practitionerObjectApiName}
+                                value={practitionerId}
+                                required
+                                onchange={handlePractitionerChange}
+                            ></lightning-record-picker>
+                        </template>
                     </div>
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                         <template lwc:if={hasExistingSchedules}>
@@ -95,115 +104,202 @@
                         ></c-emr-record-link>
                     </p>
                 </template>
-                <div class="slds-m-top_small">
+            </section>
+
+            <section class="section">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Weekly hours</h2>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Add one or more windows per day. A lunch break is simply a gap between two windows.
+                </p>
+                <div class="slds-m-bottom_small">
                     <lightning-button
-                        label={saveLabel}
+                        label="Copy weekdays"
+                        variant="neutral"
+                        disabled={isBusy}
+                        onclick={handleCopyWeekdays}
+                    ></lightning-button>
+                </div>
+                <template for:each={dayRows} for:item="day">
+                    <div key={day.key} class="day-row">
+                        <div class="day-label">{day.label}</div>
+                        <div class="day-windows">
+                            <template for:each={day.windows} for:item="window">
+                                <div key={window.key} class="window-row">
+                                    <lightning-input
+                                        type="time"
+                                        label="Start"
+                                        data-day={day.value}
+                                        data-window-id={window.id}
+                                        data-field="startTime"
+                                        value={window.startTime}
+                                        variant="label-hidden"
+                                        onchange={handleWindowChange}
+                                    ></lightning-input>
+                                    <span class="window-sep">to</span>
+                                    <lightning-input
+                                        type="time"
+                                        label="End"
+                                        data-day={day.value}
+                                        data-window-id={window.id}
+                                        data-field="endTime"
+                                        value={window.endTime}
+                                        variant="label-hidden"
+                                        onchange={handleWindowChange}
+                                    ></lightning-input>
+                                    <lightning-button-icon
+                                        icon-name="utility:delete"
+                                        alternative-text="Remove window"
+                                        title="Remove window"
+                                        data-day={day.value}
+                                        data-window-id={window.id}
+                                        onclick={handleRemoveWindow}
+                                    ></lightning-button-icon>
+                                </div>
+                            </template>
+                            <lightning-button
+                                label="Add window"
+                                variant="base"
+                                data-day={day.value}
+                                onclick={handleAddWindow}
+                            ></lightning-button>
+                        </div>
+                    </div>
+                </template>
+                <template lwc:if={hasPreview}>
+                    <p class="slds-text-body_regular slds-m-top_small" role="status">{previewSummary}</p>
+                </template>
+                <div class="slds-m-top_small slds-grid slds-wrap">
+                    <lightning-button
+                        label={saveGenerateLabel}
                         variant="brand"
-                        disabled={isSaveDisabled}
-                        onclick={handleSaveSchedule}
+                        disabled={isSaveGenerateDisabled}
+                        onclick={handleSaveAndGenerate}
                     ></lightning-button>
                 </div>
             </section>
 
             <section class="section">
-                <h2 class="slds-text-heading_small slds-m-bottom_small">Generate slots</h2>
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Time off</h2>
                 <template lwc:if={hasSelectedSchedule}>
                     <div class="slds-grid slds-gutters slds-wrap">
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                             <lightning-input
-                                name="rangeStart"
-                                label="Date range start"
+                                name="timeOffStartDate"
+                                label="Start date"
                                 type="date"
-                                value={rangeStart}
+                                value={timeOffStartDate}
                                 required
-                                onchange={handleRangeStartChange}
+                                onchange={handleTimeOffStartDateChange}
                             ></lightning-input>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                             <lightning-input
-                                name="rangeEnd"
-                                label="Date range end"
+                                name="timeOffEndDate"
+                                label="End date"
                                 type="date"
-                                value={rangeEnd}
+                                value={timeOffEndDate}
                                 required
-                                onchange={handleRangeEndChange}
-                            ></lightning-input>
-                        </div>
-                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                            <lightning-input
-                                name="dailyStart"
-                                label="Daily start time"
-                                type="time"
-                                value={dailyStart}
-                                required
-                                onchange={handleDailyStartChange}
-                            ></lightning-input>
-                        </div>
-                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                            <lightning-input
-                                name="dailyEnd"
-                                label="Daily end time"
-                                type="time"
-                                value={dailyEnd}
-                                required
-                                onchange={handleDailyEndChange}
+                                onchange={handleTimeOffEndDateChange}
                             ></lightning-input>
                         </div>
                         <div class="slds-col slds-size_1-of-1">
-                            <lightning-checkbox-group
-                                name="includedDays"
-                                label="Days to include"
-                                options={dayOptions}
-                                value={selectedDays}
-                                required
-                                onchange={handleDaysChange}
-                            ></lightning-checkbox-group>
+                            <lightning-input
+                                name="timeOffAllDay"
+                                label="All day"
+                                type="checkbox"
+                                checked={timeOffAllDay}
+                                onchange={handleTimeOffAllDayChange}
+                            ></lightning-input>
+                        </div>
+                        <template lwc:if={showTimeOffTimes}>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    name="timeOffStartTime"
+                                    label="Start time"
+                                    type="time"
+                                    value={timeOffStartTime}
+                                    onchange={handleTimeOffStartTimeChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    name="timeOffEndTime"
+                                    label="End time"
+                                    type="time"
+                                    value={timeOffEndTime}
+                                    onchange={handleTimeOffEndTimeChange}
+                                ></lightning-input>
+                            </div>
+                        </template>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input
+                                name="timeOffReason"
+                                label="Reason"
+                                value={timeOffReason}
+                                maxlength="255"
+                                onchange={handleTimeOffReasonChange}
+                            ></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1">
+                            <lightning-input
+                                name="thisScheduleOnly"
+                                label="This schedule only"
+                                type="checkbox"
+                                checked={thisScheduleOnly}
+                                onchange={handleThisScheduleOnlyChange}
+                            ></lightning-input>
                         </div>
                     </div>
-                    <template lwc:if={hasPreview}>
-                        <p class="slds-text-body_regular slds-m-top_small" role="status">{previewSummary}</p>
-                    </template>
-                    <div class="slds-m-top_small slds-grid slds-wrap">
+                    <div class="slds-m-top_small">
                         <lightning-button
-                            label="Preview count"
-                            variant="neutral"
-                            class="slds-m-right_small"
-                            disabled={isPreviewDisabled}
-                            onclick={handlePreview}
-                        ></lightning-button>
-                        <lightning-button
-                            label="Generate slots"
+                            label="Apply time off"
                             variant="brand"
-                            disabled={isGenerateDisabled}
-                            onclick={handleGenerate}
+                            disabled={isTimeOffDisabled}
+                            onclick={handleApplyTimeOff}
                         ></lightning-button>
                     </div>
+                    <template lwc:if={hasUnavailabilities}>
+                        <ul class="timeoff-list slds-m-top_small">
+                            <template for:each={unavailabilityRows} for:item="row">
+                                <li key={row.id} class="timeoff-item">
+                                    <div>
+                                        <div class="slds-text-body_regular">{row.when}</div>
+                                        <template lwc:if={row.reason}>
+                                            <div class="slds-text-body_small slds-text-color_weak">{row.reason}</div>
+                                        </template>
+                                    </div>
+                                    <lightning-button
+                                        label="Remove"
+                                        variant="destructive-text"
+                                        data-id={row.id}
+                                        disabled={isBusy}
+                                        onclick={handleRemoveTimeOff}
+                                    ></lightning-button>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-body_small slds-m-top_small slds-text-color_weak">No upcoming time off.</p>
+                    </template>
                 </template>
                 <template lwc:else>
-                    <p class="slds-text-body_regular">Save or select a schedule before generating slots.</p>
+                    <p class="slds-text-body_regular">Save or select a schedule before applying time off.</p>
                 </template>
             </section>
 
             <section class="section section_last">
-                <h2 class="slds-text-heading_small slds-m-bottom_small">Slots</h2>
-                <template lwc:if={hasSlots}>
-                    <template lwc:if={hasMoreSlots}>
-                        <p class="slds-text-body_small slds-m-bottom_x-small" role="status">
-                            Showing the first 500 slots in this date range.
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Slot summary</h2>
+                <template lwc:if={hasSelectedSchedule}>
+                    <template lwc:if={hasSummary}>
+                        <p class="slds-text-body_regular" role="status">{summaryText}</p>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                            Use the calendar to paint Free or Blocked time and manage individual slots.
                         </p>
                     </template>
-                    <div class="slot-table">
-                        <lightning-datatable
-                            key-field="id"
-                            data={slotRows}
-                            columns={slotColumns}
-                            hide-checkbox-column
-                            onrowaction={handleSlotRowAction}
-                        ></lightning-datatable>
-                    </div>
-                </template>
-                <template lwc:elseif={showSlotsEmpty}>
-                    <p class="slds-text-body_regular">No slots in this date range.</p>
+                    <template lwc:else>
+                        <p class="slds-text-body_regular">No slots in the planning horizon yet.</p>
+                    </template>
                 </template>
                 <template lwc:else>
                     <p class="slds-text-body_regular">Select a schedule to review its slots.</p>

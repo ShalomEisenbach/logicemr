@@ -1,6 +1,7 @@
 public with sharing class AppointmentCalendarController {
     private static final String SLOT_FREE = 'Free';
     private static final String SLOT_BUSY = 'Busy';
+    private static final String SLOT_BLOCKED = 'Blocked';
     private static final String APPT_BOOKED = 'Booked';
     private static final String APPT_CANCELLED = 'Cancelled';
     private static final String APPT_NO_SHOW = 'No Show';
@@ -8,7 +9,8 @@ public with sharing class AppointmentCalendarController {
     private static final String ENC_ARRIVED = 'Arrived';
     private static final String ENC_CLASS_DEFAULT = 'Outpatient';
     private static final String ENC_CLASS_EMERGENCY = 'Emergency';
-    private static final Integer SLOT_QUERY_LIMIT = 400;
+    private static final Integer SLOT_QUERY_LIMIT = 2000;
+    private static final Integer NEXT_AVAILABILITY_DAYS = 90;
     private static final Set<String> OPEN_STATUSES = new Set<String>{ 'Proposed', 'Booked' };
     @TestVisible
     private static final Set<String> APPOINTMENT_TYPES = new Set<String>{
@@ -74,6 +76,42 @@ public with sharing class AppointmentCalendarController {
         public Integer slotDurationMinutes;
         @AuraEnabled
         public Id defaultScheduleId;
+    }
+
+    public class NextAvailabilityView implements Comparable {
+        @AuraEnabled
+        public Id practitionerId;
+        @AuraEnabled
+        public String practitionerName;
+        @AuraEnabled
+        public String specialty;
+        @AuraEnabled
+        public String locationName;
+        @AuraEnabled
+        public Datetime nextStart;
+        @AuraEnabled
+        public Datetime nextEnd;
+        @AuraEnabled
+        public Id slotId;
+
+        public Integer compareTo(Object other) {
+            NextAvailabilityView that = (NextAvailabilityView) other;
+            if (this.nextStart != null && that.nextStart != null) {
+                if (this.nextStart < that.nextStart) {
+                    return -1;
+                }
+                if (this.nextStart > that.nextStart) {
+                    return 1;
+                }
+            } else if (this.nextStart != null) {
+                return -1;
+            } else if (that.nextStart != null) {
+                return 1;
+            }
+            String leftName = this.practitionerName == null ? '' : this.practitionerName;
+            String rightName = that.practitionerName == null ? '' : that.practitionerName;
+            return leftName.toLowerCase().compareTo(rightName.toLowerCase());
+        }
     }
 
     public class ScheduleOption {
@@ -172,9 +210,21 @@ public with sharing class AppointmentCalendarController {
 
     @AuraEnabled
     public static GridView getGrid(Id practitionerId, String locationName, Date rangeStart, Date rangeEnd) {
-        if (practitionerId == null && String.isBlank(locationName)) {
-            throw error('Select a provider or a location.');
-        }
+        return getGridForProviders(
+            practitionerId == null ? null : new List<Id>{ practitionerId },
+            locationName,
+            rangeStart,
+            rangeEnd
+        );
+    }
+
+    @AuraEnabled
+    public static GridView getGridForProviders(
+        List<Id> practitionerIds,
+        String locationName,
+        Date rangeStart,
+        Date rangeEnd
+    ) {
         if (rangeStart == null || rangeEnd == null) {
             throw error('A start date and end date are required.');
         }
@@ -187,8 +237,16 @@ public with sharing class AppointmentCalendarController {
         Integer queryLimit = SLOT_QUERY_LIMIT + 1;
         Boolean filterLocation = String.isNotBlank(locationName);
         String locationFilter = filterLocation ? locationName.trim() : null;
+        Set<Id> ids = toIdSet(practitionerIds);
 
-        List<Slot__c> rows = querySlots(practitionerId, filterLocation, locationFilter, windowStart, windowEnd, queryLimit);
+        List<Slot__c> rows = querySlots(
+            ids.isEmpty() ? null : ids,
+            filterLocation,
+            locationFilter,
+            windowStart,
+            windowEnd,
+            queryLimit
+        );
 
         GridView view = new GridView();
         view.hasMore = rows.size() > SLOT_QUERY_LIMIT;
@@ -234,7 +292,12 @@ public with sharing class AppointmentCalendarController {
                 ORDER BY Location_Name__c NULLS LAST, CreatedDate DESC
             ];
         } else {
-            return new List<ScheduleOption>();
+            rows = [
+                SELECT Id, Name, Location_Name__c, Slot_Duration_Minutes__c, Active__c
+                FROM Schedule__c
+                WHERE Active__c = TRUE
+                ORDER BY Location_Name__c NULLS LAST, CreatedDate DESC
+            ];
         }
 
         List<ScheduleOption> options = new List<ScheduleOption>();
@@ -250,6 +313,144 @@ public with sharing class AppointmentCalendarController {
             options.add(option);
         }
         return options;
+    }
+
+    @AuraEnabled
+    public static List<ScheduleOption> getActiveSchedulesForProviders(List<Id> practitionerIds, String locationName) {
+        Set<Id> ids = toIdSet(practitionerIds);
+        if (ids.size() == 1) {
+            return getActiveSchedules(new List<Id>(ids)[0], locationName);
+        }
+        if (ids.isEmpty()) {
+            return getActiveSchedules(null, locationName);
+        }
+        Boolean filterLocation = String.isNotBlank(locationName);
+        String locationFilter = filterLocation ? locationName.trim() : null;
+        List<Schedule__c> rows;
+        if (filterLocation) {
+            rows = [
+                SELECT Id, Name, Location_Name__c, Slot_Duration_Minutes__c, Active__c
+                FROM Schedule__c
+                WHERE Practitioner__c IN :ids AND Active__c = TRUE AND Location_Name__c = :locationFilter
+                ORDER BY Location_Name__c NULLS LAST, CreatedDate DESC
+            ];
+        } else {
+            rows = [
+                SELECT Id, Name, Location_Name__c, Slot_Duration_Minutes__c, Active__c
+                FROM Schedule__c
+                WHERE Practitioner__c IN :ids AND Active__c = TRUE
+                ORDER BY Location_Name__c NULLS LAST, CreatedDate DESC
+            ];
+        }
+        List<ScheduleOption> options = new List<ScheduleOption>();
+        for (Schedule__c row : rows) {
+            ScheduleOption option = new ScheduleOption();
+            option.id = row.Id;
+            option.name = row.Name;
+            option.locationName = row.Location_Name__c;
+            option.slotDurationMinutes = row.Slot_Duration_Minutes__c == null
+                ? null
+                : Integer.valueOf(row.Slot_Duration_Minutes__c);
+            option.active = row.Active__c;
+            options.add(option);
+        }
+        return options;
+    }
+
+    @AuraEnabled
+    public static List<NextAvailabilityView> getNextAvailability(String locationName) {
+        Boolean filterLocation = String.isNotBlank(locationName);
+        String locationFilter = filterLocation ? locationName.trim() : null;
+        Datetime windowStart = Datetime.now();
+        Datetime windowEnd = windowStart.addDays(NEXT_AVAILABILITY_DAYS);
+
+        List<Schedule__c> schedules;
+        if (filterLocation) {
+            schedules = [
+                SELECT Practitioner__c, Practitioner__r.Name, Practitioner__r.Specialty__c
+                FROM Schedule__c
+                WHERE
+                    Active__c = TRUE
+                    AND Practitioner__c != NULL
+                    AND Practitioner__r.Active__c = TRUE
+                    AND Location_Name__c = :locationFilter
+            ];
+        } else {
+            schedules = [
+                SELECT Practitioner__c, Practitioner__r.Name, Practitioner__r.Specialty__c
+                FROM Schedule__c
+                WHERE Active__c = TRUE AND Practitioner__c != NULL AND Practitioner__r.Active__c = TRUE
+            ];
+        }
+
+        Map<Id, NextAvailabilityView> byPractitioner = new Map<Id, NextAvailabilityView>();
+        for (Schedule__c schedule : schedules) {
+            if (byPractitioner.containsKey(schedule.Practitioner__c)) {
+                continue;
+            }
+            NextAvailabilityView view = new NextAvailabilityView();
+            view.practitionerId = schedule.Practitioner__c;
+            view.practitionerName = schedule.Practitioner__r == null ? null : schedule.Practitioner__r.Name;
+            view.specialty = schedule.Practitioner__r == null ? null : schedule.Practitioner__r.Specialty__c;
+            byPractitioner.put(schedule.Practitioner__c, view);
+        }
+
+        if (!byPractitioner.isEmpty()) {
+            Set<Id> practitionerIds = byPractitioner.keySet();
+            List<Slot__c> rows;
+            if (filterLocation) {
+                rows = [
+                    SELECT
+                        Id,
+                        Start__c,
+                        End__c,
+                        Schedule__r.Location_Name__c,
+                        Schedule__r.Practitioner__c
+                    FROM Slot__c
+                    WHERE
+                        Status__c = :SLOT_FREE
+                        AND Start__c >= :windowStart
+                        AND Start__c < :windowEnd
+                        AND Schedule__r.Active__c = TRUE
+                        AND Schedule__r.Practitioner__c IN :practitionerIds
+                        AND Schedule__r.Location_Name__c = :locationFilter
+                    ORDER BY Start__c ASC
+                    LIMIT :SLOT_QUERY_LIMIT
+                ];
+            } else {
+                rows = [
+                    SELECT
+                        Id,
+                        Start__c,
+                        End__c,
+                        Schedule__r.Location_Name__c,
+                        Schedule__r.Practitioner__c
+                    FROM Slot__c
+                    WHERE
+                        Status__c = :SLOT_FREE
+                        AND Start__c >= :windowStart
+                        AND Start__c < :windowEnd
+                        AND Schedule__r.Active__c = TRUE
+                        AND Schedule__r.Practitioner__c IN :practitionerIds
+                    ORDER BY Start__c ASC
+                    LIMIT :SLOT_QUERY_LIMIT
+                ];
+            }
+            for (Slot__c row : rows) {
+                NextAvailabilityView view = byPractitioner.get(row.Schedule__r.Practitioner__c);
+                if (view == null || view.nextStart != null) {
+                    continue;
+                }
+                view.slotId = row.Id;
+                view.nextStart = row.Start__c;
+                view.nextEnd = row.End__c;
+                view.locationName = row.Schedule__r.Location_Name__c;
+            }
+        }
+
+        List<NextAvailabilityView> result = byPractitioner.values();
+        result.sort();
+        return result;
     }
 
     @AuraEnabled
@@ -486,8 +687,9 @@ public with sharing class AppointmentCalendarController {
     }
 
     @AuraEnabled
-    public static AdHocSlotResult createAdHocSlots(Id scheduleId, List<SlotRange> ranges) {
+    public static AdHocSlotResult createAdHocSlots(Id scheduleId, List<SlotRange> ranges, String status) {
         Schedule__c schedule = lockSchedule(scheduleId);
+        String slotStatus = normalizePaintStatus(status);
         List<RangeCandidate> candidates = normalizeRanges(ranges);
         AdHocSlotResult result = new AdHocSlotResult();
         result.success = true;
@@ -530,14 +732,16 @@ public with sharing class AppointmentCalendarController {
                 result.skipped++;
                 continue;
             }
-            toInsert.add(
-                new Slot__c(
-                    Schedule__c = schedule.Id,
-                    Start__c = candidate.startTime,
-                    End__c = candidate.endTime,
-                    Status__c = SLOT_FREE
-                )
+            Slot__c slot = new Slot__c(
+                Schedule__c = schedule.Id,
+                Start__c = candidate.startTime,
+                End__c = candidate.endTime,
+                Status__c = slotStatus
             );
+            if (slotStatus == SLOT_BLOCKED) {
+                slot.Block_Reason__c = 'Blocked';
+            }
+            toInsert.add(slot);
             occupied.add(candidate);
         }
         result.skipped += submitted - candidates.size();
@@ -545,7 +749,7 @@ public with sharing class AppointmentCalendarController {
         if (!toInsert.isEmpty()) {
             insert toInsert;
             result.slots = [
-                SELECT Id, Start__c, End__c, Status__c, Schedule__c
+                SELECT Id, Start__c, End__c, Status__c, Schedule__c, Block_Reason__c
                 FROM Slot__c
                 WHERE Id IN :toInsert
                 ORDER BY Start__c ASC
@@ -555,15 +759,39 @@ public with sharing class AppointmentCalendarController {
         return result;
     }
 
+    private static String normalizePaintStatus(String status) {
+        if (String.isBlank(status) || status == SLOT_FREE) {
+            return SLOT_FREE;
+        }
+        if (status == SLOT_BLOCKED) {
+            return SLOT_BLOCKED;
+        }
+        throw error('Paint status must be Free or Blocked.');
+    }
+
+    private static Set<Id> toIdSet(List<Id> ids) {
+        Set<Id> result = new Set<Id>();
+        if (ids == null) {
+            return result;
+        }
+        for (Id value : ids) {
+            if (value != null) {
+                result.add(value);
+            }
+        }
+        return result;
+    }
+
     private static List<Slot__c> querySlots(
-        Id practitionerId,
+        Set<Id> practitionerIds,
         Boolean filterLocation,
         String locationFilter,
         Datetime windowStart,
         Datetime windowEnd,
         Integer queryLimit
     ) {
-        if (practitionerId != null && filterLocation) {
+        Boolean filterPractitioners = practitionerIds != null && !practitionerIds.isEmpty();
+        if (filterPractitioners && filterLocation) {
             return [
                 SELECT
                     Id,
@@ -594,7 +822,7 @@ public with sharing class AppointmentCalendarController {
                 FROM Slot__c
                 WHERE
                     Schedule__r.Active__c = TRUE
-                    AND Schedule__r.Practitioner__c = :practitionerId
+                    AND Schedule__r.Practitioner__c IN :practitionerIds
                     AND Schedule__r.Location_Name__c = :locationFilter
                     AND Start__c >= :windowStart
                     AND Start__c < :windowEnd
@@ -602,7 +830,7 @@ public with sharing class AppointmentCalendarController {
                 LIMIT :queryLimit
             ];
         }
-        if (practitionerId != null) {
+        if (filterPractitioners) {
             return [
                 SELECT
                     Id,
@@ -633,7 +861,45 @@ public with sharing class AppointmentCalendarController {
                 FROM Slot__c
                 WHERE
                     Schedule__r.Active__c = TRUE
-                    AND Schedule__r.Practitioner__c = :practitionerId
+                    AND Schedule__r.Practitioner__c IN :practitionerIds
+                    AND Start__c >= :windowStart
+                    AND Start__c < :windowEnd
+                ORDER BY Start__c ASC
+                LIMIT :queryLimit
+            ];
+        }
+        if (filterLocation) {
+            return [
+                SELECT
+                    Id,
+                    Start__c,
+                    End__c,
+                    Status__c,
+                    Appointment_Type__c,
+                    Schedule__c,
+                    Schedule__r.Location_Name__c,
+                    Schedule__r.Practitioner__c,
+                    Schedule__r.Practitioner__r.Name,
+                    Schedule__r.Slot_Duration_Minutes__c,
+                    (
+                        SELECT
+                            Id,
+                            Name,
+                            Status__c,
+                            Appointment_Type__c,
+                            Reason__c,
+                            Patient__c,
+                            Patient__r.Name,
+                            Encounter__c,
+                            Encounter__r.Name
+                        FROM Appointments__r
+                        ORDER BY CreatedDate DESC
+                        LIMIT 5
+                    )
+                FROM Slot__c
+                WHERE
+                    Schedule__r.Active__c = TRUE
+                    AND Schedule__r.Location_Name__c = :locationFilter
                     AND Start__c >= :windowStart
                     AND Start__c < :windowEnd
                 ORDER BY Start__c ASC
@@ -670,7 +936,6 @@ public with sharing class AppointmentCalendarController {
             FROM Slot__c
             WHERE
                 Schedule__r.Active__c = TRUE
-                AND Schedule__r.Location_Name__c = :locationFilter
                 AND Start__c >= :windowStart
                 AND Start__c < :windowEnd
             ORDER BY Start__c ASC

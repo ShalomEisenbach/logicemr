@@ -1,0 +1,89 @@
+<apex:page
+    controller="PrescriptionPadController"
+    renderAs="pdf"
+    applyHtmlTag="false"
+    showHeader="false"
+    sidebar="false"
+    standardStylesheets="false"
+>
+<html>
+<head>
+    <style type="text/css">
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #080707; }
+        h1 { font-size: 18px; margin: 0 0 6px 0; }
+        h2 { font-size: 14px; margin: 0 0 8px 0; }
+        .meta { color: #706e6b; margin-bottom: 14px; }
+        .rx {
+            border: 1px solid #dddbda;
+            padding: 10px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+        }
+        .rx-title { font-size: 13px; font-weight: bold; margin-bottom: 6px; }
+        .label { color: #706e6b; }
+        .footer { margin-top: 18px; color: #706e6b; font-size: 10px; }
+        .section-empty { color: #706e6b; font-style: italic; }
+    </style>
+</head>
+<body>
+    <apex:outputPanel layout="block" rendered="{!NOT(hasPatient)}">
+        <p>Patient not found.</p>
+    </apex:outputPanel>
+    <apex:outputPanel layout="block" rendered="{!hasPatient}">
+        <h1>Prescription</h1>
+        <div class="meta">
+            <div><strong>{!pad.patient.fullName}</strong></div>
+            <div>MRN: <apex:outputText value="{!pad.patient.mrn}" /></div>
+            <div>
+                DOB:
+                <apex:outputText value="{0,date,yyyy-MM-dd}">
+                    <apex:param value="{!pad.patient.dateOfBirth}" />
+                </apex:outputText>
+                &nbsp;|&nbsp;Phone: <apex:outputText value="{!pad.patient.phone}" />
+            </div>
+            <!-- TODO: Patient address — not in data model yet -->
+            <div>
+                Generated:
+                <apex:outputText value="{0,date,yyyy-MM-dd HH:mm}">
+                    <apex:param value="{!pad.generatedAt}" />
+                </apex:outputText>
+            </div>
+        </div>
+
+        <apex:outputPanel layout="none" rendered="{!NOT(hasPrescriptions)}">
+            <p class="section-empty">No prescriptions selected.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!hasPrescriptions}">
+            <apex:repeat value="{!pad.prescriptions}" var="rx">
+                <div class="rx">
+                    <div class="rx-title">Rx: {!rx.display}</div>
+                    <div><span class="label">Code:</span> {!rx.code} ({!rx.codeSystem})</div>
+                    <div><span class="label">Dosage:</span> {!rx.dosageText}</div>
+                    <div>
+                        <span class="label">Dose:</span>
+                        <apex:outputText value="{!rx.doseQuantity}" />
+                        {!rx.doseUnit}
+                        &nbsp;|&nbsp;<span class="label">Frequency:</span> {!rx.frequency}
+                        &nbsp;|&nbsp;<span class="label">Route:</span> {!rx.route}
+                    </div>
+                    <div>
+                        <span class="label">Status:</span> {!rx.status}
+                        &nbsp;|&nbsp;<span class="label">Authored:</span>
+                        <apex:outputText value="{0,date,yyyy-MM-dd HH:mm}">
+                            <apex:param value="{!rx.authoredOn}" />
+                        </apex:outputText>
+                    </div>
+                    <div>
+                        <span class="label">Prescriber:</span> {!rx.requesterName}
+                        &nbsp;|&nbsp;<span class="label">NPI:</span> {!rx.requesterNpi}
+                    </div>
+                    <!-- TODO: Quantity, Refills, DEA — not in data model yet -->
+                </div>
+            </apex:repeat>
+        </apex:outputPanel>
+
+        <div class="footer">LogicEMR prescription document — for authorized care use only.</div>
+    </apex:outputPanel>
+</body>
+</html>
+</apex:page>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Default</label>
+    <protected>false</protected>
+    <values>
+        <field>Email_Enabled__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>SMS_Enabled__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Auto_Send_Confirmation__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Auto_Send_Reminder__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Reminder_Hours_Before__c</field>
+        <value xsi:type="xsd:double">24.0</value>
+    </values>
+    <values>
+        <field>Twilio_Named_Credential__c</field>
+        <value xsi:type="xsd:string">LogicEMR_Twilio</value>
+    </values>
+    <values>
+        <field>Twilio_Account_Sid__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Twilio_From_Number__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Org_Wide_Email_Address__c</field>
+        <value xsi:nil="true"/>
+    </values>
+</CustomMetadata>

@@ -29,6 +29,7 @@ Database.executeBatch(new NameBackfillBatch('CareTeam__c'));
 Database.executeBatch(new NameBackfillBatch('CareTeamMember__c'));
 Database.executeBatch(new NameBackfillBatch('Practitioner__c'));
 Database.executeBatch(new NameBackfillBatch('Appointment__c'));
+Database.executeBatch(new NameBackfillBatch('Coverage__c'));
 ```
 
 Namespaced orgs may pass either `Patient__c` or `lfemr__Patient__c`. Finish logs `LogicEMR name backfill complete for {object}. updated={n}`.

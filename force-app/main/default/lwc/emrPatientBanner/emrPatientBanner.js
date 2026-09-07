@@ -12,6 +12,7 @@ import MRN_FIELD from '@salesforce/schema/Patient__c.MRN__c';
 import STATUS_FIELD from '@salesforce/schema/Patient__c.Status__c';
 import SEX_FIELD from '@salesforce/schema/Patient__c.Sex_at_Birth__c';
 import PHONE_FIELD from '@salesforce/schema/Patient__c.Phone__c';
+import EMAIL_FIELD from '@salesforce/schema/Patient__c.Email__c';
 
 const PATIENT_FIELDS = [
     FIRST_NAME_FIELD,
@@ -20,7 +21,8 @@ const PATIENT_FIELDS = [
     MRN_FIELD,
     STATUS_FIELD,
     SEX_FIELD,
-    PHONE_FIELD
+    PHONE_FIELD,
+    EMAIL_FIELD
 ];
 
 export default class EmrPatientBanner extends LightningElement {
@@ -152,8 +154,16 @@ export default class EmrPatientBanner extends LightningElement {
         return getFieldValue(this.patient, PHONE_FIELD) || '';
     }
 
+    get email() {
+        return getFieldValue(this.patient, EMAIL_FIELD) || '';
+    }
+
     get status() {
         return getFieldValue(this.patient, STATUS_FIELD) || '';
+    }
+
+    get showDocumentActions() {
+        return !!(this.recordId && this.patientId && this.recordId === this.patientId);
     }
 
     get statusBadgeClass() {

@@ -228,27 +228,30 @@ private class AppointmentBookingControllerTest {
         List<AppointmentBookingController.ProviderAvailabilityView> allProviders = AppointmentBookingController.getAvailableProviders(
             SLOT_DAY,
             SLOT_DAY,
-            null
+            null,
+            false
         );
         List<AppointmentBookingController.ProviderAvailabilityView> clinicBOnly = AppointmentBookingController.getAvailableProviders(
             SLOT_DAY,
             SLOT_DAY,
-            'Clinic B'
+            'Clinic B',
+            false
         );
         List<AppointmentBookingController.ProviderAvailabilityView> emptyDay = AppointmentBookingController.getAvailableProviders(
             SLOT_DAY.addDays(1),
             SLOT_DAY.addDays(1),
-            null
+            null,
+            false
         );
         Boolean missingDates = false;
         try {
-            AppointmentBookingController.getAvailableProviders(null, SLOT_DAY, null);
+            AppointmentBookingController.getAvailableProviders(null, SLOT_DAY, null, false);
         } catch (AuraHandledException e) {
             missingDates = true;
         }
         Boolean invertedRange = false;
         try {
-            AppointmentBookingController.getAvailableProviders(SLOT_DAY, SLOT_DAY.addDays(-1), null);
+            AppointmentBookingController.getAvailableProviders(SLOT_DAY, SLOT_DAY.addDays(-1), null, false);
         } catch (AuraHandledException e) {
             invertedRange = true;
         }
@@ -272,6 +275,126 @@ private class AppointmentBookingControllerTest {
         System.assertEquals(0, emptyDay.size(), 'A day with no Free slots should return no providers');
         System.assertEquals(true, missingDates, 'getAvailableProviders without dates should throw');
         System.assertEquals(true, invertedRange, 'Inverted provider date range should throw');
+    }
+
+    @IsTest
+    static void getAvailableProvidersCanIncludeProvidersWithoutFreeSlots() {
+        Practitioner__c ada = insertPractitioner('Ada', 'Lopez');
+        Practitioner__c noSlots = insertPractitioner('Fay', 'Quinn');
+        Practitioner__c noSchedule = insertPractitioner('Gus', 'Reed');
+        Practitioner__c inactive = insertPractitioner('Cara', 'Singh');
+        inactive.Active__c = false;
+        update inactive;
+        insertSchedule(ada.Id, 'Clinic A');
+        insertSchedule(noSlots.Id, 'Clinic A');
+        insertSchedule(noSlots.Id, 'Clinic B');
+        insertSchedule(inactive.Id, 'Clinic A');
+        Datetime inRange = DateTime.newInstance(SLOT_DAY, Time.newInstance(9, 0, 0, 0));
+        insertSlot(insertSchedule(ada.Id, 'Clinic B').Id, inRange, inRange.addMinutes(20), 'Free');
+        insertSlot(
+            [SELECT Id FROM Schedule__c WHERE Practitioner__c = :inactive.Id LIMIT 1].Id,
+            inRange,
+            inRange.addMinutes(20),
+            'Free'
+        );
+
+        Test.startTest();
+        List<AppointmentBookingController.ProviderAvailabilityView> allProviders = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY,
+            SLOT_DAY,
+            null,
+            true
+        );
+        List<AppointmentBookingController.ProviderAvailabilityView> clinicB = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY,
+            SLOT_DAY,
+            'Clinic B',
+            true
+        );
+        List<AppointmentBookingController.ProviderAvailabilityView> emptyDay = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY.addDays(1),
+            SLOT_DAY.addDays(1),
+            null,
+            true
+        );
+        AppointmentBookingController.ProviderAvailabilityView adaView = AppointmentBookingController.getProviderAvailability(
+            ada.Id,
+            SLOT_DAY,
+            SLOT_DAY,
+            null
+        );
+        AppointmentBookingController.ProviderAvailabilityView noSlotsView = AppointmentBookingController.getProviderAvailability(
+            noSlots.Id,
+            SLOT_DAY,
+            SLOT_DAY,
+            null
+        );
+        AppointmentBookingController.ProviderAvailabilityView adaClinicB = AppointmentBookingController.getProviderAvailability(
+            ada.Id,
+            SLOT_DAY,
+            SLOT_DAY,
+            'Clinic B'
+        );
+        AppointmentBookingController.ProviderAvailabilityView adaClinicA = AppointmentBookingController.getProviderAvailability(
+            ada.Id,
+            SLOT_DAY,
+            SLOT_DAY,
+            'Clinic A'
+        );
+        List<AppointmentBookingController.ProviderAvailabilityView> unknownLocation = AppointmentBookingController.getAvailableProviders(
+            SLOT_DAY,
+            SLOT_DAY,
+            'No Such Clinic',
+            true
+        );
+        Boolean missingProvider = false;
+        try {
+            AppointmentBookingController.getProviderAvailability(null, SLOT_DAY, SLOT_DAY, null);
+        } catch (AuraHandledException e) {
+            missingProvider = true;
+        }
+        Boolean inactiveRejected = false;
+        try {
+            AppointmentBookingController.getProviderAvailability(inactive.Id, SLOT_DAY, SLOT_DAY, null);
+        } catch (AuraHandledException e) {
+            inactiveRejected = true;
+        }
+        Boolean unknownProvider = false;
+        try {
+            AppointmentBookingController.getProviderAvailability(UserInfo.getUserId(), SLOT_DAY, SLOT_DAY, null);
+        } catch (AuraHandledException e) {
+            unknownProvider = true;
+        }
+        Test.stopTest();
+
+        System.assertEquals(3, allProviders.size(), 'All active providers should appear when includeUnavailable is true');
+        AppointmentBookingController.ProviderAvailabilityView adaAll = findProvider(allProviders, ada.Id);
+        AppointmentBookingController.ProviderAvailabilityView noSlotsAll = findProvider(allProviders, noSlots.Id);
+        AppointmentBookingController.ProviderAvailabilityView noScheduleAll = findProvider(allProviders, noSchedule.Id);
+        System.assertNotEquals(null, adaAll, 'Ada should appear because she is active');
+        System.assertEquals(1, adaAll.freeSlotCount, 'Ada should keep her Free slot count');
+        System.assertNotEquals(null, noSlotsAll, 'A provider with schedules but no Free slots should appear');
+        System.assertEquals(0, noSlotsAll.freeSlotCount, 'Providers without Free slots should show a zero count');
+        System.assertEquals('Clinic A, Clinic B', noSlotsAll.locationNames, 'Locations should come from active schedules');
+        System.assertNotEquals(null, noScheduleAll, 'A provider with no schedule should still be selectable');
+        System.assertEquals(0, noScheduleAll.freeSlotCount, 'A provider with no schedule should have zero Free slots');
+        System.assertEquals(null, findProvider(allProviders, inactive.Id), 'Inactive providers must stay hidden');
+        System.assertEquals(ada.Id, allProviders[0].practitionerId, 'Providers with Free slots should sort first');
+        System.assertEquals(2, clinicB.size(), 'Location filter should include anyone with an active schedule there');
+        System.assertNotEquals(null, findProvider(clinicB, ada.Id), 'Ada has a Clinic B schedule');
+        System.assertNotEquals(null, findProvider(clinicB, noSlots.Id), 'Fay has a Clinic B schedule');
+        System.assertEquals(null, findProvider(clinicB, noSchedule.Id), 'A provider without that location must be hidden');
+        System.assertEquals(3, emptyDay.size(), 'A day with no Free slots should still list every active provider');
+        System.assertEquals(1, adaView.freeSlotCount, 'Single-provider lookup should return Ada Free slots');
+        System.assertEquals(0, noSlotsView.freeSlotCount, 'Single-provider lookup should return zero when none are Free');
+        System.assertEquals('Clinic A, Clinic B', noSlotsView.locationNames, 'Single-provider lookup should list schedule locations');
+        System.assertEquals(1, adaClinicB.freeSlotCount, 'Location-filtered lookup should count Clinic B Free slots');
+        System.assertEquals('Clinic B', adaClinicB.locationNames, 'Location-filtered lookup should list only that location');
+        System.assertEquals(0, adaClinicA.freeSlotCount, 'Ada has no Free slots at Clinic A');
+        System.assertEquals(0, unknownLocation.size(), 'An unknown location should return no providers');
+        System.assertEquals(true, missingProvider, 'getProviderAvailability without a provider should throw');
+        System.assertEquals(true, inactiveRejected, 'getProviderAvailability should reject an inactive provider');
+        System.assertEquals(true, unknownProvider, 'getProviderAvailability should reject an unknown provider Id');
     }
 
     @IsTest

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Org-level configuration for appointment confirmation and reminder email/SMS.</description>
+    <label>Appointment Comm Config</label>
+    <pluralLabel>Appointment Comm Configs</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

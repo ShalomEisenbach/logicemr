@@ -146,6 +146,9 @@ private class NameFormatterHandlerTest {
         insert practitioner;
         practitioner = [SELECT Name FROM Practitioner__c WHERE Id = :practitioner.Id];
 
+        Payer__c payer = new Payer__c(Name = 'Aetna', Type__c = 'Commercial');
+        insert payer;
+
         Encounter__c encounter = new Encounter__c(
             Patient__c = patient.Id,
             Class__c = 'Inpatient',
@@ -238,6 +241,13 @@ private class NameFormatterHandlerTest {
             Start__c = Datetime.newInstance(2026, 9, 2, 14, 0, 0),
             Status__c = 'Booked'
         );
+        insert new Coverage__c(
+            Patient__c = patient.Id,
+            Payer__c = payer.Id,
+            Member_Id__c = 'M12345',
+            Type__c = 'Medical',
+            Status__c = 'Active'
+        );
         Test.stopTest();
 
         CareTeam__c careTeam = [SELECT Name FROM CareTeam__c WHERE Patient__c = :patient.Id LIMIT 1];
@@ -303,6 +313,11 @@ private class NameFormatterHandlerTest {
         System.assert(
             appointmentRow.Name.contains(patient.Name),
             'Appointment Name should include the parent Patient Name. Actual: ' + appointmentRow.Name
+        );
+        System.assertEquals(
+            'Aetna - M12345',
+            [SELECT Name FROM Coverage__c WHERE Patient__c = :patient.Id].Name,
+            'Coverage Name should compose payer name and member id'
         );
     }
 

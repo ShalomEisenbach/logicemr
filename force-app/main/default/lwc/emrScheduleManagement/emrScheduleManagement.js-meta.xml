@@ -3,12 +3,22 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Schedule Management</masterLabel>
-    <description>Create or select a provider schedule, generate availability slots, and block or free individual slots.</description>
+    <description>Create or select a provider schedule, edit weekly hours, generate slots, and mark time off.</description>
     <targets>
         <target>lightning__AppPage</target>
+        <target>lightning__RecordPage</target>
     </targets>
     <targetConfigs>
         <targetConfig targets="lightning__AppPage">
+            <supportedFormFactors>
+                <supportedFormFactor type="Large" />
+                <supportedFormFactor type="Small" />
+            </supportedFormFactors>
+        </targetConfig>
+        <targetConfig targets="lightning__RecordPage">
+            <objects>
+                <object>Practitioner__c</object>
+            </objects>
             <supportedFormFactors>
                 <supportedFormFactor type="Large" />
                 <supportedFormFactor type="Small" />

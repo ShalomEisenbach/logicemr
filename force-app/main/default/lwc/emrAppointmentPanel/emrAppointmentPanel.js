@@ -17,6 +17,9 @@ import PRAC_LAST_NAME_FIELD from '@salesforce/schema/Practitioner__c.Last_Name__
 import { urlColumn, withRecordUrls, recordViewPageRef } from 'c/emrNavigationUtils';
 
 const OPEN_APPOINTMENT = 'open';
+const SEND_CONFIRMATION = 'send_confirmation';
+const SEND_REMINDER = 'send_reminder';
+const PRINT_APPOINTMENT = 'print';
 
 export default class EmrAppointmentPanel extends NavigationMixin(LightningElement) {
     @api recordId;
@@ -26,6 +29,11 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
     showScheduleForm = false;
     scheduleStarted = false;
     wiredAppointmentsResult;
+    showNotifyModal = false;
+    notifyAppointmentId;
+    notifyMessageType = 'Confirmation';
+    showPrintModal = false;
+    printAppointmentId;
 
     get columns() {
         return [
@@ -38,7 +46,12 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
             {
                 type: 'action',
                 typeAttributes: {
-                    rowActions: [{ label: 'Open', name: OPEN_APPOINTMENT }]
+                    rowActions: [
+                        { label: 'Open', name: OPEN_APPOINTMENT },
+                        { label: 'Send Confirmation', name: SEND_CONFIRMATION },
+                        { label: 'Send Reminder', name: SEND_REMINDER },
+                        { label: 'Print', name: PRINT_APPOINTMENT }
+                    ]
                 }
             }
         ];
@@ -144,6 +157,10 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
         });
     }
 
+    get notifyModalTitle() {
+        return this.notifyMessageType === 'Reminder' ? 'Send reminder' : 'Send confirmation';
+    }
+
     handleSchedule() {
         this.showScheduleForm = true;
         this.scheduleStarted = false;
@@ -185,18 +202,62 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
         });
     }
 
+    handleNotifyCard(event) {
+        this.notifyAppointmentId = event.currentTarget.dataset.id;
+        this.notifyMessageType = event.currentTarget.dataset.type || 'Confirmation';
+        this.showNotifyModal = true;
+    }
+
+    handlePrintCard(event) {
+        this.printAppointmentId = event.currentTarget.dataset.id;
+        this.showPrintModal = true;
+    }
+
     handleRowAction(event) {
-        if (event.detail.action.name !== OPEN_APPOINTMENT) {
+        const actionName = event.detail.action.name;
+        const rowId = event.detail.row.Id;
+        if (actionName === SEND_CONFIRMATION) {
+            this.notifyAppointmentId = rowId;
+            this.notifyMessageType = 'Confirmation';
+            this.showNotifyModal = true;
+            return;
+        }
+        if (actionName === SEND_REMINDER) {
+            this.notifyAppointmentId = rowId;
+            this.notifyMessageType = 'Reminder';
+            this.showNotifyModal = true;
+            return;
+        }
+        if (actionName === PRINT_APPOINTMENT) {
+            this.printAppointmentId = rowId;
+            this.showPrintModal = true;
+            return;
+        }
+        if (actionName !== OPEN_APPOINTMENT) {
             return;
         }
         this[NavigationMixin.Navigate]({
             type: 'standard__recordPage',
             attributes: {
-                recordId: event.detail.row.Id,
+                recordId: rowId,
                 objectApiName: APPOINTMENT_OBJECT.objectApiName,
                 actionName: 'view'
             }
         });
+    }
+
+    handleCloseNotify() {
+        this.showNotifyModal = false;
+        this.notifyAppointmentId = undefined;
+    }
+
+    handleNotifySent() {
+        this.handleCloseNotify();
+    }
+
+    handleClosePrint() {
+        this.showPrintModal = false;
+        this.printAppointmentId = undefined;
     }
 
     get appointmentsRelationshipApiName() {

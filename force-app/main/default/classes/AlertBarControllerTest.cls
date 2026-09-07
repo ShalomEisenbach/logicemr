@@ -239,6 +239,12 @@ private class AlertBarControllerTest {
         System.assertEquals(metformin.Id, sections.get('medications').items[0].id, 'Active order should appear first');
         System.assertEquals(aspirin.Id, sections.get('medications').items[1].id, 'Reported medication should be included');
         System.assertEquals('Reported', sections.get('medications').items[1].flag, 'Reported meds should be flagged');
+        System.assertEquals('list', sections.get('medications').variant, 'Medications should use the list layout');
+        System.assertEquals(
+            '500 mg twice daily',
+            sections.get('medications').items[0].detail,
+            'Order dosage should be exposed as list detail'
+        );
         System.assertEquals('success', sections.get('medications').tone, 'Active meds should use the success tone');
 
         System.assertEquals(2, sections.get('flowsheet').totalCount, 'Latest abnormal findings should be summarized');
@@ -247,17 +253,15 @@ private class AlertBarControllerTest {
             sections.get('flowsheet').items[0].id,
             'Critical finding should sort first'
         );
+        System.assertEquals('metrics', sections.get('flowsheet').variant, 'Flowsheet should use the vitals grid layout');
+        System.assertEquals('K', sections.get('flowsheet').items[0].name, 'Potassium should use a short metric label');
+        System.assertEquals('6.2', sections.get('flowsheet').items[0].value, 'Metric value should be separate from the label');
+        System.assertEquals('mmol/L', sections.get('flowsheet').items[0].unit, 'Metric unit should be queried');
         System.assertEquals('Critical', sections.get('flowsheet').items[0].flag, 'Critical finding should be flagged');
-        System.assert(
-            sections.get('flowsheet').items[0].name.contains('6.2'),
-            'Flowsheet chip should include the observation value'
-        );
         System.assertEquals('high', sections.get('flowsheet').tone, 'Critical findings should use the high tone');
-        System.assertEquals(
-            'HDL cholesterol 38 mg/dL',
-            sections.get('flowsheet').items[1].name,
-            'Older HDL row should be dropped in favor of the latest abnormal'
-        );
+        System.assertEquals('HDL', sections.get('flowsheet').items[1].name, 'Latest HDL should use a short metric label');
+        System.assertEquals('38', sections.get('flowsheet').items[1].value, 'Older HDL row should be dropped');
+        System.assertEquals('mg/dL', sections.get('flowsheet').items[1].unit, 'HDL unit should be queried');
 
         System.assertEquals(2, sections.get('results').totalCount, 'Both patient reports should be summarized');
         System.assertEquals(lipidPanel.Id, sections.get('results').items[0].id, 'Unreviewed result should sort first');

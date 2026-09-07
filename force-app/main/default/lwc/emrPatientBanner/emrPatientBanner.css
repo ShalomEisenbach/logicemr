@@ -82,3 +82,8 @@
     font-weight: 600;
     line-height: 1.25;
 }
+
+.document-actions {
+    flex: 0 0 auto;
+    align-self: center;
+}

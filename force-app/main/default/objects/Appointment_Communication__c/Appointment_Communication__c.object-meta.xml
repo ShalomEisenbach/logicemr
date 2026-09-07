@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Log of appointment confirmation, reminder, and print communications sent to patients.</description>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>Appointment Communication</label>
+    <nameField>
+        <displayFormat>COMM-{00000000}</displayFormat>
+        <label>Communication Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Appointment Communications</pluralLabel>
+    <sharingModel>Private</sharingModel>
+</CustomObject>

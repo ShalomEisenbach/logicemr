@@ -33,12 +33,14 @@ const RENEW = 'renew';
 const DISCONTINUE = 'discontinue';
 const DELETE = 'delete';
 const DELETE_REPORTED = 'deleteReported';
+const PRINT = 'print';
 
 export default class EmrMedicationPanel extends NavigationMixin(LightningElement) {
     @api recordId;
 
     activeOrders = [];
     reportedMedications = [];
+    selectedOrderIds = [];
     errorMessage;
     isSaving = false;
     showAddForm = false;
@@ -107,6 +109,7 @@ export default class EmrMedicationPanel extends NavigationMixin(LightningElement
                 type: 'action',
                 typeAttributes: {
                     rowActions: [
+                        { label: 'Print', name: PRINT },
                         { label: 'Renew', name: RENEW },
                         { label: 'Discontinue', name: DISCONTINUE },
                         { label: 'Delete', name: DELETE }
@@ -174,6 +177,12 @@ export default class EmrMedicationPanel extends NavigationMixin(LightningElement
             MEDICATION_STATEMENT_OBJECT.objectApiName,
             { labelField: STATEMENT_DISPLAY_FIELD.fieldApiName }
         );
+        const validIds = new Set(this.activeOrders.map((row) => row.Id));
+        this.selectedOrderIds = (this.selectedOrderIds || []).filter((id) => validIds.has(id));
+    }
+
+    handleOrderSelection(event) {
+        this.selectedOrderIds = (event.detail.selectedRows || []).map((row) => row.Id);
     }
 
     get hasActiveOrders() {
@@ -362,6 +371,13 @@ export default class EmrMedicationPanel extends NavigationMixin(LightningElement
 
     async handleRowAction(event) {
         const actionName = event.detail.action.name;
+        if (actionName === PRINT) {
+            const share = this.template.querySelector('.hidden-share');
+            if (share) {
+                await share.print([event.detail.row.Id]);
+            }
+            return;
+        }
         if (
             (actionName !== RENEW &&
                 actionName !== DISCONTINUE &&

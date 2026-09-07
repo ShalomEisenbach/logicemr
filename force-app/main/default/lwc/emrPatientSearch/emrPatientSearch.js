@@ -7,6 +7,7 @@ import FIRST_NAME_FIELD from '@salesforce/schema/Patient__c.First_Name__c';
 import MRN_FIELD from '@salesforce/schema/Patient__c.MRN__c';
 import DOB_FIELD from '@salesforce/schema/Patient__c.Date_of_Birth__c';
 import PHONE_FIELD from '@salesforce/schema/Patient__c.Phone__c';
+import EMAIL_FIELD from '@salesforce/schema/Patient__c.Email__c';
 import STATUS_FIELD from '@salesforce/schema/Patient__c.Status__c';
 import { urlColumn, withRecordUrls } from 'c/emrNavigationUtils';
 
@@ -47,6 +48,7 @@ export default class EmrPatientSearch extends NavigationMixin(LightningElement) 
             { label: 'MRN', fieldName: MRN_FIELD.fieldApiName },
             { label: 'DOB', fieldName: DOB_FIELD.fieldApiName, type: 'date-local' },
             { label: 'Phone', fieldName: PHONE_FIELD.fieldApiName, type: 'phone' },
+            { label: 'Email', fieldName: EMAIL_FIELD.fieldApiName },
             { label: 'Status', fieldName: STATUS_FIELD.fieldApiName },
             {
                 type: 'action',
@@ -73,6 +75,7 @@ export default class EmrPatientSearch extends NavigationMixin(LightningElement) 
             const parts = [
                 row[MRN_FIELD.fieldApiName],
                 row[PHONE_FIELD.fieldApiName],
+                row[EMAIL_FIELD.fieldApiName],
                 formatDob(row[DOB_FIELD.fieldApiName]),
                 row[STATUS_FIELD.fieldApiName]
             ].filter((part) => part);

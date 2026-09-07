@@ -1,0 +1,40 @@
+<template>
+    <div class="slds-p-around_small">
+        <h2 class="slds-text-heading_small slds-m-bottom_small">{title}</h2>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={emailAvailable}>
+            <lightning-input
+                type="checkbox"
+                label={emailLabel}
+                checked={sendEmail}
+                disabled={isBusy}
+                onchange={handleEmailChange}
+            ></lightning-input>
+        </template>
+        <template lwc:if={smsAvailable}>
+            <lightning-input
+                class="slds-m-top_x-small"
+                type="checkbox"
+                label={smsLabel}
+                checked={sendSms}
+                disabled={isBusy}
+                onchange={handleSmsChange}
+            ></lightning-input>
+        </template>
+        <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+            <lightning-button
+                label="Cancel"
+                onclick={handleCancel}
+                class="slds-m-right_small"
+            ></lightning-button>
+            <lightning-button
+                label="Send"
+                variant="brand"
+                disabled={isSendDisabled}
+                onclick={handleSend}
+            ></lightning-button>
+        </div>
+    </div>
+</template>

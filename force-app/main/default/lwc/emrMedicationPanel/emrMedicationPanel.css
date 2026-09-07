@@ -41,6 +41,15 @@
     gap: 0.5rem;
 }
 
+.share-slot {
+    display: inline-flex;
+    margin-left: 0.5rem;
+}
+
+.hidden-share {
+    display: none;
+}
+
 @media (max-width: 47.9375rem) {
     .table-wide {
         display: none;

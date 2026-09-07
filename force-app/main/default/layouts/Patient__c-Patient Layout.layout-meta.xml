@@ -39,6 +39,14 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>Email__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>SMS_Opt_In__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>Contact__c</field>
             </layoutItems>
         </layoutColumns>
@@ -107,8 +115,26 @@
     </relatedLists>
     <relatedLists>
         <fields>NAME</fields>
+        <fields>Type__c</fields>
+        <fields>Channel__c</fields>
+        <fields>Status__c</fields>
+        <fields>Sent_At__c</fields>
+        <fields>Appointment__c</fields>
+        <relatedList>Appointment_Communication__c.Patient__c</relatedList>
+    </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
         <fields>Status__c</fields>
         <relatedList>CareTeam__c.Patient__c</relatedList>
+    </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
+        <fields>Payer__c</fields>
+        <fields>Member_Id__c</fields>
+        <fields>Type__c</fields>
+        <fields>Status__c</fields>
+        <fields>Priority__c</fields>
+        <relatedList>Coverage__c.Patient__c</relatedList>
     </relatedLists>
     <relatedLists>
         <fields>NAME</fields>

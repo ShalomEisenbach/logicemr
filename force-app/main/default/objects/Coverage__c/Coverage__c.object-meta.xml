@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>FHIR Coverage. A patient's insurance membership with a payer. Sharing is controlled by the parent Patient.</description>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Coverage</label>
+    <nameField>
+        <label>Coverage Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Coverages</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+</CustomObject>

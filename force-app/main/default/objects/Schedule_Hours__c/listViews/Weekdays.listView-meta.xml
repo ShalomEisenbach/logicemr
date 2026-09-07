@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Weekdays</fullName>
+    <columns>NAME</columns>
+    <columns>Schedule__c</columns>
+    <columns>Day_Of_Week__c</columns>
+    <columns>Start_Time__c</columns>
+    <columns>End_Time__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Day_Of_Week__c</field>
+        <operation>equals</operation>
+        <value>1,2,3,4,5</value>
+    </filters>
+    <label>Weekdays</label>
+</ListView>

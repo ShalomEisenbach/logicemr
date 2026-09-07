@@ -108,6 +108,17 @@
                                 <p class="slds-text-body_regular">{emptyValue}</p>
                             </template>
                         </div>
+                        <div class="fact">
+                            <p class="slds-text-title_caps">Email</p>
+                            <template lwc:if={email}>
+                                <p class="slds-text-body_regular">
+                                    <lightning-formatted-email value={email}></lightning-formatted-email>
+                                </p>
+                            </template>
+                            <template lwc:else>
+                                <p class="slds-text-body_regular">{emptyValue}</p>
+                            </template>
+                        </div>
                     </div>
 
                     <div class="slds-m-top_medium slds-grid slds-grid_vertical-align-center slds-wrap">
@@ -130,7 +141,7 @@
                         </div>
                     </div>
                     <div class="alerts">
-                        <c-emr-alert-bar record-id={recordId}></c-emr-alert-bar>
+                        <c-emr-alert-bar record-id={recordId} layout="grid"></c-emr-alert-bar>
                     </div>
                 </template>
             </div>

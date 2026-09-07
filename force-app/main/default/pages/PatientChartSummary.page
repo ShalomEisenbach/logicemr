@@ -1,0 +1,218 @@
+<apex:page
+    controller="PatientChartSummaryController"
+    renderAs="pdf"
+    applyHtmlTag="false"
+    showHeader="false"
+    sidebar="false"
+    standardStylesheets="false"
+>
+<html>
+<head>
+    <style type="text/css">
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #080707; }
+        h1 { font-size: 18px; margin: 0 0 6px 0; }
+        h2 { font-size: 13px; margin: 16px 0 6px 0; border-bottom: 1px solid #dddbda; padding-bottom: 3px; }
+        .meta { color: #706e6b; margin-bottom: 12px; }
+        .section-empty { color: #706e6b; font-style: italic; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        th, td { text-align: left; vertical-align: top; padding: 3px 4px; border-bottom: 1px solid #eee; }
+        th { background: #f3f2f2; font-weight: bold; }
+        .note-body { margin: 4px 0 10px 0; }
+        .footer { margin-top: 18px; color: #706e6b; font-size: 10px; }
+    </style>
+</head>
+<body>
+    <apex:outputPanel layout="block" rendered="{!NOT(hasPatient)}">
+        <p>Patient not found.</p>
+    </apex:outputPanel>
+    <apex:outputPanel layout="block" rendered="{!hasPatient}">
+        <h1>Patient Chart Summary</h1>
+        <div class="meta">
+            <div><strong>{!summary.patient.fullName}</strong></div>
+            <div>MRN: <apex:outputText value="{!summary.patient.mrn}" /></div>
+            <div>
+                DOB:
+                <apex:outputText value="{0,date,yyyy-MM-dd}">
+                    <apex:param value="{!summary.patient.dateOfBirth}" />
+                </apex:outputText>
+                &nbsp;|&nbsp;Sex: <apex:outputText value="{!summary.patient.sexAtBirth}" />
+            </div>
+            <div>
+                Phone: <apex:outputText value="{!summary.patient.phone}" />
+                &nbsp;|&nbsp;Email: <apex:outputText value="{!summary.patient.email}" />
+            </div>
+            <div>
+                Generated:
+                <apex:outputText value="{0,date,yyyy-MM-dd HH:mm}">
+                    <apex:param value="{!summary.generatedAt}" />
+                </apex:outputText>
+            </div>
+        </div>
+
+        <h2>Active Problems</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.problems.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.problems.size > 0}">
+            <table>
+                <tr><th>Problem</th><th>Code</th><th>System</th><th>Onset</th></tr>
+                <apex:repeat value="{!summary.problems}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.code}</td>
+                        <td>{!row.codeSystem}</td>
+                        <td>
+                            <apex:outputText value="{0,date,yyyy-MM-dd}">
+                                <apex:param value="{!row.onsetDate}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Active Allergies</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.allergies.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.allergies.size > 0}">
+            <table>
+                <tr><th>Allergen</th><th>Reaction</th><th>Criticality</th><th>Status</th></tr>
+                <apex:repeat value="{!summary.allergies}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.reaction}</td>
+                        <td>{!row.criticality}</td>
+                        <td>{!row.clinicalStatus}</td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Active Medication Orders</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.activeOrders.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.activeOrders.size > 0}">
+            <table>
+                <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Route</th></tr>
+                <apex:repeat value="{!summary.activeOrders}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.dosageText}</td>
+                        <td>{!row.frequency}</td>
+                        <td>{!row.route}</td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Reported Medications</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.reportedMedications.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.reportedMedications.size > 0}">
+            <table>
+                <tr><th>Medication</th><th>Dosage</th><th>Source</th><th>Status</th></tr>
+                <apex:repeat value="{!summary.reportedMedications}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.dosageText}</td>
+                        <td>{!row.source}</td>
+                        <td>{!row.status}</td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Latest Vitals</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.vitals.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.vitals.size > 0}">
+            <table>
+                <tr><th>Observation</th><th>Value</th><th>Unit</th><th>Effective</th></tr>
+                <apex:repeat value="{!summary.vitals}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.value}</td>
+                        <td>{!row.unit}</td>
+                        <td>
+                            <apex:outputText value="{0,date,yyyy-MM-dd HH:mm}">
+                                <apex:param value="{!row.effectiveDateTime}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Recent Labs</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.labs.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.labs.size > 0}">
+            <table>
+                <tr><th>Observation</th><th>Value</th><th>Unit</th><th>Interpretation</th><th>Effective</th></tr>
+                <apex:repeat value="{!summary.labs}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.value}</td>
+                        <td>{!row.unit}</td>
+                        <td>{!row.interpretation}</td>
+                        <td>
+                            <apex:outputText value="{0,date,yyyy-MM-dd HH:mm}">
+                                <apex:param value="{!row.effectiveDateTime}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Procedures</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.procedures.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.procedures.size > 0}">
+            <table>
+                <tr><th>Procedure</th><th>Code</th><th>Status</th><th>Performed</th></tr>
+                <apex:repeat value="{!summary.procedures}" var="row">
+                    <tr>
+                        <td>{!row.display}</td>
+                        <td>{!row.code}</td>
+                        <td>{!row.status}</td>
+                        <td>
+                            <apex:outputText value="{0,date,yyyy-MM-dd HH:mm}">
+                                <apex:param value="{!row.performedDateTime}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
+        <h2>Signed Clinical Notes</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.signedNotes.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.signedNotes.size > 0}">
+            <apex:repeat value="{!summary.signedNotes}" var="row">
+                <div>
+                    <strong>{!row.noteType}</strong>
+                    <apex:outputText value=" — {0,date,yyyy-MM-dd HH:mm}">
+                        <apex:param value="{!row.signedDate}" />
+                    </apex:outputText>
+                    <apex:outputText value=" — {!row.authorName}" />
+                </div>
+                <div class="note-body">
+                    <apex:outputText value="{!row.body}" escape="false" />
+                </div>
+            </apex:repeat>
+        </apex:outputPanel>
+
+        <div class="footer">LogicEMR clinical document — for authorized care use only.</div>
+    </apex:outputPanel>
+</body>
+</html>
+</apex:page>

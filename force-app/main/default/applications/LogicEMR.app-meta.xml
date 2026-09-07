@@ -22,6 +22,7 @@
     <tabs>Patient__c</tabs>
     <tabs>Encounter__c</tabs>
     <tabs>Scheduling</tabs>
+    <tabs>Schedule_Creator</tabs>
     <tabs>Appointment__c</tabs>
     <tabs>Schedule__c</tabs>
     <tabs>Practitioner__c</tabs>
@@ -35,6 +36,7 @@
     <tabs>Mapping_Builder</tabs>
     <tabs>Mapping_Runner</tabs>
     <tabs>Code_Reference__c</tabs>
+    <tabs>Payer__c</tabs>
     <tabs>Code_Set_Import</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>LogicEMR_UtilityBar</utilityBar>

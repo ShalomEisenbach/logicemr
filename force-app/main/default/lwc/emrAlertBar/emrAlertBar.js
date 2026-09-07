@@ -17,6 +17,7 @@ const ICON_VARIANT_BY_TONE = {
 
 export default class EmrAlertBar extends LightningElement {
     @api recordId;
+    @api layout = 'stack';
 
     sections = [];
     errorMessage;
@@ -53,49 +54,108 @@ export default class EmrAlertBar extends LightningElement {
         }
     }
 
+    get isGrid() {
+        return this.layout === 'grid';
+    }
+
+    get stackClass() {
+        return this.isGrid ? 'summary-stack summary-stack_grid' : 'summary-stack';
+    }
+
     get displaySections() {
         return (this.sections || []).map((section) => {
             const items = section.items || [];
             const overflow = Math.max(0, (section.totalCount || 0) - items.length);
+            const variant = section.variant || this.variantFor(section.key);
+            const isList = variant === 'list';
+            const isMetrics = variant === 'metrics';
             return {
                 key: section.key,
                 label: section.label,
                 emptyLabel: section.emptyLabel,
                 hasItems: items.length > 0,
+                isList,
+                isMetrics,
                 overflowLabel: overflow > 0 ? `+${overflow} more` : '',
-                stripClass: this.stripClassFor(section.tone),
+                stripClass: this.stripClassFor(section.tone, variant),
                 role: section.tone === 'high' ? 'alert' : 'status',
                 iconName: ICON_BY_TONE[section.tone] || '',
                 iconVariant: ICON_VARIANT_BY_TONE[section.tone] || 'inverse',
                 showIcon: Boolean(ICON_BY_TONE[section.tone]),
-                items: items.map((item) => ({
-                    id: item.id,
-                    name: item.name,
-                    objectApiName: item.objectApiName,
-                    flag: item.flag,
-                    title: item.title || item.flag || item.name,
-                    emphasize: item.emphasize === true,
-                    showFlag: Boolean(item.flag),
-                    cssClass: item.emphasize ? 'summary-chip summary-chip_emphasis' : 'summary-chip'
-                }))
+                items: items.map((item) => this.toDisplayItem(item, variant, this.isGrid))
             };
         });
     }
 
-    stripClassFor(tone) {
+    variantFor(key) {
+        if (key === 'medications') {
+            return 'list';
+        }
+        if (key === 'flowsheet') {
+            return 'metrics';
+        }
+        return 'chips';
+    }
+
+    toDisplayItem(item, variant, compact) {
+        const flag = item.flag;
+        const flagKey = (flag || '').toLowerCase();
+        return {
+            id: item.id,
+            name: item.name,
+            objectApiName: item.objectApiName,
+            flag,
+            title: item.title || item.flag || item.name,
+            detail: item.detail,
+            unit: item.unit,
+            displayValue: item.value || item.name,
+            emphasize: item.emphasize === true,
+            showFlag: Boolean(flag),
+            showDetail: !compact && variant === 'list' && Boolean(item.detail) && item.detail !== item.name,
+            cssClass: item.emphasize ? 'summary-chip summary-chip_emphasis' : 'summary-chip',
+            valueClass: this.metricValueClass(flagKey),
+            flagClass: this.metricFlagClass(flagKey)
+        };
+    }
+
+    metricValueClass(flagKey) {
+        if (flagKey === 'critical' || flagKey === 'high') {
+            return 'metric-value metric-value_high';
+        }
+        if (flagKey === 'low') {
+            return 'metric-value metric-value_low';
+        }
+        if (flagKey === 'abnormal') {
+            return 'metric-value metric-value_abnormal';
+        }
+        return 'metric-value';
+    }
+
+    metricFlagClass(flagKey) {
+        if (flagKey === 'critical' || flagKey === 'high') {
+            return 'metric-flag metric-flag_high';
+        }
+        if (flagKey === 'low') {
+            return 'metric-flag metric-flag_low';
+        }
+        return 'metric-flag';
+    }
+
+    stripClassFor(tone, variant) {
+        const stacked = variant === 'list' || variant === 'metrics' ? ' alert-strip_stack' : '';
         switch (tone) {
             case 'high':
-                return 'alert-strip alert-strip_high';
+                return `alert-strip alert-strip_high${stacked}`;
             case 'warning':
-                return 'alert-strip alert-strip_warning';
+                return `alert-strip alert-strip_warning${stacked}`;
             case 'success':
-                return 'alert-strip alert-strip_success';
+                return `alert-strip alert-strip_success${stacked}`;
             case 'attention':
-                return 'alert-strip alert-strip_attention';
+                return `alert-strip alert-strip_attention${stacked}`;
             case 'info':
-                return 'alert-strip alert-strip_info';
+                return `alert-strip alert-strip_info${stacked}`;
             default:
-                return 'alert-strip alert-strip_empty';
+                return `alert-strip alert-strip_empty${stacked}`;
         }
     }
 

@@ -6,6 +6,7 @@ import {
     applyOptimisticBook,
     applyOptimisticMove,
     applyOptimisticPaint,
+    assignLanes,
     confirmBook,
     confirmMove,
     civilDateKey,
@@ -13,6 +14,7 @@ import {
     findFreeSlotAt,
     formatClock,
     isInsideOpenPopover,
+    laneInsetStyle,
     minutesOfDay,
     positionStyle,
     revertBook,
@@ -285,6 +287,21 @@ describe('emrEnhancedCalendar optimistic client logic', () => {
             expect(bounds.startMinutes).toBe(9 * 60);
             expect(findFreeSlotAt(slots, '2026-09-02', 9 * 60 + 5, pacific)?.id).toBe('slot-maya');
             expect(findFreeSlotAt(slots, '2026-09-02', 12 * 60 + 5, pacific)).toBeUndefined();
+        });
+    });
+
+    describe('overlap lanes', () => {
+        it('places overlapping 9:00 slots from two providers in different lanes', () => {
+            const packing = assignLanes([
+                { id: 'lee', startTime: at(9, 0), endTime: at(9, 20) },
+                { id: 'patel', startTime: at(9, 0), endTime: at(9, 30) },
+                { id: 'later', startTime: at(10, 0), endTime: at(10, 20) }
+            ]);
+
+            expect(packing.laneCount).toBe(2);
+            expect(packing.lanes.get('lee')).not.toBe(packing.lanes.get('patel'));
+            expect(packing.lanes.get('later')).toBe(0);
+            expect(laneInsetStyle(1, 2)).toContain('width:calc(50% - 4px)');
         });
     });
 });

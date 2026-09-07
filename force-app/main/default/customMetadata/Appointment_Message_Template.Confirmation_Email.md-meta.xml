@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Confirmation Email</label>
+    <protected>false</protected>
+    <values>
+        <field>Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Type__c</field>
+        <value xsi:type="xsd:string">Confirmation</value>
+    </values>
+    <values>
+        <field>Channel__c</field>
+        <value xsi:type="xsd:string">Email</value>
+    </values>
+    <values>
+        <field>Subject__c</field>
+        <value xsi:type="xsd:string">Appointment confirmation for {Start}</value>
+    </values>
+    <values>
+        <field>Body__c</field>
+        <value xsi:type="xsd:string">&lt;p&gt;Hello {First_Name},&lt;/p&gt;&lt;p&gt;Your appointment is confirmed.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;When:&lt;/strong&gt; {Start}&lt;br/&gt;&lt;strong&gt;Provider:&lt;/strong&gt; {Practitioner}&lt;br/&gt;&lt;strong&gt;Location:&lt;/strong&gt; {Location}&lt;br/&gt;&lt;strong&gt;Type:&lt;/strong&gt; {Appointment_Type}&lt;/p&gt;&lt;p&gt;Reason: {Reason}&lt;/p&gt;&lt;p&gt;Thank you,&lt;br/&gt;Your care team&lt;/p&gt;</value>
+    </values>
+</CustomMetadata>

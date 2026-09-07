@@ -1,17 +1,29 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, api } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getSchedules from '@salesforce/apex/ScheduleManagementController.getSchedules';
 import saveSchedule from '@salesforce/apex/ScheduleManagementController.saveSchedule';
 import previewSlots from '@salesforce/apex/ScheduleManagementController.previewSlots';
 import generateSlots from '@salesforce/apex/ScheduleManagementController.generateSlots';
-import getSlots from '@salesforce/apex/ScheduleManagementController.getSlots';
-import toggleSlotStatus from '@salesforce/apex/ScheduleManagementController.toggleSlotStatus';
+import getSlotSummary from '@salesforce/apex/ScheduleManagementController.getSlotSummary';
+import getUnavailabilities from '@salesforce/apex/ScheduleManagementController.getUnavailabilities';
+import applyUnavailability from '@salesforce/apex/ScheduleManagementController.applyUnavailability';
+import removeUnavailability from '@salesforce/apex/ScheduleManagementController.removeUnavailability';
 import PRACTITIONER_OBJECT from '@salesforce/schema/Practitioner__c';
 import SCHEDULE_OBJECT from '@salesforce/schema/Schedule__c';
 
 const NEW_SCHEDULE = 'new';
+const DAY_DEFS = [
+    { label: 'Sunday', value: '0' },
+    { label: 'Monday', value: '1' },
+    { label: 'Tuesday', value: '2' },
+    { label: 'Wednesday', value: '3' },
+    { label: 'Thursday', value: '4' },
+    { label: 'Friday', value: '5' },
+    { label: 'Saturday', value: '6' }
+];
 
 export default class EmrScheduleManagement extends LightningElement {
+    @api recordId;
     practitionerId;
     schedules = [];
     selectedScheduleKey = NEW_SCHEDULE;
@@ -22,77 +34,38 @@ export default class EmrScheduleManagement extends LightningElement {
     planningHorizonStart;
     planningHorizonEnd;
     active = true;
-
-    rangeStart;
-    rangeEnd;
-    dailyStart = '09:00';
-    dailyEnd = '17:00';
-    selectedDays = ['1', '2', '3', '4', '5'];
+    hoursByDay = defaultHoursByDay();
 
     preview;
-    slots = [];
-    hasMoreSlots = false;
+    summary;
+    unavailabilities = [];
+
+    timeOffStartDate;
+    timeOffEndDate;
+    timeOffStartTime = '09:00';
+    timeOffEndTime = '17:00';
+    timeOffAllDay = true;
+    timeOffReason = '';
+    thisScheduleOnly = true;
 
     errorMessage;
     isLoading = false;
     isSaving = false;
     isGenerating = false;
-    isToggling = false;
-
-    dayOptions = [
-        { label: 'Sunday', value: '0' },
-        { label: 'Monday', value: '1' },
-        { label: 'Tuesday', value: '2' },
-        { label: 'Wednesday', value: '3' },
-        { label: 'Thursday', value: '4' },
-        { label: 'Friday', value: '5' },
-        { label: 'Saturday', value: '6' }
-    ];
-
-    slotColumns = [
-        {
-            label: 'Start',
-            fieldName: 'startTime',
-            type: 'date',
-            typeAttributes: {
-                year: 'numeric',
-                month: 'short',
-                day: '2-digit',
-                weekday: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            }
-        },
-        {
-            label: 'End',
-            fieldName: 'endTime',
-            type: 'date',
-            typeAttributes: {
-                year: 'numeric',
-                month: 'short',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            }
-        },
-        { label: 'Status', fieldName: 'status', type: 'text' },
-        {
-            type: 'button',
-            typeAttributes: {
-                label: { fieldName: 'toggleLabel' },
-                name: 'toggle',
-                disabled: { fieldName: 'toggleDisabled' },
-                variant: 'neutral'
-            }
-        }
-    ];
+    isApplyingTimeOff = false;
+    _windowSeq = 0;
+    _previewTimer;
 
     connectedCallback() {
         const today = new Date();
-        this.rangeStart = toIsoDate(today);
-        this.rangeEnd = toIsoDate(addDays(today, 6));
-        this.planningHorizonStart = this.rangeStart;
-        this.planningHorizonEnd = this.rangeEnd;
+        this.planningHorizonStart = toIsoDate(today);
+        this.planningHorizonEnd = toIsoDate(addDays(today, 27));
+        this.timeOffStartDate = toIsoDate(today);
+        this.timeOffEndDate = toIsoDate(today);
+        if (this.recordId) {
+            this.practitionerId = this.recordId;
+            this.loadSchedules();
+        }
     }
 
     get practitionerObjectApiName() {
@@ -104,7 +77,7 @@ export default class EmrScheduleManagement extends LightningElement {
     }
 
     get isBusy() {
-        return this.isLoading || this.isSaving || this.isGenerating || this.isToggling;
+        return this.isLoading || this.isSaving || this.isGenerating || this.isApplyingTimeOff;
     }
 
     get scheduleOptions() {
@@ -124,30 +97,29 @@ export default class EmrScheduleManagement extends LightningElement {
         return this.schedules && this.schedules.length > 0;
     }
 
+    get isPractitionerRecordPage() {
+        return !!this.recordId;
+    }
+
     get hasSelectedSchedule() {
         return !!this.selectedScheduleId;
     }
 
-    get saveLabel() {
-        return this.selectedScheduleId ? 'Save schedule' : 'Create schedule';
+    get saveGenerateLabel() {
+        return this.selectedScheduleId ? 'Save and generate' : 'Create and generate';
     }
 
-    get isSaveDisabled() {
-        return this.isBusy || !this.practitionerId;
+    get isSaveGenerateDisabled() {
+        return this.isBusy || !this.practitionerId || !this.planningHorizonStart || !this.planningHorizonEnd;
     }
 
-    get isGenerateDisabled() {
-        return (
-            this.isBusy ||
-            !this.selectedScheduleId ||
-            !this.preview ||
-            this.preview.overLimit ||
-            this.preview.slotCount === 0
-        );
-    }
-
-    get isPreviewDisabled() {
-        return this.isBusy || !this.selectedScheduleId;
+    get dayRows() {
+        return DAY_DEFS.map((day) => ({
+            key: day.value,
+            label: day.label,
+            value: day.value,
+            windows: (this.hoursByDay[day.value] || []).map((window) => ({ ...window }))
+        }));
     }
 
     get hasPreview() {
@@ -159,7 +131,7 @@ export default class EmrScheduleManagement extends LightningElement {
             return '';
         }
         if (this.preview.overLimit) {
-            return `${this.preview.slotCount} slots would be created. Narrow the range, window, or interval before generating.`;
+            return `${this.preview.slotCount} slots would be created. Narrow the horizon or increase slot duration before generating.`;
         }
         if (this.preview.slotCount === 0) {
             const skipped = this.preview.skippedExisting
@@ -170,26 +142,46 @@ export default class EmrScheduleManagement extends LightningElement {
         const skipped = this.preview.skippedExisting
             ? ` ${this.preview.skippedExisting} existing slot(s) will be skipped.`
             : '';
-        return `${this.preview.slotCount} slot(s) will be created.${skipped}`;
+        const blocked =
+            this.preview.blockedCount > 0 ? ` ${this.preview.blockedCount} will be Blocked by time off.` : '';
+        return `${this.preview.slotCount} slot(s) will be created (${this.preview.freeCount || 0} Free).${blocked}${skipped}`;
     }
 
-    get hasSlots() {
-        return this.slots && this.slots.length > 0;
+    get showTimeOffTimes() {
+        return !this.timeOffAllDay;
     }
 
-    get showSlotsEmpty() {
-        return this.hasSelectedSchedule && !this.hasSlots && !this.isLoading;
+    get isTimeOffDisabled() {
+        return (
+            this.isBusy ||
+            !this.selectedScheduleId ||
+            !this.practitionerId ||
+            !this.timeOffStartDate ||
+            !this.timeOffEndDate
+        );
     }
 
-    get slotRows() {
-        return (this.slots || []).map((row) => ({
+    get hasUnavailabilities() {
+        return this.unavailabilities && this.unavailabilities.length > 0;
+    }
+
+    get unavailabilityRows() {
+        return (this.unavailabilities || []).map((row) => ({
             id: row.id,
-            startTime: row.startTime,
-            endTime: row.endTime,
-            status: row.status,
-            toggleLabel: row.status === 'Blocked' ? 'Free' : 'Block',
-            toggleDisabled: !row.canToggle || this.isBusy
+            reason: row.reason,
+            when: formatUnavailabilityRange(row)
         }));
+    }
+
+    get hasSummary() {
+        return this.summary && this.summary.totalCount > 0;
+    }
+
+    get summaryText() {
+        if (!this.summary) {
+            return '';
+        }
+        return `${this.summary.totalCount} slot(s) in the planning horizon: ${this.summary.freeCount} Free, ${this.summary.blockedCount} Blocked, ${this.summary.busyCount} Busy.`;
     }
 
     handlePractitionerChange(event) {
@@ -201,8 +193,8 @@ export default class EmrScheduleManagement extends LightningElement {
             this.loadSchedules();
         } else {
             this.schedules = [];
-            this.slots = [];
-            this.hasMoreSlots = false;
+            this.summary = undefined;
+            this.unavailabilities = [];
         }
     }
 
@@ -212,74 +204,114 @@ export default class EmrScheduleManagement extends LightningElement {
         this.clearPreview();
         if (this.selectedScheduleKey === NEW_SCHEDULE) {
             this.resetScheduleForm(false);
-            this.slots = [];
-            this.hasMoreSlots = false;
+            this.summary = undefined;
+            this.unavailabilities = [];
             return;
         }
         const selected = (this.schedules || []).find((row) => row.id === this.selectedScheduleKey);
         if (selected) {
             this.applySchedule(selected);
-            this.loadSlots();
+            this.loadSummary();
+            this.loadUnavailabilities();
+            this.schedulePreview();
         }
     }
 
     handleLocationChange(event) {
         this.locationName = event.detail.value;
-        this.clearPreview();
     }
 
     handleDurationChange(event) {
         this.slotDurationMinutes = event.detail.value;
-        this.clearPreview();
+        this.schedulePreview();
     }
 
     handleHorizonStartChange(event) {
         this.planningHorizonStart = event.detail.value;
-        if (!this.rangeStart) {
-            this.rangeStart = this.planningHorizonStart;
-        }
-        this.clearPreview();
+        this.schedulePreview();
     }
 
     handleHorizonEndChange(event) {
         this.planningHorizonEnd = event.detail.value;
-        if (!this.rangeEnd) {
-            this.rangeEnd = this.planningHorizonEnd;
-        }
-        this.clearPreview();
+        this.schedulePreview();
     }
 
     handleActiveChange(event) {
         this.active = event.detail.checked;
     }
 
-    handleRangeStartChange(event) {
-        this.rangeStart = event.detail.value;
-        this.clearPreview();
+    handleAddWindow(event) {
+        const day = event.currentTarget.dataset.day;
+        const windows = [...(this.hoursByDay[day] || [])];
+        windows.push(this.newWindow('09:00', '17:00'));
+        this.hoursByDay = { ...this.hoursByDay, [day]: windows };
+        this.schedulePreview();
     }
 
-    handleRangeEndChange(event) {
-        this.rangeEnd = event.detail.value;
-        this.clearPreview();
+    handleRemoveWindow(event) {
+        const day = event.currentTarget.dataset.day;
+        const windowId = event.currentTarget.dataset.windowId;
+        const windows = (this.hoursByDay[day] || []).filter((row) => row.id !== windowId);
+        this.hoursByDay = { ...this.hoursByDay, [day]: windows };
+        this.schedulePreview();
     }
 
-    handleDailyStartChange(event) {
-        this.dailyStart = event.detail.value;
-        this.clearPreview();
+    handleWindowChange(event) {
+        const day = event.currentTarget.dataset.day;
+        const windowId = event.currentTarget.dataset.windowId;
+        const field = event.currentTarget.dataset.field;
+        const value = event.detail.value;
+        const windows = (this.hoursByDay[day] || []).map((row) =>
+            row.id === windowId ? { ...row, [field]: value } : row
+        );
+        this.hoursByDay = { ...this.hoursByDay, [day]: windows };
+        this.schedulePreview();
     }
 
-    handleDailyEndChange(event) {
-        this.dailyEnd = event.detail.value;
-        this.clearPreview();
+    handleCopyWeekdays() {
+        const monday = this.hoursByDay['1'] || [];
+        const template = monday.length
+            ? monday.map((row) => this.newWindow(row.startTime, row.endTime))
+            : [this.newWindow('09:00', '17:00')];
+        const next = { ...this.hoursByDay };
+        ['1', '2', '3', '4', '5'].forEach((day) => {
+            next[day] = template.map((row) => this.newWindow(row.startTime, row.endTime));
+        });
+        this.hoursByDay = next;
+        this.schedulePreview();
+        this.toast('Weekdays updated', 'Monday–Friday now use the same hours.', 'success');
     }
 
-    handleDaysChange(event) {
-        this.selectedDays = event.detail.value;
-        this.clearPreview();
+    handleTimeOffStartDateChange(event) {
+        this.timeOffStartDate = event.detail.value;
     }
 
-    async handleSaveSchedule() {
-        if (this.isSaveDisabled) {
+    handleTimeOffEndDateChange(event) {
+        this.timeOffEndDate = event.detail.value;
+    }
+
+    handleTimeOffStartTimeChange(event) {
+        this.timeOffStartTime = event.detail.value;
+    }
+
+    handleTimeOffEndTimeChange(event) {
+        this.timeOffEndTime = event.detail.value;
+    }
+
+    handleTimeOffAllDayChange(event) {
+        this.timeOffAllDay = event.detail.checked;
+    }
+
+    handleTimeOffReasonChange(event) {
+        this.timeOffReason = event.detail.value;
+    }
+
+    handleThisScheduleOnlyChange(event) {
+        this.thisScheduleOnly = event.detail.checked;
+    }
+
+    async handleSaveAndGenerate() {
+        if (this.isSaveGenerateDisabled) {
             return;
         }
         this.isSaving = true;
@@ -292,77 +324,98 @@ export default class EmrScheduleManagement extends LightningElement {
                 slotDurationMinutes: this.toNumber(this.slotDurationMinutes),
                 planningHorizonStart: this.planningHorizonStart || null,
                 planningHorizonEnd: this.planningHorizonEnd || null,
-                active: this.active
+                active: this.active,
+                hours: this.collectHours()
             });
             this.applySchedule(saved);
             await this.loadSchedules(saved.id);
-            this.toast('Schedule saved', `${saved.name} is ready for slot generation.`, 'success');
-            if (!this.rangeStart && saved.planningHorizonStart) {
-                this.rangeStart = saved.planningHorizonStart;
+
+            this.isSaving = false;
+            this.isGenerating = true;
+            this.preview = await previewSlots({
+                scheduleId: saved.id,
+                rangeStart: this.planningHorizonStart,
+                rangeEnd: this.planningHorizonEnd,
+                hours: null
+            });
+            if (this.preview.overLimit) {
+                this.toast('Preview over limit', this.previewSummary, 'error');
+                return;
             }
-            if (!this.rangeEnd && saved.planningHorizonEnd) {
-                this.rangeEnd = saved.planningHorizonEnd;
-            }
+            const result = await generateSlots({
+                scheduleId: saved.id,
+                rangeStart: this.planningHorizonStart,
+                rangeEnd: this.planningHorizonEnd
+            });
+            this.toast(
+                'Schedule ready',
+                `Saved hours and created ${result.created} slot(s). ${result.skippedExisting} existing skipped.`,
+                'success'
+            );
+            this.clearPreview();
+            await this.loadSummary();
+            await this.loadUnavailabilities();
         } catch (error) {
             this.errorMessage = this.reduceError(error);
         } finally {
             this.isSaving = false;
-        }
-    }
-
-    async handlePreview() {
-        if (this.isPreviewDisabled) {
-            return;
-        }
-        this.isGenerating = true;
-        this.errorMessage = undefined;
-        try {
-            this.preview = await previewSlots(this.generationRequest());
-        } catch (error) {
-            this.preview = undefined;
-            this.errorMessage = this.reduceError(error);
-        } finally {
             this.isGenerating = false;
         }
     }
 
-    async handleGenerate() {
-        if (this.isGenerateDisabled) {
+    async handleApplyTimeOff() {
+        if (this.isTimeOffDisabled) {
             return;
         }
-        this.isGenerating = true;
+        this.isApplyingTimeOff = true;
         this.errorMessage = undefined;
         try {
-            const result = await generateSlots(this.generationRequest());
+            const startTime = this.buildTimeOffDatetime(this.timeOffStartDate, this.timeOffStartTime, false);
+            const endTime = this.buildTimeOffDatetime(this.timeOffEndDate, this.timeOffEndTime, true);
+            const result = await applyUnavailability({
+                unavailabilityId: null,
+                practitionerId: this.practitionerId,
+                scheduleId: this.selectedScheduleId,
+                startTime,
+                endTime,
+                allDay: this.timeOffAllDay,
+                reason: this.timeOffReason,
+                thisScheduleOnly: this.thisScheduleOnly
+            });
+            const conflictNote =
+                result.bookedConflicts > 0
+                    ? ` ${result.bookedConflicts} booked appointment(s) remain and were not changed.`
+                    : '';
             this.toast(
-                'Slots created',
-                `Created ${result.created} slot(s). ${result.skippedExisting} existing slot(s) skipped.`,
-                'success'
+                'Time off applied',
+                `Blocked ${result.slotsBlocked} slot(s), created ${result.slotsCreated} blocked slot(s).${conflictNote}`,
+                result.bookedConflicts > 0 ? 'warning' : 'success'
             );
-            this.clearPreview();
-            await this.loadSlots();
+            await this.loadUnavailabilities();
+            await this.loadSummary();
         } catch (error) {
             this.errorMessage = this.reduceError(error);
         } finally {
-            this.isGenerating = false;
+            this.isApplyingTimeOff = false;
         }
     }
 
-    async handleSlotRowAction(event) {
-        const action = event.detail.action;
-        const row = event.detail.row;
-        if (action?.name !== 'toggle' || !row?.id || this.isToggling) {
+    async handleRemoveTimeOff(event) {
+        const id = event.currentTarget.dataset.id;
+        if (!id || this.isBusy) {
             return;
         }
-        this.isToggling = true;
+        this.isApplyingTimeOff = true;
         this.errorMessage = undefined;
         try {
-            const updated = await toggleSlotStatus({ slotId: row.id });
-            this.slots = (this.slots || []).map((slot) => (slot.id === updated.id ? updated : slot));
+            await removeUnavailability({ unavailabilityId: id });
+            this.toast('Time off removed', 'Matching blocked slots were freed.', 'success');
+            await this.loadUnavailabilities();
+            await this.loadSummary();
         } catch (error) {
             this.errorMessage = this.reduceError(error);
         } finally {
-            this.isToggling = false;
+            this.isApplyingTimeOff = false;
         }
     }
 
@@ -378,6 +431,8 @@ export default class EmrScheduleManagement extends LightningElement {
             const match = keepId ? this.schedules.find((row) => row.id === keepId) : undefined;
             if (match) {
                 this.applySchedule(match);
+                await this.loadSummary();
+                await this.loadUnavailabilities();
             }
         } catch (error) {
             this.errorMessage = this.reduceError(error);
@@ -386,25 +441,63 @@ export default class EmrScheduleManagement extends LightningElement {
         }
     }
 
-    async loadSlots() {
-        if (!this.selectedScheduleId || !this.rangeStart || !this.rangeEnd) {
-            this.slots = [];
-            this.hasMoreSlots = false;
+    async loadSummary() {
+        if (!this.selectedScheduleId || !this.planningHorizonStart || !this.planningHorizonEnd) {
+            this.summary = undefined;
             return;
         }
-        this.isLoading = true;
         try {
-            const view = await getSlots({
+            this.summary = await getSlotSummary({
                 scheduleId: this.selectedScheduleId,
-                rangeStart: this.rangeStart,
-                rangeEnd: this.rangeEnd
+                rangeStart: this.planningHorizonStart,
+                rangeEnd: this.planningHorizonEnd
             });
-            this.slots = view?.slots || [];
-            this.hasMoreSlots = !!view?.hasMore;
         } catch (error) {
             this.errorMessage = this.reduceError(error);
-        } finally {
-            this.isLoading = false;
+        }
+    }
+
+    async loadUnavailabilities() {
+        if (!this.practitionerId) {
+            this.unavailabilities = [];
+            return;
+        }
+        try {
+            this.unavailabilities =
+                (await getUnavailabilities({
+                    practitionerId: this.practitionerId,
+                    scheduleId: this.selectedScheduleId || null
+                })) || [];
+        } catch (error) {
+            this.errorMessage = this.reduceError(error);
+        }
+    }
+
+    schedulePreview() {
+        if (this._previewTimer) {
+            clearTimeout(this._previewTimer);
+        }
+        this._previewTimer = setTimeout(() => this.refreshPreview(), 350);
+    }
+
+    async refreshPreview() {
+        if (!this.selectedScheduleId || !this.planningHorizonStart || !this.planningHorizonEnd) {
+            this.preview = undefined;
+            return;
+        }
+        try {
+            this.preview = await previewSlots({
+                scheduleId: this.selectedScheduleId,
+                rangeStart: this.planningHorizonStart,
+                rangeEnd: this.planningHorizonEnd,
+                hours: this.collectHours()
+            });
+        } catch (error) {
+            this.preview = undefined;
+            // Live preview should not block editing when hours are incomplete.
+            if (this.collectHours().length) {
+                this.errorMessage = this.reduceError(error);
+            }
         }
     }
 
@@ -417,12 +510,7 @@ export default class EmrScheduleManagement extends LightningElement {
         this.planningHorizonStart = row.planningHorizonStart;
         this.planningHorizonEnd = row.planningHorizonEnd;
         this.active = row.active !== false;
-        if (row.planningHorizonStart) {
-            this.rangeStart = row.planningHorizonStart;
-        }
-        if (row.planningHorizonEnd) {
-            this.rangeEnd = row.planningHorizonEnd;
-        }
+        this.hoursByDay = hoursFromViews(row.hours, () => this.nextWindowId());
     }
 
     resetScheduleForm(resetDates) {
@@ -432,24 +520,57 @@ export default class EmrScheduleManagement extends LightningElement {
         this.locationName = '';
         this.slotDurationMinutes = 20;
         this.active = true;
+        this.hoursByDay = defaultHoursByDay(() => this.nextWindowId());
         if (resetDates) {
             const today = new Date();
             this.planningHorizonStart = toIsoDate(today);
-            this.planningHorizonEnd = toIsoDate(addDays(today, 6));
-            this.rangeStart = this.planningHorizonStart;
-            this.rangeEnd = this.planningHorizonEnd;
+            this.planningHorizonEnd = toIsoDate(addDays(today, 27));
         }
     }
 
-    generationRequest() {
+    collectHours() {
+        const hours = [];
+        DAY_DEFS.forEach((day) => {
+            (this.hoursByDay[day.value] || []).forEach((window) => {
+                if (window.startTime && window.endTime) {
+                    hours.push({
+                        dayOfWeek: day.value,
+                        startTime: normalizeTimeValue(window.startTime),
+                        endTime: normalizeTimeValue(window.endTime)
+                    });
+                }
+            });
+        });
+        return hours;
+    }
+
+    newWindow(startTime, endTime) {
         return {
-            scheduleId: this.selectedScheduleId,
-            rangeStart: this.rangeStart,
-            rangeEnd: this.rangeEnd,
-            dailyStart: this.dailyStart,
-            dailyEnd: this.dailyEnd,
-            includedDays: (this.selectedDays || []).map((value) => parseInt(value, 10))
+            id: this.nextWindowId(),
+            startTime: startTime || '09:00',
+            endTime: endTime || '17:00'
         };
+    }
+
+    nextWindowId() {
+        this._windowSeq += 1;
+        return `w-${this._windowSeq}`;
+    }
+
+    buildTimeOffDatetime(dateValue, timeValue, isEnd) {
+        const [year, month, day] = dateValue.split('-').map((part) => Number(part));
+        let hours = 0;
+        let minutes = 0;
+        if (this.timeOffAllDay) {
+            hours = isEnd ? 23 : 0;
+            minutes = isEnd ? 59 : 0;
+        } else {
+            const normalized = normalizeTimeValue(timeValue) || (isEnd ? '17:00' : '09:00');
+            const parts = normalized.split(':');
+            hours = Number(parts[0]) || 0;
+            minutes = Number(parts[1]) || 0;
+        }
+        return new Date(year, month - 1, day, hours, minutes, 0, 0).toISOString();
     }
 
     clearPreview() {
@@ -477,6 +598,71 @@ export default class EmrScheduleManagement extends LightningElement {
         }
         return error?.message || 'Unable to update the schedule.';
     }
+}
+
+function defaultHoursByDay(idFactory) {
+    const makeId = idFactory || (() => `seed-${Math.random().toString(36).slice(2, 8)}`);
+    const result = {
+        '0': [],
+        '1': [],
+        '2': [],
+        '3': [],
+        '4': [],
+        '5': [],
+        '6': []
+    };
+    ['1', '2', '3', '4', '5'].forEach((day) => {
+        result[day] = [{ id: makeId(), startTime: '09:00', endTime: '17:00' }];
+    });
+    return result;
+}
+
+function hoursFromViews(hours, idFactory) {
+    const result = defaultHoursByDay(idFactory);
+    Object.keys(result).forEach((day) => {
+        result[day] = [];
+    });
+    (hours || []).forEach((row) => {
+        const day = String(row.dayOfWeek);
+        if (!result[day]) {
+            result[day] = [];
+        }
+        result[day].push({
+            id: idFactory(),
+            startTime: normalizeTimeValue(row.startTime) || '09:00',
+            endTime: normalizeTimeValue(row.endTime) || '17:00'
+        });
+    });
+    const hasAny = Object.values(result).some((windows) => windows.length);
+    return hasAny ? result : defaultHoursByDay(idFactory);
+}
+
+function normalizeTimeValue(value) {
+    if (!value) {
+        return value;
+    }
+    const trimmed = String(value).trim();
+    if (trimmed.length >= 5) {
+        return trimmed.substring(0, 5);
+    }
+    return trimmed;
+}
+
+function formatUnavailabilityRange(row) {
+    if (!row?.startTime || !row?.endTime) {
+        return '';
+    }
+    const start = new Date(row.startTime);
+    const end = new Date(row.endTime);
+    const dateOpts = { month: 'short', day: 'numeric', year: 'numeric' };
+    if (row.allDay) {
+        return `${start.toLocaleDateString(undefined, dateOpts)} – ${end.toLocaleDateString(undefined, dateOpts)} (all day)`;
+    }
+    const timeOpts = { hour: 'numeric', minute: '2-digit' };
+    return `${start.toLocaleString(undefined, { ...dateOpts, ...timeOpts })} – ${end.toLocaleString(undefined, {
+        ...dateOpts,
+        ...timeOpts
+    })}`;
 }
 
 function addDays(date, days) {

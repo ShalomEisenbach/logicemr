@@ -1,0 +1,60 @@
+.slip {
+    border: 1px solid #dddbda;
+    border-radius: 0.25rem;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    color: #080707;
+}
+
+.slip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #dddbda;
+    padding-bottom: 0.5rem;
+}
+
+.slip-header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.slip-status {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #706e6b;
+}
+
+.slip-grid {
+    margin: 0;
+}
+
+.slip-row {
+    display: grid;
+    grid-template-columns: 8rem 1fr;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+}
+
+.slip-row dt {
+    font-weight: 600;
+    color: #3e3e3c;
+}
+
+.slip-row dd {
+    margin: 0;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .slip {
+        border: none;
+        padding: 0;
+    }
+}

@@ -46,6 +46,17 @@
 							</template>
 						</div>
 						<div class="fact">
+							<p class="slds-text-title_caps">Email</p>
+							<template lwc:if={email}>
+								<p class="slds-text-body_regular">
+									<lightning-formatted-email value={email}></lightning-formatted-email>
+								</p>
+							</template>
+							<template lwc:else>
+								<p class="slds-text-body_regular">{emptyValue}</p>
+							</template>
+						</div>
+						<div class="fact">
 							<p class="slds-text-title_caps">Status</p>
 							<template lwc:if={status}>
 								<span class={statusBadgeClass}>{status}</span>
@@ -55,6 +66,18 @@
 							</template>
 						</div>
 					</div>
+					<template lwc:if={showDocumentActions}>
+						<div class="document-actions">
+							<c-emr-document-share
+								patient-id={patientId}
+								doc-type="ChartSummary"
+								show-print
+								show-email
+								print-label="Print chart"
+								email-label="Email chart"
+							></c-emr-document-share>
+						</div>
+					</template>
 				</div>
 				<template lwc:if={showVitals}>
 					<div class="vitals">

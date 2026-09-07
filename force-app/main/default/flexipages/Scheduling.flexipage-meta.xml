@@ -9,18 +9,6 @@
         </itemInstances>
         <itemInstances>
             <componentInstance>
-                <componentName>emrAppointmentCalendar</componentName>
-                <identifier>emrAppointmentCalendar</identifier>
-            </componentInstance>
-        </itemInstances>
-        <itemInstances>
-            <componentInstance>
-                <componentName>emrAppointmentBooking</componentName>
-                <identifier>emrAppointmentBooking</identifier>
-            </componentInstance>
-        </itemInstances>
-        <itemInstances>
-            <componentInstance>
                 <componentName>emrScheduleManagement</componentName>
                 <identifier>emrScheduleManagement</identifier>
             </componentInstance>

@@ -1,0 +1,73 @@
+<template>
+    <div class="print-root">
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:elseif={hasPayload}>
+            <div class="no-print slds-m-bottom_small">
+                <lightning-button
+                    label="Print"
+                    variant="brand"
+                    disabled={isBusy}
+                    onclick={handlePrint}
+                ></lightning-button>
+            </div>
+            <article class="slip">
+                <header class="slip-header">
+                    <h1>Appointment confirmation</h1>
+                    <p class="slip-status">{status}</p>
+                </header>
+                <dl class="slip-grid">
+                    <div class="slip-row">
+                        <dt>Patient</dt>
+                        <dd>{patientName}</dd>
+                    </div>
+                    <div class="slip-row">
+                        <dt>MRN</dt>
+                        <dd>{mrn}</dd>
+                    </div>
+                    <div class="slip-row">
+                        <dt>Date / time</dt>
+                        <dd>
+                            <template lwc:if={startTime}>
+                                <lightning-formatted-date-time
+                                    value={startTime}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    hour="numeric"
+                                    minute="2-digit"
+                                ></lightning-formatted-date-time>
+                            </template>
+                            <template lwc:else>{emptyValue}</template>
+                            <template lwc:if={endTime}>
+                                &nbsp;–&nbsp;
+                                <lightning-formatted-date-time
+                                    value={endTime}
+                                    hour="numeric"
+                                    minute="2-digit"
+                                ></lightning-formatted-date-time>
+                            </template>
+                        </dd>
+                    </div>
+                    <div class="slip-row">
+                        <dt>Provider</dt>
+                        <dd>{practitionerName}</dd>
+                    </div>
+                    <div class="slip-row">
+                        <dt>Location</dt>
+                        <dd>{locationName}</dd>
+                    </div>
+                    <div class="slip-row">
+                        <dt>Type</dt>
+                        <dd>{appointmentType}</dd>
+                    </div>
+                    <div class="slip-row">
+                        <dt>Reason</dt>
+                        <dd>{reason}</dd>
+                    </div>
+                </dl>
+            </article>
+        </template>
+    </div>
+</template>

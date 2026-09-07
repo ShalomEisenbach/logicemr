@@ -1,0 +1,61 @@
+<template>
+    <div class="share-actions">
+        <template lwc:if={showPrint}>
+            <lightning-button
+                label={printLabel}
+                variant="neutral"
+                disabled={isBusy}
+                onclick={handlePrint}
+            ></lightning-button>
+        </template>
+        <template lwc:if={showEmail}>
+            <lightning-button
+                label={emailLabel}
+                variant="neutral"
+                disabled={isBusy}
+                onclick={handleOpenEmail}
+            ></lightning-button>
+        </template>
+    </div>
+
+    <template lwc:if={showEmailModal}>
+        <c-emr-modal title={emailModalTitle} size="medium" onclose={handleCloseEmail}>
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+            <lightning-input
+                type="email"
+                label="To"
+                value={toAddress}
+                required
+                onchange={handleToChange}
+            ></lightning-input>
+            <lightning-input
+                label="Subject"
+                value={subject}
+                class="slds-m-top_small"
+                onchange={handleSubjectChange}
+            ></lightning-input>
+            <lightning-textarea
+                label="Message"
+                value={message}
+                class="slds-m-top_small"
+                onchange={handleMessageChange}
+            ></lightning-textarea>
+            <div slot="footer">
+                <lightning-button
+                    label="Cancel"
+                    variant="neutral"
+                    onclick={handleCloseEmail}
+                    class="slds-m-right_small"
+                ></lightning-button>
+                <lightning-button
+                    label="Send"
+                    variant="brand"
+                    disabled={isSendDisabled}
+                    onclick={handleSend}
+                ></lightning-button>
+            </div>
+        </c-emr-modal>
+    </template>
+</template>

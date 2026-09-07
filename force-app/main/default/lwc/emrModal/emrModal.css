@@ -1,19 +1,50 @@
 :host {
-    position: relative;
+    position: fixed;
+    inset: 0;
     z-index: 9001;
 }
 
-.slds-modal,
-.slds-modal__container,
-.slds-modal__content {
-    overflow: visible;
+.slds-modal {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.slds-modal__container {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    margin: 5vh auto;
+}
+
+.slds-modal__header,
+.slds-modal__footer {
+    flex-shrink: 0;
 }
 
 .slds-modal__content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
     max-height: none;
 }
 
-.modal_full .slds-modal__container {
-    width: min(96vw, 90rem);
-    max-width: 90rem;
+.slds-modal.modal_full .slds-modal__container {
+    width: 98vw;
+    max-width: 98vw;
+    min-width: 0;
+    height: 96vh;
+    max-height: 96vh;
+    margin: 2vh auto;
+}
+
+.slds-modal.modal_full .slds-modal__content {
+    display: flex;
+    flex-direction: column;
+}
+
+.slds-modal.modal_full .slds-modal__content ::slotted(*) {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
 }

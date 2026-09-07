@@ -78,6 +78,7 @@ private class PatientSearchControllerTest {
             MRN__c = 'MRN-SRCH-DOB',
             Date_of_Birth__c = dob,
             Phone__c = '555-010-4477',
+            Email__c = 'nora.hale@example.com',
             FHIR_Id__c = 'fhir-nora-hale',
             Source_System_Id__c = 'src-nora-hale',
             Status__c = 'Active'
@@ -90,6 +91,7 @@ private class PatientSearchControllerTest {
         List<Patient__c> byYear = PatientSearchController.search('1973');
         List<Patient__c> byPhone = PatientSearchController.search('555-010-4477');
         List<Patient__c> byDigits = PatientSearchController.search('5550104477');
+        List<Patient__c> byEmail = PatientSearchController.search('nora.hale@example.com');
         List<Patient__c> byFhir = PatientSearchController.search('fhir-nora-hale');
         List<Patient__c> bySource = PatientSearchController.search('src-nora-hale');
         List<Patient__c> byFullName = PatientSearchController.search('Nora Hale');
@@ -98,6 +100,7 @@ private class PatientSearchControllerTest {
         System.assertEquals(1, byIso.size(), 'ISO DOB search should return one match');
         System.assertEquals(patient.Id, byIso[0].Id, 'ISO DOB search should return the inserted patient');
         System.assertEquals('555-010-4477', byIso[0].Phone__c, 'Results should include Phone__c');
+        System.assertEquals('nora.hale@example.com', byIso[0].Email__c, 'Results should include Email__c');
         System.assertEquals(1, byUs.size(), 'US DOB search should return one match');
         System.assertEquals(patient.Id, byUs[0].Id, 'US DOB search should return the inserted patient');
         System.assertEquals(1, byYear.size(), 'Birth year search should return one match');
@@ -106,6 +109,8 @@ private class PatientSearchControllerTest {
         System.assertEquals(patient.Id, byPhone[0].Id, 'Formatted phone search should return the inserted patient');
         System.assertEquals(1, byDigits.size(), 'Digit-only phone search should return one match');
         System.assertEquals(patient.Id, byDigits[0].Id, 'Digit-only phone search should return the inserted patient');
+        System.assertEquals(1, byEmail.size(), 'Email search should return one match');
+        System.assertEquals(patient.Id, byEmail[0].Id, 'Email search should return the inserted patient');
         System.assertEquals(1, byFhir.size(), 'FHIR Id search should return one match');
         System.assertEquals(patient.Id, byFhir[0].Id, 'FHIR Id search should return the inserted patient');
         System.assertEquals(1, bySource.size(), 'Source system Id search should return one match');

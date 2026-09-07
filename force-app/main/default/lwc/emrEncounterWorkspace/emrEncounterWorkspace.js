@@ -21,6 +21,7 @@ import PATIENT_DOB_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Date_o
 import PATIENT_SEX_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Sex_at_Birth__c';
 import PATIENT_MRN_FIELD from '@salesforce/schema/Encounter__c.Patient__r.MRN__c';
 import PATIENT_PHONE_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Phone__c';
+import PATIENT_EMAIL_FIELD from '@salesforce/schema/Encounter__c.Patient__r.Email__c';
 import STATUS_FIELD from '@salesforce/schema/Encounter__c.Status__c';
 import CLASS_FIELD from '@salesforce/schema/Encounter__c.Class__c';
 import START_FIELD from '@salesforce/schema/Encounter__c.Start__c';
@@ -47,6 +48,7 @@ const ENCOUNTER_FIELDS = [
     PATIENT_SEX_FIELD,
     PATIENT_MRN_FIELD,
     PATIENT_PHONE_FIELD,
+    PATIENT_EMAIL_FIELD,
     STATUS_FIELD,
     CLASS_FIELD,
     START_FIELD,
@@ -217,6 +219,10 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
 
     get phone() {
         return getFieldValue(this.encounter, PATIENT_PHONE_FIELD) || '';
+    }
+
+    get email() {
+        return getFieldValue(this.encounter, PATIENT_EMAIL_FIELD) || '';
     }
 
     get status() {
