@@ -138,6 +138,15 @@
     </relatedLists>
     <relatedLists>
         <fields>NAME</fields>
+        <fields>Coverage__c</fields>
+        <fields>Status__c</fields>
+        <fields>Checked_Date__c</fields>
+        <fields>Plan_Name__c</fields>
+        <fields>Provider_Used__c</fields>
+        <relatedList>Eligibility_Check__c.Patient__c</relatedList>
+    </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
         <fields>Diagnosis_Display__c</fields>
         <fields>Diagnosis_Code__c</fields>
         <fields>Clinical_Status__c</fields>
