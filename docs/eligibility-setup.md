@@ -55,13 +55,13 @@ Assign permission sets. Do not edit profiles.
 
 | Permission set | `Eligibility_Check__c` | Check Eligibility action | Callout credentials |
 | --- | --- | --- | --- |
-| **LogicEMR Clinician** | Read (object and fields) | Yes (`LogicEMR_Run_Eligibility`) | `Stedi_Eligibility` Named Credential and `Stedi_Eligibility-Stedi_API` principal |
+| **LogicEMR Clinician** | Read (object and fields) | Yes (`LogicEMR_Run_Eligibility`) | Grant `Stedi_Eligibility-Stedi_API` after the principal exists |
 | **LogicEMR Billing** | Read | Yes (`LogicEMR_Run_Eligibility`) | Same |
 | **LogicEMR Admin** | Full CRUD | Yes (`LogicEMR_Run_Eligibility`) | Same |
 
 All three grant Apex access to `EligibilityService`, `StediEligibilityProvider`, `EligibilityProviderFactory`, and `EligibilityBatch`.
 
-The packaged permission sets already include Named Credential and External Credential principal access. After the `Stedi_API` principal exists (step 1), assign the permission set. If a callout is still denied, confirm the principal name is exactly `Stedi_API` and that **External Credential Principal Access** shows `Stedi_Eligibility-Stedi_API`.
+Permission sets cannot ship the External Credential principal mapping until `Stedi_API` exists with the `ApiKey` parameter. After step 1, open each permission set → **External Credential Principal Access** → add `Stedi_Eligibility-Stedi_API`. If a callout is still denied, confirm the principal name is exactly `Stedi_API`.
 
 `EligibilityCheckController.runCheck` and the Check Eligibility button require `LogicEMR_Run_Eligibility`. Users with only object Read can see the latest status and prior checks. They cannot start a new check. `EligibilityBatch` (scheduled re-verify) does not require the custom permission; schedule it as an admin.
 

@@ -312,6 +312,10 @@ export default class EmrCoveragePanel extends NavigationMixin(LightningElement) 
         return hasRunEligibility;
     }
 
+    get eligibilityEmbedded() {
+        return true;
+    }
+
     getRowActions(row, doneCallback) {
         const actions = [];
         if (this.canRunEligibility) {

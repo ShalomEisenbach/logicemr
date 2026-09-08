@@ -172,17 +172,9 @@
         <enabled>true</enabled>
         <name>LogicEMR_Run_Eligibility</name>
     </customPermissions>
-    <description>Clinician access to LogicEMR clinical data. Practitioner, Schedule, and Slot are read-only. Appointments are read, create, and edit so Arrive and No Show can run from provider home. Eligibility checks are read-only; LogicEMR_Run_Eligibility gates the check action.</description>
-    <externalCredentialPrincipalAccesses>
-        <enabled>true</enabled>
-        <externalCredentialPrincipal>Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
-    </externalCredentialPrincipalAccesses>
+    <description>Clinician access to LogicEMR clinical data. Practitioner, Schedule, and Slot are read-only. Appointments can be created and edited. Eligibility checks are read-only; LogicEMR_Run_Eligibility gates the check action.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Clinician</label>
-    <namedCredentialAccesses>
-        <enabled>true</enabled>
-        <namedCredential>Stedi_Eligibility</namedCredential>
-    </namedCredentialAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>CareTeamMember__c.Access_Level__c</field>

@@ -253,16 +253,8 @@
         <name>LogicEMR_View_Data_Quality</name>
     </customPermissions>
     <description>Full CRUD on all LogicEMR objects and access to the LogicEMR app. Includes LogicEMR_Run_Eligibility so admins can run and schedule eligibility checks.</description>
-    <externalCredentialPrincipalAccesses>
-        <enabled>true</enabled>
-        <externalCredentialPrincipal>Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
-    </externalCredentialPrincipalAccesses>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Admin</label>
-    <namedCredentialAccesses>
-        <enabled>true</enabled>
-        <namedCredential>Stedi_Eligibility</namedCredential>
-    </namedCredentialAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>CareTeamMember__c.Access_Level__c</field>

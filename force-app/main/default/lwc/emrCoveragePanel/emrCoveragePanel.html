@@ -13,7 +13,7 @@
             <c-emr-modal title="Check Eligibility" size="large" onclose={handleCloseEligibility}>
                 <c-emr-eligibility-check
                     record-id={eligibilityCoverageId}
-                    embedded={true}
+                    embedded={eligibilityEmbedded}
                     oneligibilitychecked={handleEligibilityChecked}
                 ></c-emr-eligibility-check>
                 <div slot="footer">
