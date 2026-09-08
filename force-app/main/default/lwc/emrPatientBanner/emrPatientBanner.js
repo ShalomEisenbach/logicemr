@@ -4,6 +4,7 @@ import { refreshApex } from '@salesforce/apex';
 import { registerRefreshHandler, unregisterRefreshHandler } from 'lightning/refresh';
 import resolvePatientId from '@salesforce/apex/AlertBarController.resolvePatientId';
 import getLatestVitals from '@salesforce/apex/PatientBannerController.getLatestVitals';
+import getActiveCoverage from '@salesforce/apex/PatientBannerController.getActiveCoverage';
 import PATIENT_OBJECT from '@salesforce/schema/Patient__c';
 import FIRST_NAME_FIELD from '@salesforce/schema/Patient__c.First_Name__c';
 import LAST_NAME_FIELD from '@salesforce/schema/Patient__c.Last_Name__c';
@@ -33,7 +34,9 @@ export default class EmrPatientBanner extends LightningElement {
     errorMessage;
     vitalItems = [];
     vitalsRecordedAt;
+    coverageName;
     wiredVitalsResult;
+    wiredCoverageResult;
     refreshHandlerId;
 
     connectedCallback() {
@@ -45,10 +48,14 @@ export default class EmrPatientBanner extends LightningElement {
     }
 
     refreshHandler() {
-        if (!this.wiredVitalsResult) {
-            return Promise.resolve();
+        const refreshes = [];
+        if (this.wiredVitalsResult) {
+            refreshes.push(refreshApex(this.wiredVitalsResult));
         }
-        return refreshApex(this.wiredVitalsResult);
+        if (this.wiredCoverageResult) {
+            refreshes.push(refreshApex(this.wiredCoverageResult));
+        }
+        return refreshes.length ? Promise.all(refreshes) : Promise.resolve();
     }
 
     @wire(resolvePatientId, { recordId: '$recordId' })
@@ -70,6 +77,12 @@ export default class EmrPatientBanner extends LightningElement {
         if (error) {
             this.errorMessage = this.reduceError(error);
         }
+    }
+
+    @wire(getActiveCoverage, { patientId: '$patientId' })
+    wiredCoverage(result) {
+        this.wiredCoverageResult = result;
+        this.coverageName = result.data?.name || '';
     }
 
     @wire(getLatestVitals, { patientId: '$vitalsPatientId' })

@@ -21,6 +21,8 @@ public with sharing class ProviderHomeController {
         public HomeLists lists;
         @AuraEnabled
         public List<Patient__c> recentPatients;
+        @AuraEnabled
+        public Map<Id, String> latestEligibilityByPatientId;
     }
 
     public class HomeMetrics {
@@ -64,6 +66,9 @@ public with sharing class ProviderHomeController {
         payload.lists.resultsToReview = queryResultsToReview(patientIds);
         payload.lists.unsignedNotes = queryUnsignedNotes(practitionerId);
         payload.recentPatients = queryRecentPatients();
+        payload.latestEligibilityByPatientId = queryLatestEligibilityByPatient(
+            collectPatientIds(payload.lists.todaysAppointments)
+        );
         return payload;
     }
 
@@ -81,6 +86,7 @@ public with sharing class ProviderHomeController {
         payload.lists.resultsToReview = new List<DiagnosticReport__c>();
         payload.lists.unsignedNotes = new List<ClinicalNote__c>();
         payload.recentPatients = new List<Patient__c>();
+        payload.latestEligibilityByPatientId = new Map<Id, String>();
         return payload;
     }
 
@@ -329,6 +335,37 @@ public with sharing class ProviderHomeController {
             ORDER BY LastModifiedDate DESC
             LIMIT :LIST_LIMIT
         ];
+    }
+
+    private static Set<Id> collectPatientIds(List<Appointment__c> appointments) {
+        Set<Id> patientIds = new Set<Id>();
+        if (appointments == null) {
+            return patientIds;
+        }
+        for (Appointment__c appointment : appointments) {
+            if (appointment.Patient__c != null) {
+                patientIds.add(appointment.Patient__c);
+            }
+        }
+        return patientIds;
+    }
+
+    private static Map<Id, String> queryLatestEligibilityByPatient(Set<Id> patientIds) {
+        Map<Id, String> latestByPatient = new Map<Id, String>();
+        if (patientIds == null || patientIds.isEmpty()) {
+            return latestByPatient;
+        }
+        for (Eligibility_Check__c check : [
+            SELECT Patient__c, Status__c
+            FROM Eligibility_Check__c
+            WHERE Patient__c IN :patientIds
+            ORDER BY Checked_Date__c DESC NULLS LAST, CreatedDate DESC
+        ]) {
+            if (!latestByPatient.containsKey(check.Patient__c)) {
+                latestByPatient.put(check.Patient__c, check.Status__c);
+            }
+        }
+        return latestByPatient;
     }
 
     private static List<Patient__c> queryRecentPatients() {

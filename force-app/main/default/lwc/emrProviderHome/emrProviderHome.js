@@ -41,6 +41,7 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
     resultsToReview = [];
     unsignedNotes = [];
     recentPatients = [];
+    eligibilityByPatientId = {};
     wiredHomeResult;
 
     @wire(getHome)
@@ -79,6 +80,7 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
             unsignedNotes: metrics.unsignedNotes || 0,
             todaysAppointments: metrics.todaysAppointments || 0
         };
+        this.eligibilityByPatientId = (data && data.latestEligibilityByPatientId) || {};
         this.todaysEncounters = this.mapEncounters(lists.todaysEncounters || []);
         this.todaysAppointments = this.mapAppointments(lists.todaysAppointments || []);
         this.resultsToReview = this.mapReports(lists.resultsToReview || []);
@@ -210,12 +212,14 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
                 row[APPT_LOCATION_FIELD.fieldApiName]
             ].filter((part) => part);
             const reason = row[APPT_REASON_FIELD.fieldApiName];
+            const eligibilityStatus = this.eligibilityStatus(row[PATIENT_FIELD.fieldApiName]);
             const canAct = status === 'Booked';
             return {
                 id: row.Id,
                 title: this.patientName(row) || row.Name || 'Appointment',
                 meta: parts.slice(1).join(' · '),
                 detail: reason || '',
+                eligibilityStatus,
                 canArrive: canAct,
                 canNoShow: canAct,
                 objectApiName: APPOINTMENT_OBJECT.objectApiName
@@ -292,6 +296,13 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
                 objectApiName: PATIENT_OBJECT.objectApiName
             };
         });
+    }
+
+    eligibilityStatus(patientId) {
+        if (!patientId || !this.eligibilityByPatientId) {
+            return '';
+        }
+        return this.eligibilityByPatientId[patientId] || '';
     }
 
     patientName(row) {

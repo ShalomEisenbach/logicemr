@@ -105,7 +105,35 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>EligibilityBatch</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityCheckController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityPayerMatch</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityProvider</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>EligibilityProviderFactory</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityRequest</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityResult</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -165,6 +193,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>PayerSearchController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>PrescriptionPadController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -214,11 +246,23 @@
     </customMetadataTypeAccesses>
     <customPermissions>
         <enabled>true</enabled>
+        <name>LogicEMR_Run_Eligibility</name>
+    </customPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
         <name>LogicEMR_View_Data_Quality</name>
     </customPermissions>
-    <description>Full CRUD on all LogicEMR objects and access to the LogicEMR app.</description>
+    <description>Full CRUD on all LogicEMR objects and access to the LogicEMR app. Includes LogicEMR_Run_Eligibility so admins can run and schedule eligibility checks.</description>
+    <externalCredentialPrincipalAccesses>
+        <enabled>true</enabled>
+        <externalCredentialPrincipal>Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
+    </externalCredentialPrincipalAccesses>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Admin</label>
+    <namedCredentialAccesses>
+        <enabled>true</enabled>
+        <namedCredential>Stedi_Eligibility</namedCredential>
+    </namedCredentialAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>CareTeamMember__c.Access_Level__c</field>

@@ -109,6 +109,7 @@ public with sharing class AlertBarController {
 
         summary.sections.add(buildProblems(queryProblems(patientId)));
         summary.sections.add(buildAllergies(queryAllergies(patientId)));
+        summary.sections.add(buildCoverages(queryCoverages(patientId)));
         summary.sections.add(buildMedications(queryMedicationOrders(patientId), queryReportedMedications(patientId)));
         summary.sections.add(buildFlowsheet(queryAbnormalFindings(patientId)));
         summary.sections.add(buildResults(queryResults(patientId)));
@@ -120,6 +121,7 @@ public with sharing class AlertBarController {
         return new List<SummarySection>{
             buildProblems(new List<Condition__c>()),
             buildAllergies(new List<AllergyIntolerance__c>()),
+            buildCoverages(new List<Coverage__c>()),
             buildMedications(new List<MedicationRequest__c>(), new List<MedicationStatement__c>()),
             buildFlowsheet(new List<Observation__c>()),
             buildResults(new List<DiagnosticReport__c>()),
@@ -148,6 +150,16 @@ public with sharing class AlertBarController {
             ORDER BY Allergen_Display__c ASC NULLS LAST
             LIMIT :MAX_QUERY
         ]);
+    }
+
+    private static List<Coverage__c> queryCoverages(Id patientId) {
+        return [
+            SELECT Id, Name, Plan_Name__c, Status__c, Priority__c, Payer__r.Name
+            FROM Coverage__c
+            WHERE Patient__c = :patientId AND Status__c = :STATUS_ACTIVE
+            ORDER BY Priority__c ASC NULLS LAST, Effective_Start__c DESC NULLS LAST
+            LIMIT :MAX_RESULTS
+        ];
     }
 
     private static List<MedicationRequest__c> queryMedicationOrders(Id patientId) {
@@ -258,6 +270,32 @@ public with sharing class AlertBarController {
             tone = 'warning';
         }
         return newSection('allergies', 'Allergies', 'No known allergies', tone, 'chips', items);
+    }
+
+    private static SummarySection buildCoverages(List<Coverage__c> rows) {
+        List<SummaryItem> items = new List<SummaryItem>();
+        String objectApiName = objectName(Coverage__c.SObjectType);
+        for (Coverage__c row : rows) {
+            items.add(
+                newItem(
+                    row.Id,
+                    coverageDisplayName(row),
+                    objectApiName,
+                    row.Priority__c,
+                    firstNonBlank(row.Payer__r == null ? null : row.Payer__r.Name, row.Name),
+                    false
+                )
+            );
+        }
+        return newSection(
+            'coverage',
+            'Coverage',
+            'No active coverage',
+            items.isEmpty() ? 'empty' : 'info',
+            'chips',
+            items,
+            items.size()
+        );
     }
 
     private static SummarySection buildMedications(
@@ -413,6 +451,18 @@ public with sharing class AlertBarController {
         String variant,
         List<SummaryItem> items
     ) {
+        return newSection(key, label, emptyLabel, tone, variant, items, MAX_CHIPS);
+    }
+
+    private static SummarySection newSection(
+        String key,
+        String label,
+        String emptyLabel,
+        String tone,
+        String variant,
+        List<SummaryItem> items,
+        Integer maxItems
+    ) {
         SummarySection section = new SummarySection();
         section.key = key;
         section.label = label;
@@ -421,11 +471,28 @@ public with sharing class AlertBarController {
         section.variant = variant;
         section.totalCount = items.size();
         section.items = new List<SummaryItem>();
-        Integer limitSize = Math.min(items.size(), MAX_CHIPS);
+        Integer limitSize = Math.min(items.size(), maxItems);
         for (Integer i = 0; i < limitSize; i++) {
             section.items.add(items[i]);
         }
         return section;
+    }
+
+    private static String coverageDisplayName(Coverage__c row) {
+        if (String.isNotBlank(row.Name)) {
+            return row.Name;
+        }
+        List<String> parts = new List<String>();
+        if (String.isNotBlank(row.Plan_Name__c)) {
+            parts.add(row.Plan_Name__c);
+        }
+        if (String.isNotBlank(row.Status__c)) {
+            parts.add(row.Status__c);
+        }
+        if (!parts.isEmpty()) {
+            return String.join(parts, ' - ');
+        }
+        return firstNonBlank(row.Payer__r == null ? null : row.Payer__r.Name, 'Coverage');
     }
 
     private static SummaryItem newItem(

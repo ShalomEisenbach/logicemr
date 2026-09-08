@@ -44,6 +44,9 @@
                                     <template lwc:if={row.detail}>
                                         <p class="work-meta">{row.detail}</p>
                                     </template>
+                                    <template lwc:if={row.eligibilityStatus}>
+                                        <p class="work-meta">Eligibility: {row.eligibilityStatus}</p>
+                                    </template>
                                     <template lwc:if={row.canArrive}>
                                         <div class="work-actions">
                                             <lightning-button

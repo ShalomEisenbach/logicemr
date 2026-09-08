@@ -327,6 +327,69 @@ private class ProviderHomeControllerTest {
         System.assertEquals(0, payload.lists.todaysAppointments.size(), 'A user without a Practitioner must not see another provider appointments');
     }
 
+    @IsTest
+    static void getHomeIncludesLatestEligibilityForTodaysAppointments() {
+        User provider = getUser(PROVIDER_ALIAS);
+        Practitioner__c myPractitioner = insertPractitioner(provider.Id, 'Eli', 'Home');
+        Patient__c myPatient = insertPatient('MRN-HOME-ELIG', 'Elig');
+        assignCareTeam(myPatient.Id, myPractitioner.Id, provider.Id, true);
+
+        Datetime todayMorning = Datetime.newInstance(Date.today(), Time.newInstance(9, 0, 0, 0));
+        insert new Appointment__c(
+            Patient__c = myPatient.Id,
+            Practitioner__c = myPractitioner.Id,
+            Start__c = todayMorning,
+            End__c = todayMorning.addMinutes(20),
+            Status__c = 'Booked',
+            Appointment_Type__c = 'Checkup',
+            OwnerId = provider.Id
+        );
+        Payer__c payer = new Payer__c(Name = 'Aetna', Type__c = 'Commercial', Active__c = true);
+        insert payer;
+        Coverage__c coverage = new Coverage__c(
+            Patient__c = myPatient.Id,
+            Payer__c = payer.Id,
+            Member_Id__c = 'M-HOME',
+            Type__c = 'Medical',
+            Status__c = 'Active',
+            Priority__c = 'Primary'
+        );
+        insert coverage;
+        insert new List<Eligibility_Check__c>{
+            new Eligibility_Check__c(
+                Patient__c = myPatient.Id,
+                Coverage__c = coverage.Id,
+                Status__c = 'Inactive',
+                Checked_Date__c = Datetime.now().addDays(-3)
+            ),
+            new Eligibility_Check__c(
+                Patient__c = myPatient.Id,
+                Coverage__c = coverage.Id,
+                Status__c = 'Active',
+                Checked_Date__c = Datetime.now().addHours(-2)
+            )
+        };
+
+        Test.startTest();
+        ProviderHomeController.HomePayload payload;
+        System.runAs(provider) {
+            payload = ProviderHomeController.getHome();
+        }
+        Test.stopTest();
+
+        System.assertEquals(1, payload.lists.todaysAppointments.size(), 'Booked appointment should appear');
+        System.assertEquals(
+            true,
+            payload.latestEligibilityByPatientId.containsKey(myPatient.Id),
+            'Today appointments should include the patient latest eligibility status'
+        );
+        System.assertEquals(
+            'Active',
+            payload.latestEligibilityByPatientId.get(myPatient.Id),
+            'Newest eligibility check status should be returned'
+        );
+    }
+
     private static User newUser(String alias) {
         return new User(
             Alias = alias,

@@ -16,87 +16,109 @@
             <template lwc:else>
                 <template for:each={displaySections} for:item="section">
                     <div key={section.key} class={section.stripClass} role={section.role}>
-                        <div class="strip-heading">
-                            <template lwc:if={section.showIcon}>
+                        <template lwc:if={section.isCollapsible}>
+                            <button
+                                type="button"
+                                class="strip-toggle"
+                                aria-expanded={section.isExpanded}
+                                aria-label={section.toggleLabel}
+                                onclick={handleToggleMedications}
+                            >
+                                <span class="alert-label">{section.label}</span>
+                                <span class="section-count">{section.countLabel}</span>
                                 <lightning-icon
-                                    icon-name={section.iconName}
-                                    size="x-small"
-                                    variant={section.iconVariant}
-                                    alternative-text={section.label}
-                                    class="slds-m-right_x-small"
+                                    icon-name={section.toggleIcon}
+                                    size="xx-small"
+                                    alternative-text={section.toggleLabel}
+                                    class="strip-chevron"
                                 ></lightning-icon>
-                            </template>
-                            <span class="alert-label">{section.label}</span>
-                        </div>
-                        <template lwc:if={section.hasItems}>
-                            <template lwc:if={section.isList}>
-                                <ul class="med-list">
-                                    <template for:each={section.items} for:item="item">
-                                        <li key={item.id} class="med-row" title={item.title}>
-                                            <div class="med-copy">
+                            </button>
+                        </template>
+                        <template lwc:else>
+                            <div class="strip-heading">
+                                <template lwc:if={section.showIcon}>
+                                    <lightning-icon
+                                        icon-name={section.iconName}
+                                        size="x-small"
+                                        variant={section.iconVariant}
+                                        alternative-text={section.label}
+                                        class="slds-m-right_x-small"
+                                    ></lightning-icon>
+                                </template>
+                                <span class="alert-label">{section.label}</span>
+                            </div>
+                        </template>
+                        <template lwc:if={section.showBody}>
+                            <template lwc:if={section.hasItems}>
+                                <template lwc:if={section.isList}>
+                                    <ul class="med-list">
+                                        <template for:each={section.items} for:item="item">
+                                            <li key={item.id} class="med-row" title={item.title}>
+                                                <div class="med-copy">
+                                                    <c-emr-record-link
+                                                        record-id={item.id}
+                                                        object-api-name={item.objectApiName}
+                                                        label={item.name}
+                                                    ></c-emr-record-link>
+                                                    <template lwc:if={item.showDetail}>
+                                                        <p class="med-detail">{item.detail}</p>
+                                                    </template>
+                                                </div>
+                                                <template lwc:if={item.showFlag}>
+                                                    <span class="med-flag">{item.flag}</span>
+                                                </template>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </template>
+                                <template lwc:elseif={section.isMetrics}>
+                                    <div class="metric-list">
+                                        <template for:each={section.items} for:item="item">
+                                            <div key={item.id} class="metric" title={item.title}>
+                                                <p class="metric-label">{item.name}</p>
+                                                <p class={item.valueClass}>
+                                                    <c-emr-record-link
+                                                        record-id={item.id}
+                                                        object-api-name={item.objectApiName}
+                                                        label={item.displayValue}
+                                                    ></c-emr-record-link>
+                                                </p>
+                                                <p class="metric-meta">
+                                                    <template lwc:if={item.unit}>
+                                                        <span class="metric-unit">{item.unit}</span>
+                                                    </template>
+                                                    <template lwc:if={item.showFlag}>
+                                                        <span class={item.flagClass}>{item.flag}</span>
+                                                    </template>
+                                                </p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template lwc:else>
+                                    <div class="chip-list">
+                                        <template for:each={section.items} for:item="item">
+                                            <span key={item.id} class={item.cssClass} title={item.title}>
                                                 <c-emr-record-link
                                                     record-id={item.id}
                                                     object-api-name={item.objectApiName}
                                                     label={item.name}
+                                                    inverse={item.emphasize}
                                                 ></c-emr-record-link>
-                                                <template lwc:if={item.showDetail}>
-                                                    <p class="med-detail">{item.detail}</p>
-                                                </template>
-                                            </div>
-                                            <template lwc:if={item.showFlag}>
-                                                <span class="med-flag">{item.flag}</span>
-                                            </template>
-                                        </li>
-                                    </template>
-                                </ul>
-                            </template>
-                            <template lwc:elseif={section.isMetrics}>
-                                <div class="metric-list">
-                                    <template for:each={section.items} for:item="item">
-                                        <div key={item.id} class="metric" title={item.title}>
-                                            <p class="metric-label">{item.name}</p>
-                                            <p class={item.valueClass}>
-                                                <c-emr-record-link
-                                                    record-id={item.id}
-                                                    object-api-name={item.objectApiName}
-                                                    label={item.displayValue}
-                                                ></c-emr-record-link>
-                                            </p>
-                                            <p class="metric-meta">
-                                                <template lwc:if={item.unit}>
-                                                    <span class="metric-unit">{item.unit}</span>
-                                                </template>
                                                 <template lwc:if={item.showFlag}>
-                                                    <span class={item.flagClass}>{item.flag}</span>
+                                                    <span class="chip-flag"> {item.flag}</span>
                                                 </template>
-                                            </p>
-                                        </div>
-                                    </template>
-                                </div>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template lwc:if={section.overflowLabel}>
+                                    <span class="overflow">{section.overflowLabel}</span>
+                                </template>
                             </template>
                             <template lwc:else>
-                                <div class="chip-list">
-                                    <template for:each={section.items} for:item="item">
-                                        <span key={item.id} class={item.cssClass} title={item.title}>
-                                            <c-emr-record-link
-                                                record-id={item.id}
-                                                object-api-name={item.objectApiName}
-                                                label={item.name}
-                                                inverse={item.emphasize}
-                                            ></c-emr-record-link>
-                                            <template lwc:if={item.showFlag}>
-                                                <span class="chip-flag"> {item.flag}</span>
-                                            </template>
-                                        </span>
-                                    </template>
-                                </div>
+                                <span class="empty-copy">{section.emptyLabel}</span>
                             </template>
-                            <template lwc:if={section.overflowLabel}>
-                                <span class="overflow">{section.overflowLabel}</span>
-                            </template>
-                        </template>
-                        <template lwc:else>
-                            <span class="empty-copy">{section.emptyLabel}</span>
                         </template>
                     </div>
                 </template>

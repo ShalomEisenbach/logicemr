@@ -27,6 +27,11 @@ private class ClinicalDocumentServiceTest {
         insertProcedure(patient.Id, 'Colonoscopy');
         insertProcedure(other.Id, 'Other procedure');
 
+        Payer__c payer = insertPayer('Aetna');
+        insertCoverage(patient.Id, payer.Id, 'M-100', 'Gold PPO', 'Primary', 'Active', Date.newInstance(2026, 1, 1));
+        insertCoverage(patient.Id, payer.Id, 'M-200', 'Inactive Plan', 'Secondary', 'Inactive', null);
+        insertCoverage(other.Id, payer.Id, 'M-999', 'Other Plan', 'Primary', 'Active', null);
+
         Encounter__c encounter = insertEncounter(patient.Id);
         insertNote(patient.Id, encounter.Id, author.Id, 'Signed', 'Progress Note', '<p>Signed note</p>');
         insertNote(patient.Id, encounter.Id, author.Id, 'Draft', 'Progress Note', '<p>Draft note</p>');
@@ -56,6 +61,11 @@ private class ClinicalDocumentServiceTest {
         System.assertEquals(1, summary.labs.size(), 'Only labs for this patient');
         System.assertEquals('98', summary.labs[0].value, 'Lab quantity should stringify');
         System.assertEquals(1, summary.procedures.size(), 'Only procedures for this patient');
+        System.assertEquals(1, summary.coverages.size(), 'Only active coverages for this patient');
+        System.assertEquals('Gold PPO (Ada Patient) - Active', summary.coverages[0].name, 'Coverage name should compose plan, patient, and status');
+        System.assertEquals('Aetna', summary.coverages[0].payerName, 'Coverage payer name should load');
+        System.assertEquals('Gold PPO', summary.coverages[0].planName, 'Coverage plan should load');
+        System.assertEquals(0, blank.coverages.size(), 'Null patient has no coverages');
         System.assertEquals(1, summary.signedNotes.size(), 'Only signed notes for this patient');
         System.assertEquals(
             'Progress Note',
@@ -125,6 +135,35 @@ private class ClinicalDocumentServiceTest {
             padController.pad.prescriptions.size(),
             'Malformed id tokens should be ignored'
         );
+    }
+
+    private static Payer__c insertPayer(String payerName) {
+        Payer__c payer = new Payer__c(Name = payerName, Type__c = 'Commercial', Active__c = true);
+        insert payer;
+        return payer;
+    }
+
+    private static Coverage__c insertCoverage(
+        Id patientId,
+        Id payerId,
+        String memberId,
+        String planName,
+        String priority,
+        String status,
+        Date startDate
+    ) {
+        Coverage__c coverage = new Coverage__c(
+            Patient__c = patientId,
+            Payer__c = payerId,
+            Member_Id__c = memberId,
+            Plan_Name__c = planName,
+            Type__c = 'Medical',
+            Priority__c = priority,
+            Status__c = status,
+            Effective_Start__c = startDate
+        );
+        insert coverage;
+        return coverage;
     }
 
     private static Patient__c insertPatient(String mrn, String email) {

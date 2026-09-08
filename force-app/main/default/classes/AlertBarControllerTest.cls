@@ -80,22 +80,24 @@ private class AlertBarControllerTest {
         );
         Test.stopTest();
 
-        System.assertEquals(6, byPatient.sections.size(), 'All clinical tab sections should be present');
+        System.assertEquals(7, byPatient.sections.size(), 'All clinical tab sections should be present');
         System.assertEquals('problems', byPatient.sections[0].key, 'Problems should be first');
         System.assertEquals('allergies', byPatient.sections[1].key, 'Allergies should be second');
-        System.assertEquals('medications', byPatient.sections[2].key, 'Medications should be third');
-        System.assertEquals('flowsheet', byPatient.sections[3].key, 'Flowsheet should be fourth');
-        System.assertEquals('results', byPatient.sections[4].key, 'Results should be fifth');
-        System.assertEquals('procedures', byPatient.sections[5].key, 'Procedures should be last');
+        System.assertEquals('coverage', byPatient.sections[2].key, 'Coverage should be third');
+        System.assertEquals('medications', byPatient.sections[3].key, 'Medications should be fourth');
+        System.assertEquals('flowsheet', byPatient.sections[4].key, 'Flowsheet should be fifth');
+        System.assertEquals('results', byPatient.sections[5].key, 'Results should be sixth');
+        System.assertEquals('procedures', byPatient.sections[6].key, 'Procedures should be last');
         for (AlertBarController.SummarySection section : byPatient.sections) {
             System.assertEquals(0, section.totalCount, section.key + ' should be empty');
             System.assertEquals('empty', section.tone, section.key + ' should use the empty tone');
             System.assertEquals(0, section.items.size(), section.key + ' should have no chips');
         }
         System.assertEquals('No known allergies', byPatient.sections[1].emptyLabel, 'NKA copy should remain');
-        System.assertEquals(6, byEncounter.sections.size(), 'Encounter with no data should still return sections');
-        System.assertEquals(6, blank.sections.size(), 'Null record Id should return empty sections');
-        System.assertEquals(6, unsupported.sections.size(), 'Unsupported records should return empty sections');
+        System.assertEquals('No active coverage', byPatient.sections[2].emptyLabel, 'Coverage empty copy should remain');
+        System.assertEquals(7, byEncounter.sections.size(), 'Encounter with no data should still return sections');
+        System.assertEquals(7, blank.sections.size(), 'Null record Id should return empty sections');
+        System.assertEquals(7, unsupported.sections.size(), 'Unsupported records should return empty sections');
         System.assertEquals(0, blank.sections[0].totalCount, 'Null record Id should have no problems');
     }
 
@@ -113,6 +115,13 @@ private class AlertBarControllerTest {
         insertAllergy(patient.Id, 'Active', 'Latex', 'Low');
         insertAllergy(patient.Id, 'Inactive', 'Codeine', 'High');
         insertAllergy(other.Id, 'Active', 'Peanut', 'High');
+
+        Payer__c aetna = insertPayer('Aetna');
+        Payer__c medicaid = insertPayer('State Medicaid');
+        Coverage__c primary = insertCoverage(patient.Id, aetna.Id, 'Gold PPO', 'Primary', 'Active');
+        Coverage__c secondary = insertCoverage(patient.Id, medicaid.Id, 'Medicaid', 'Secondary', 'Active');
+        insertCoverage(patient.Id, aetna.Id, 'Old Plan', 'Primary', 'Inactive');
+        insertCoverage(other.Id, aetna.Id, 'Other Plan', 'Primary', 'Active');
 
         MedicationRequest__c metformin = insertMedicationRequest(
             patient.Id,
@@ -235,6 +244,16 @@ private class AlertBarControllerTest {
         System.assertEquals(true, sections.get('allergies').items[0].emphasize, 'High allergy should be emphasized');
         System.assertEquals('high', sections.get('allergies').tone, 'High allergy should use the high tone');
 
+        System.assertEquals(2, sections.get('coverage').totalCount, 'All active coverages should be summarized');
+        System.assertEquals(2, sections.get('coverage').items.size(), 'Coverage chips should not be capped');
+        System.assertEquals(primary.Id, sections.get('coverage').items[0].id, 'Primary coverage should sort first');
+        System.assertEquals('Gold PPO (AlertBar) - Active', sections.get('coverage').items[0].name, 'Coverage chip should use plan, patient, and status');
+        System.assertEquals('Primary', sections.get('coverage').items[0].flag, 'Coverage chip should show priority');
+        System.assertEquals(secondary.Id, sections.get('coverage').items[1].id, 'Secondary active coverage should be listed');
+        System.assertEquals('Medicaid (AlertBar) - Active', sections.get('coverage').items[1].name, 'Secondary coverage should use plan, patient, and status');
+        System.assertEquals('info', sections.get('coverage').tone, 'Active coverage should use the info tone');
+        System.assertEquals('chips', sections.get('coverage').variant, 'Coverage should use chips like allergies');
+
         System.assertEquals(2, sections.get('medications').totalCount, 'Active order and reported med should be summarized');
         System.assertEquals(metformin.Id, sections.get('medications').items[0].id, 'Active order should appear first');
         System.assertEquals(aspirin.Id, sections.get('medications').items[1].id, 'Reported medication should be included');
@@ -314,6 +333,31 @@ private class AlertBarControllerTest {
             result.put(section.key, section);
         }
         return result;
+    }
+
+    private static Payer__c insertPayer(String payerName) {
+        Payer__c payer = new Payer__c(Name = payerName, Type__c = 'Commercial', Active__c = true);
+        insert payer;
+        return payer;
+    }
+
+    private static Coverage__c insertCoverage(
+        Id patientId,
+        Id payerId,
+        String planName,
+        String priority,
+        String status
+    ) {
+        Coverage__c coverage = new Coverage__c(
+            Patient__c = patientId,
+            Payer__c = payerId,
+            Plan_Name__c = planName,
+            Type__c = 'Medical',
+            Priority__c = priority,
+            Status__c = status
+        );
+        insert coverage;
+        return coverage;
     }
 
     private static Patient__c insertPatient(String mrn) {

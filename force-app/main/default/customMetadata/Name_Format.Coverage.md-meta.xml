@@ -8,7 +8,7 @@
     </values>
     <values>
         <field>Format__c</field>
-        <value xsi:type="xsd:string">{Payer__r.Name} - {Member_Id__c}</value>
+        <value xsi:type="xsd:string">{Plan_Name__c} ({Patient__r.First_Name__c} {Patient__r.Last_Name__c}) - {Status__c}</value>
     </values>
     <values>
         <field>Object_API_Name__c</field>

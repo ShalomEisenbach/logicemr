@@ -78,6 +78,8 @@ private class EligibilityProviderFactoryTest {
         req.coverage = UserInfo.getUserId();
         req.payerId = 'PAYER-1';
         req.serviceType = '30';
+        req.providerOrganizationName = 'Logic Clinic';
+        req.providerNpi = '1999999984';
 
         EligibilityResult result = new EligibilityResult();
         result.status = 'Active';
@@ -85,6 +87,7 @@ private class EligibilityProviderFactoryTest {
         result.copay = 25;
         result.coinsurance = 20;
         result.deductible = 1500;
+        result.deductibleRemaining = 400;
         result.oop = 6000;
         result.rawResponse = '{"ok":true}';
         result.error = null;
@@ -93,6 +96,8 @@ private class EligibilityProviderFactoryTest {
         System.assertEquals('PAYER-1', req.payerId, 'Payer id should persist');
         System.assertEquals('Gold PPO', result.plan, 'Plan should persist');
         System.assertEquals(25, result.copay, 'Copay should persist');
+        System.assertEquals(400, result.deductibleRemaining, 'Remaining deductible should persist');
+        System.assertEquals('Logic Clinic', req.providerOrganizationName, 'Provider org name should persist');
         System.assertEquals(null, result.error, 'Error should be empty on success');
     }
 }

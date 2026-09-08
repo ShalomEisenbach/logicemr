@@ -167,11 +167,7 @@ public with sharing class NameFormatterHandler {
             lastEnd = matcher.end();
         }
         composed += template.substring(lastEnd);
-        composed = composed.normalizeSpace();
-        if (composed.length() > NAME_MAX_LENGTH) {
-            composed = composed.substring(0, NAME_MAX_LENGTH);
-        }
-        return composed;
+        return finalizeComposedName(composed);
     }
 
     private static String resolveToken(
@@ -210,7 +206,11 @@ public with sharing class NameFormatterHandler {
     ) {
         for (Schema.SObjectField field : fieldMap.values()) {
             String describedRelationship = field.getDescribe().getRelationshipName();
-            if (describedRelationship != null && describedRelationship.equalsIgnoreCase(relationshipName)) {
+            if (
+                describedRelationship != null &&
+                (describedRelationship.equalsIgnoreCase(relationshipName) ||
+                toLocalRelationship(describedRelationship).equalsIgnoreCase(relationshipName))
+            ) {
                 return field;
             }
         }
@@ -241,6 +241,17 @@ public with sharing class NameFormatterHandler {
         return null;
     }
 
+    private static String toLocalRelationship(String apiName) {
+        if (String.isBlank(apiName) || !apiName.endsWith('__r')) {
+            return apiName;
+        }
+        List<String> parts = apiName.split('__');
+        if (parts.size() >= 2) {
+            return parts[parts.size() - 2] + '__r';
+        }
+        return apiName;
+    }
+
     private static String toLocalApiName(String apiName) {
         if (String.isBlank(apiName)) {
             return apiName;
@@ -250,6 +261,48 @@ public with sharing class NameFormatterHandler {
             return parts[1] + '__c';
         }
         return apiName;
+    }
+
+    private static String finalizeComposedName(String composed) {
+        if (String.isBlank(composed)) {
+            return composed;
+        }
+        composed = removeEmptyParentheses(composed.normalizeSpace());
+        if (composed.length() > NAME_MAX_LENGTH) {
+            String withoutOptionalName = removeFirstParenthetical(composed);
+            if (withoutOptionalName.length() <= NAME_MAX_LENGTH) {
+                composed = withoutOptionalName;
+            } else {
+                composed = composed.substring(0, NAME_MAX_LENGTH);
+            }
+        }
+        return composed;
+    }
+
+    private static String removeEmptyParentheses(String value) {
+        String previous;
+        do {
+            previous = value;
+            value = value.replace('( )', '').replace('()', '');
+            value = value.normalizeSpace();
+        } while (value != previous);
+        value = value.replace('( ', '(').replace(' )', ')');
+        if (value.contains('()')) {
+            value = value.replace('()', '').normalizeSpace();
+        }
+        return value;
+    }
+
+    private static String removeFirstParenthetical(String value) {
+        Integer openAt = value.indexOf(' (');
+        if (openAt < 0) {
+            return value;
+        }
+        Integer closeAt = value.indexOf(')', openAt);
+        if (closeAt < 0) {
+            return value;
+        }
+        return (value.substring(0, openAt) + value.substring(closeAt + 1)).normalizeSpace();
     }
 
     private static String stringify(Object value) {

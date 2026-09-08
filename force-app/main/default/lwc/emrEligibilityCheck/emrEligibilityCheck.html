@@ -1,0 +1,115 @@
+<template>
+    <article class={rootClass}>
+        <template lwc:if={showCard}>
+            <div class="slds-card__header slds-grid">
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__figure">
+                        <lightning-icon icon-name="standard:entitlement" size="small"></lightning-icon>
+                    </div>
+                    <div class="slds-media__body">
+                        <h2 class="slds-card__header-title">
+                            <span class="slds-truncate">Eligibility</span>
+                        </h2>
+                    </div>
+                    <div class="slds-no-flex">
+                        <template lwc:if={canRunEligibility}>
+                            <lightning-button
+                                label="Check Eligibility"
+                                variant="brand"
+                                disabled={isBusy}
+                                onclick={handleCheckEligibility}
+                            ></lightning-button>
+                        </template>
+                    </div>
+                </header>
+            </div>
+        </template>
+        <div class={bodyClass}>
+            <template lwc:if={embedded}>
+                <template lwc:if={canRunEligibility}>
+                    <div class="slds-m-bottom_small">
+                        <lightning-button
+                            label="Check Eligibility"
+                            variant="brand"
+                            disabled={isBusy}
+                            onclick={handleCheckEligibility}
+                        ></lightning-button>
+                    </div>
+                </template>
+            </template>
+            <template lwc:if={isBusy}>
+                <lightning-spinner alternative-text="Checking eligibility" size="small"></lightning-spinner>
+            </template>
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={hasLatest}>
+                <div class="result-panel">
+                    <div class="result-header">
+                        <span class={statusBadgeClass}>{latestStatus}</span>
+                        <c-emr-record-link
+                            record-id={latestCheck.Id}
+                            object-api-name={checkObjectApiName}
+                            label={latestName}
+                        ></c-emr-record-link>
+                    </div>
+                    <dl class="result-grid">
+                        <div>
+                            <dt>Plan</dt>
+                            <dd>{latestPlan}</dd>
+                        </div>
+                        <div>
+                            <dt>Copay</dt>
+                            <dd>
+                                <lightning-formatted-number
+                                    value={latestCopay}
+                                    format-style="currency"
+                                ></lightning-formatted-number>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Deductible</dt>
+                            <dd>
+                                <lightning-formatted-number
+                                    value={latestDeductible}
+                                    format-style="currency"
+                                ></lightning-formatted-number>
+                            </dd>
+                        </div>
+                    </dl>
+                    <template lwc:if={latestError}>
+                        <p class="slds-text-color_error slds-m-top_x-small">{latestError}</p>
+                    </template>
+                </div>
+            </template>
+            <h3 class="prior-heading">Prior checks</h3>
+            <template lwc:if={hasPrior}>
+                <div class="table-wide">
+                    <lightning-datatable
+                        key-field="Id"
+                        data={priorChecks}
+                        columns={columns}
+                        hide-checkbox-column
+                    ></lightning-datatable>
+                </div>
+                <div class="stack-narrow">
+                    <template for:each={priorCards} for:item="row">
+                        <article key={row.id} class="stack-card">
+                            <p class="stack-title">
+                                <c-emr-record-link
+                                    record-id={row.id}
+                                    object-api-name={row.objectApiName}
+                                    label={row.title}
+                                ></c-emr-record-link>
+                            </p>
+                            <p class="stack-meta">{row.meta}</p>
+                        </article>
+                    </template>
+                </div>
+            </template>
+            <template lwc:elseif={showEmptyPrior}>
+                <p class="slds-text-body_regular">No eligibility checks for this coverage.</p>
+            </template>
+        </div>
+    </article>
+</template>

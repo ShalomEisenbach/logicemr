@@ -69,7 +69,35 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>EligibilityBatch</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityCheckController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityPayerMatch</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityProvider</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>EligibilityProviderFactory</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityRequest</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityResult</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>EligibilityService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -98,6 +126,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>PatientSearchController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>PayerSearchController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -132,9 +164,25 @@
         <apexClass>VitalsCaptureController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Clinician access to LogicEMR clinical data. Practitioner, Schedule, and Slot are read-only. Appointments are read, create, and edit so Arrive and No Show can run from provider home.</description>
+    <customMetadataTypeAccesses>
+        <enabled>true</enabled>
+        <name>Eligibility_Setting__mdt</name>
+    </customMetadataTypeAccesses>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>LogicEMR_Run_Eligibility</name>
+    </customPermissions>
+    <description>Clinician access to LogicEMR clinical data. Practitioner, Schedule, and Slot are read-only. Appointments are read, create, and edit so Arrive and No Show can run from provider home. Eligibility checks are read-only; LogicEMR_Run_Eligibility gates the check action.</description>
+    <externalCredentialPrincipalAccesses>
+        <enabled>true</enabled>
+        <externalCredentialPrincipal>Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
+    </externalCredentialPrincipalAccesses>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Clinician</label>
+    <namedCredentialAccesses>
+        <enabled>true</enabled>
+        <namedCredential>Stedi_Eligibility</namedCredential>
+    </namedCredentialAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>CareTeamMember__c.Access_Level__c</field>
@@ -1361,82 +1409,82 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Checked_Date__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Coinsurance_Percent__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Copay__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Coverage__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Deductible__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Deductible_Remaining__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Error_Message__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.FHIR_Id__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Out_of_Pocket_Max__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Plan_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Provider_Used__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Raw_Response__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Request_Payload__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Service_Type__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Source_System_Id__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Eligibility_Check__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -1513,9 +1561,9 @@
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
-        <allowCreate>true</allowCreate>
+        <allowCreate>false</allowCreate>
         <allowDelete>false</allowDelete>
-        <allowEdit>true</allowEdit>
+        <allowEdit>false</allowEdit>
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
         <object>Eligibility_Check__c</object>

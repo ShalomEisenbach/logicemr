@@ -49,6 +49,42 @@
             </div>
         </div>
 
+        <h2>Coverage</h2>
+        <apex:outputPanel layout="none" rendered="{!summary.coverages.size = 0}">
+            <p class="section-empty">None recorded.</p>
+        </apex:outputPanel>
+        <apex:outputPanel layout="none" rendered="{!summary.coverages.size > 0}">
+            <table>
+                <tr>
+                    <th>Coverage Name</th>
+                    <th>Payer</th>
+                    <th>Member ID</th>
+                    <th>Plan</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Effective</th>
+                </tr>
+                <apex:repeat value="{!summary.coverages}" var="row">
+                    <tr>
+                        <td>{!row.name}</td>
+                        <td>{!row.payerName}</td>
+                        <td>{!row.memberId}</td>
+                        <td>{!row.planName}</td>
+                        <td>{!row.priority}</td>
+                        <td>{!row.status}</td>
+                        <td>
+                            <apex:outputText value="{0,date,yyyy-MM-dd}">
+                                <apex:param value="{!row.effectiveStart}" />
+                            </apex:outputText>
+                            <apex:outputText value=" – {0,date,yyyy-MM-dd}" rendered="{!NOT(ISBLANK(row.effectiveEnd))}">
+                                <apex:param value="{!row.effectiveEnd}" />
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </apex:repeat>
+            </table>
+        </apex:outputPanel>
+
         <h2>Active Problems</h2>
         <apex:outputPanel layout="none" rendered="{!summary.problems.size = 0}">
             <p class="section-empty">None recorded.</p>

@@ -126,6 +126,49 @@
     gap: 0.25rem;
 }
 
+.strip-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.strip-toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 0.125rem;
+}
+
+.section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    padding: 0 0.375rem;
+    border-radius: 1rem;
+    background-color: rgba(11, 61, 31, 0.14);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.strip-chevron {
+    margin-left: auto;
+}
+
+.alert-strip_collapsed {
+    flex-direction: row;
+    align-items: center;
+}
+
 .alert-label {
     text-transform: uppercase;
     letter-spacing: 0.04em;

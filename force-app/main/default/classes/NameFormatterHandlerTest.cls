@@ -78,6 +78,34 @@ private class NameFormatterHandlerTest {
     }
 
     @IsTest
+    static void omitsCoveragePatientWhenNameWouldExceedLimit() {
+        Patient__c patient = new Patient__c(
+            MRN__c = 'MRN-NF-COV-LONG',
+            First_Name__c = 'Ada',
+            Last_Name__c = 'Lovelace'
+        );
+        insert patient;
+        String longPlan = 'P'.repeat(70);
+
+        Test.startTest();
+        insert new Coverage__c(
+            Patient__c = patient.Id,
+            Plan_Name__c = longPlan,
+            Type__c = 'Medical',
+            Status__c = 'Active'
+        );
+        Test.stopTest();
+
+        String storedName = [SELECT Name FROM Coverage__c WHERE Patient__c = :patient.Id].Name;
+        System.assertEquals(
+            longPlan + ' - Active',
+            storedName,
+            'Patient suffix must be omitted when Plan (Name) - Status would exceed 80 characters'
+        );
+        System.assertEquals(false, storedName.contains('Ada'), 'Overflowing Coverage Name should not include the patient');
+    }
+
+    @IsTest
     static void leavesNameUnchangedWhenFormatIsMissing() {
         NoteTemplate__c template = new NoteTemplate__c(Name = 'Leave This Name', Category__c = 'ROS');
 
@@ -245,6 +273,7 @@ private class NameFormatterHandlerTest {
             Patient__c = patient.Id,
             Payer__c = payer.Id,
             Member_Id__c = 'M12345',
+            Plan_Name__c = 'Gold PPO',
             Type__c = 'Medical',
             Status__c = 'Active'
         );
@@ -315,9 +344,9 @@ private class NameFormatterHandlerTest {
             'Appointment Name should include the parent Patient Name. Actual: ' + appointmentRow.Name
         );
         System.assertEquals(
-            'Aetna - M12345',
+            'Gold PPO (Ada Lovelace) - Active',
             [SELECT Name FROM Coverage__c WHERE Patient__c = :patient.Id].Name,
-            'Coverage Name should compose payer name and member id'
+            'Coverage Name should compose plan, patient, and status'
         );
     }
 

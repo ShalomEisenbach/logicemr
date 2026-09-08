@@ -22,6 +22,7 @@ export default class EmrAlertBar extends LightningElement {
     sections = [];
     errorMessage;
     hasLoaded = false;
+    medicationsExpanded = false;
     wiredSummaryResult;
     refreshHandlerId;
 
@@ -69,15 +70,27 @@ export default class EmrAlertBar extends LightningElement {
             const variant = section.variant || this.variantFor(section.key);
             const isList = variant === 'list';
             const isMetrics = variant === 'metrics';
+            const hasItems = items.length > 0;
+            const isCollapsible = section.key === 'medications' && hasItems;
+            const isExpanded = !isCollapsible || this.medicationsExpanded;
+            const itemCount = section.totalCount || items.length;
             return {
                 key: section.key,
                 label: section.label,
                 emptyLabel: section.emptyLabel,
-                hasItems: items.length > 0,
+                hasItems,
                 isList,
                 isMetrics,
-                overflowLabel: overflow > 0 ? `+${overflow} more` : '',
-                stripClass: this.stripClassFor(section.tone, variant),
+                isCollapsible,
+                isExpanded,
+                showBody: !isCollapsible || this.medicationsExpanded,
+                countLabel: isCollapsible ? String(itemCount) : '',
+                toggleIcon: this.medicationsExpanded ? 'utility:chevrondown' : 'utility:chevronright',
+                toggleLabel: this.medicationsExpanded
+                    ? `Collapse medications, ${itemCount}`
+                    : `Expand medications, ${itemCount}`,
+                overflowLabel: overflow > 0 && isExpanded ? `+${overflow} more` : '',
+                stripClass: this.stripClassFor(section.tone, variant, isCollapsible && !this.medicationsExpanded),
                 role: section.tone === 'high' ? 'alert' : 'status',
                 iconName: ICON_BY_TONE[section.tone] || '',
                 iconVariant: ICON_VARIANT_BY_TONE[section.tone] || 'inverse',
@@ -141,21 +154,26 @@ export default class EmrAlertBar extends LightningElement {
         return 'metric-flag';
     }
 
-    stripClassFor(tone, variant) {
+    handleToggleMedications() {
+        this.medicationsExpanded = !this.medicationsExpanded;
+    }
+
+    stripClassFor(tone, variant, collapsed) {
         const stacked = variant === 'list' || variant === 'metrics' ? ' alert-strip_stack' : '';
+        const compact = collapsed ? ' alert-strip_collapsed' : '';
         switch (tone) {
             case 'high':
-                return `alert-strip alert-strip_high${stacked}`;
+                return `alert-strip alert-strip_high${stacked}${compact}`;
             case 'warning':
-                return `alert-strip alert-strip_warning${stacked}`;
+                return `alert-strip alert-strip_warning${stacked}${compact}`;
             case 'success':
-                return `alert-strip alert-strip_success${stacked}`;
+                return `alert-strip alert-strip_success${stacked}${compact}`;
             case 'attention':
-                return `alert-strip alert-strip_attention${stacked}`;
+                return `alert-strip alert-strip_attention${stacked}${compact}`;
             case 'info':
-                return `alert-strip alert-strip_info${stacked}`;
+                return `alert-strip alert-strip_info${stacked}${compact}`;
             default:
-                return `alert-strip alert-strip_empty${stacked}`;
+                return `alert-strip alert-strip_empty${stacked}${compact}`;
         }
     }
 

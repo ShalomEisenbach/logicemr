@@ -65,6 +65,15 @@
 								<p class="slds-text-body_regular">{emptyValue}</p>
 							</template>
 						</div>
+						<div class="fact">
+							<p class="slds-text-title_caps">Coverage</p>
+							<template lwc:if={coverageName}>
+								<p class="slds-text-body_regular">{coverageName}</p>
+							</template>
+							<template lwc:else>
+								<p class="slds-text-body_regular">{emptyValue}</p>
+							</template>
+						</div>
 					</div>
 					<template lwc:if={showDocumentActions}>
 						<div class="document-actions">

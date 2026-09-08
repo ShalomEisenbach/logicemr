@@ -1,0 +1,45 @@
+<template>
+    <lightning-card title="Stedi Payer Id" icon-name="standard:search">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium slds-is-relative">
+            <template lwc:if={isBusy}>
+                <lightning-spinner alternative-text="Searching payers" size="small"></lightning-spinner>
+            </template>
+            <p class="current-id">{identifierLabel}</p>
+            <lightning-input
+                type="search"
+                label="Search Stedi payers"
+                placeholder="Payer name"
+                value={searchTerm}
+                onchange={handleSearchChange}
+            ></lightning-input>
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-p-top_small" role="alert">{errorMessage}</div>
+            </template>
+            <template lwc:if={successMessage}>
+                <div class="slds-text-color_success slds-p-top_small" role="status">{successMessage}</div>
+            </template>
+            <template lwc:if={hasMatches}>
+                <ul class="match-list">
+                    <template for:each={matches} for:item="row">
+                        <li key={row.key} class="match-row">
+                            <div>
+                                <p class="match-name">{row.name}</p>
+                                <p class="match-detail">{row.detail}</p>
+                            </div>
+                            <lightning-button
+                                label="Use this id"
+                                variant="neutral"
+                                data-payer-id={row.payerId}
+                                disabled={isBusy}
+                                onclick={handleSelect}
+                            ></lightning-button>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <template lwc:elseif={showNoResults}>
+                <p class="slds-p-top_small slds-text-body_regular">No matching Stedi payers.</p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

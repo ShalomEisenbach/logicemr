@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Coverage Panel</masterLabel>
-    <description>Patient chart panel listing insurance coverage with add, edit, and inactivate. Payer is selected by lookup.</description>
+    <description>Patient chart panel listing insurance coverage with add, edit, inactivate, ID card upload, and eligibility check.</description>
     <targets>
         <target>lightning__RecordPage</target>
     </targets>

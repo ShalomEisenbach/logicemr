@@ -41,6 +41,37 @@ private class PatientBannerControllerTest {
     }
 
     @IsTest
+    static void getActiveCoverageReturnsPrimaryActiveForPatient() {
+        Patient__c patient = insertPatient('MRN-BAN-COV-1');
+        Patient__c other = insertPatient('MRN-BAN-COV-2');
+        Payer__c aetna = insertPayer('Aetna');
+        Payer__c medicaid = insertPayer('State Medicaid');
+        insertCoverage(patient.Id, medicaid.Id, 'M-200', 'Medicaid', 'Secondary', 'Active');
+        Coverage__c primary = insertCoverage(patient.Id, aetna.Id, 'M-100', 'Gold PPO', 'Primary', 'Active');
+        insertCoverage(patient.Id, aetna.Id, 'M-300', 'Old Plan', 'Primary', 'Inactive');
+        insertCoverage(other.Id, aetna.Id, 'M-999', 'Other Plan', 'Primary', 'Active');
+
+        Test.startTest();
+        PatientBannerController.ActiveCoverage coverage = PatientBannerController.getActiveCoverage(patient.Id);
+        PatientBannerController.ActiveCoverage blank = PatientBannerController.getActiveCoverage(null);
+        PatientBannerController.ActiveCoverage none = PatientBannerController.getActiveCoverage(
+            insertPatient('MRN-BAN-COV-3').Id
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, coverage, 'Active primary coverage should be returned');
+        System.assertEquals(primary.Id, coverage.coverageId, 'Primary active coverage should win sort order');
+        System.assertEquals('Gold PPO (Banner) - Active', coverage.name, 'Coverage name should compose plan, patient, and status');
+        System.assertEquals('Active', coverage.status, 'Status should load');
+        System.assertEquals('Aetna', coverage.payerName, 'Payer name should load');
+        System.assertEquals('Gold PPO', coverage.planName, 'Plan name should load');
+        System.assertEquals('M-100', coverage.memberId, 'Member Id should load');
+        System.assertEquals('Primary', coverage.priority, 'Priority should load');
+        System.assertEquals(null, blank, 'Null patient should return no coverage');
+        System.assertEquals(null, none, 'Patient without coverage should return null');
+    }
+
+    @IsTest
     static void getLatestVitalsHandlesPartialBloodPressureAndStringValues() {
         Patient__c systolicOnly = insertPatient('MRN-BAN-3');
         Patient__c diastolicOnly = insertPatient('MRN-BAN-4');
@@ -83,6 +114,33 @@ private class PatientBannerControllerTest {
         Patient__c patient = new Patient__c(MRN__c = mrn, Last_Name__c = 'Banner');
         insert patient;
         return patient;
+    }
+
+    private static Payer__c insertPayer(String payerName) {
+        Payer__c payer = new Payer__c(Name = payerName, Type__c = 'Commercial', Active__c = true);
+        insert payer;
+        return payer;
+    }
+
+    private static Coverage__c insertCoverage(
+        Id patientId,
+        Id payerId,
+        String memberId,
+        String planName,
+        String priority,
+        String status
+    ) {
+        Coverage__c coverage = new Coverage__c(
+            Patient__c = patientId,
+            Payer__c = payerId,
+            Member_Id__c = memberId,
+            Plan_Name__c = planName,
+            Type__c = 'Medical',
+            Priority__c = priority,
+            Status__c = status
+        );
+        insert coverage;
+        return coverage;
     }
 
     private static Observation__c insertObservation(

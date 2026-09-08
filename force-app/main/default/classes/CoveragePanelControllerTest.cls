@@ -29,18 +29,86 @@ private class CoveragePanelControllerTest {
         insertCoverage(other.Id, aetna.Id, 'M-999', 'Other Plan', 'Primary', 'Active', null, null);
 
         Test.startTest();
-        List<Coverage__c> rows = CoveragePanelController.getCoverages(patient.Id);
-        List<Coverage__c> blank = CoveragePanelController.getCoverages(null);
+        List<CoveragePanelController.CoverageRow> rows = CoveragePanelController.getCoverages(patient.Id);
+        List<CoveragePanelController.CoverageRow> blank = CoveragePanelController.getCoverages(null);
         Test.stopTest();
 
         System.assertEquals(2, rows.size(), 'Should return both coverages for this patient');
-        System.assertEquals(primary.Id, rows[0].Id, 'Primary active coverage should sort first');
-        System.assertEquals(aetna.Id, rows[0].Payer__c, 'Payer lookup should be queried');
-        System.assertEquals('Aetna', rows[0].Payer__r.Name, 'Payer name should be queried');
-        System.assertEquals('M-100', rows[0].Member_Id__c, 'Member Id should be queried');
-        System.assertEquals('Gold PPO', rows[0].Plan_Name__c, 'Plan name should be queried');
-        System.assertEquals(Date.newInstance(2026, 1, 1), rows[0].Effective_Start__c, 'Start date should be queried');
+        System.assertEquals(primary.Id, rows[0].coverage.Id, 'Primary active coverage should sort first');
+        System.assertEquals(aetna.Id, rows[0].coverage.Payer__c, 'Payer lookup should be queried');
+        System.assertEquals('Aetna', rows[0].coverage.Payer__r.Name, 'Payer name should be queried');
+        System.assertEquals(
+            'Gold PPO (Coverage) - Active',
+            rows[0].coverage.Name,
+            'Coverage Name should compose plan, patient, and status'
+        );
+        System.assertEquals('M-100', rows[0].coverage.Member_Id__c, 'Member Id should be queried');
+        System.assertEquals('Gold PPO', rows[0].coverage.Plan_Name__c, 'Plan name should be queried');
+        System.assertEquals(
+            Date.newInstance(2026, 1, 1),
+            rows[0].coverage.Effective_Start__c,
+            'Start date should be queried'
+        );
+        System.assertEquals(0, rows[0].idCardFiles.size(), 'Coverage without files should return an empty ID card list');
+        System.assertEquals(null, rows[0].latestEligibilityStatus, 'Coverage without checks should have no eligibility status');
         System.assertEquals(0, blank.size(), 'Null patient should return no coverages');
+    }
+
+    @IsTest
+    static void getCoveragesReturnsLatestEligibilityStatusPerCoverage() {
+        Patient__c patient = insertPatient('MRN-COV-ELIG');
+        Payer__c aetna = insertPayer('Aetna');
+        Coverage__c primary = insertCoverage(
+            patient.Id,
+            aetna.Id,
+            'M-ELIG',
+            'Gold PPO',
+            'Primary',
+            'Active',
+            Date.newInstance(2026, 1, 1),
+            Date.newInstance(2026, 12, 31)
+        );
+        Coverage__c secondary = insertCoverage(
+            patient.Id,
+            aetna.Id,
+            'M-ELIG-2',
+            'Dental',
+            'Secondary',
+            'Active',
+            Date.newInstance(2026, 1, 1),
+            null
+        );
+        insert new List<Eligibility_Check__c>{
+            new Eligibility_Check__c(
+                Patient__c = patient.Id,
+                Coverage__c = primary.Id,
+                Status__c = 'Inactive',
+                Checked_Date__c = Datetime.now().addDays(-2)
+            ),
+            new Eligibility_Check__c(
+                Patient__c = patient.Id,
+                Coverage__c = primary.Id,
+                Status__c = 'Active',
+                Checked_Date__c = Datetime.now().addHours(-1)
+            )
+        };
+
+        Test.startTest();
+        List<CoveragePanelController.CoverageRow> rows = CoveragePanelController.getCoverages(patient.Id);
+        Test.stopTest();
+
+        CoveragePanelController.CoverageRow primaryRow;
+        CoveragePanelController.CoverageRow secondaryRow;
+        for (CoveragePanelController.CoverageRow row : rows) {
+            if (row.coverage.Id == primary.Id) {
+                primaryRow = row;
+            } else if (row.coverage.Id == secondary.Id) {
+                secondaryRow = row;
+            }
+        }
+        System.assertEquals('Active', primaryRow.latestEligibilityStatus, 'Newest check status should be returned');
+        System.assertNotEquals(null, primaryRow.latestEligibilityChecked, 'Newest checked date should be returned');
+        System.assertEquals(null, secondaryRow.latestEligibilityStatus, 'Coverage without checks should have no status');
     }
 
     @IsTest
@@ -348,6 +416,66 @@ private class CoveragePanelControllerTest {
         System.assertEquals('Inactive', stored.get(alreadyInactive.Id).Status__c, 'Inactive row should stay Inactive');
     }
 
+    @IsTest
+    static void idCardFileLabelReplaceAndDelete() {
+        Patient__c patient = insertPatient('MRN-COV-7');
+        Payer__c payer = insertPayer('Aetna');
+        Coverage__c coverage = insertCoverage(patient.Id, payer.Id, 'M-7', 'Gold', 'Primary', 'Active', null, null);
+        Id firstFront = insertLinkedFile(coverage.Id, 'front-old.jpg');
+        Id secondFront = insertLinkedFile(coverage.Id, 'front-new.jpg');
+        Id backId = insertLinkedFile(coverage.Id, 'back.jpg');
+
+        Test.startTest();
+        CoveragePanelController.labelIdCardFile(coverage.Id, firstFront, 'Front');
+        CoveragePanelController.labelIdCardFile(coverage.Id, secondFront, 'Front');
+        CoveragePanelController.labelIdCardFile(coverage.Id, backId, 'Back');
+        List<CoveragePanelController.CoverageRow> labeled = CoveragePanelController.getCoverages(patient.Id);
+        CoveragePanelController.deleteIdCardFile(coverage.Id, backId);
+        List<CoveragePanelController.CoverageRow> afterDelete = CoveragePanelController.getCoverages(patient.Id);
+        Boolean missingIds = false;
+        Boolean badSide = false;
+        Boolean missingFile = false;
+        try {
+            CoveragePanelController.labelIdCardFile(null, secondFront, 'Front');
+        } catch (AuraHandledException e) {
+            missingIds = true;
+        }
+        try {
+            CoveragePanelController.labelIdCardFile(coverage.Id, secondFront, 'Side');
+        } catch (AuraHandledException e) {
+            badSide = true;
+        }
+        try {
+            CoveragePanelController.deleteIdCardFile(coverage.Id, firstFront);
+        } catch (AuraHandledException e) {
+            missingFile = true;
+        }
+        Test.stopTest();
+
+        System.assertEquals(1, labeled.size(), 'Should return the patient coverage');
+        System.assertEquals(2, labeled[0].idCardFiles.size(), 'Replacing front should leave one front and one back');
+        Set<String> sides = new Set<String>();
+        Set<Id> labeledIds = new Set<Id>();
+        for (CoveragePanelController.IdCardFile file : labeled[0].idCardFiles) {
+            sides.add(file.side);
+            labeledIds.add(file.contentDocumentId);
+            System.assertEquals(true, file.isImage, 'jpg ID card files should be marked as images');
+        }
+        System.assertEquals(true, sides.contains('Front'), 'Front file should be labeled');
+        System.assertEquals(true, sides.contains('Back'), 'Back file should be labeled');
+        System.assertEquals(true, labeledIds.contains(secondFront), 'Latest front upload should remain');
+        System.assertEquals(false, labeledIds.contains(firstFront), 'Replaced front file should be removed');
+        System.assertEquals(1, afterDelete[0].idCardFiles.size(), 'Delete should remove the back file');
+        System.assertEquals(
+            'Front',
+            afterDelete[0].idCardFiles[0].side,
+            'Remaining file after delete should be the front'
+        );
+        System.assertEquals(true, missingIds, 'Blank coverage Id should be rejected');
+        System.assertEquals(true, badSide, 'Invalid side should be rejected');
+        System.assertEquals(true, missingFile, 'Already replaced file should not delete');
+    }
+
     private static Patient__c insertPatient(String mrn) {
         Patient__c patient = new Patient__c(MRN__c = mrn, Last_Name__c = 'Coverage');
         insert patient;
@@ -383,5 +511,22 @@ private class CoveragePanelControllerTest {
         );
         insert coverage;
         return coverage;
+    }
+
+    private static Id insertLinkedFile(Id coverageId, String fileName) {
+        ContentVersion version = new ContentVersion(
+            Title = fileName,
+            PathOnClient = fileName,
+            VersionData = Blob.valueOf('id-card'),
+            FirstPublishLocationId = coverageId
+        );
+        insert version;
+        return [
+            SELECT ContentDocumentId
+            FROM ContentVersion
+            WHERE Id = :version.Id
+            LIMIT 1
+        ]
+        .ContentDocumentId;
     }
 }

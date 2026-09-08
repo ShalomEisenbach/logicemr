@@ -18,6 +18,7 @@ public with sharing class ClinicalDocumentService {
         public List<ObservationRow> labs { get; set; }
         public List<ProcedureRow> procedures { get; set; }
         public List<NoteRow> signedNotes { get; set; }
+        public List<CoverageRow> coverages { get; set; }
     }
 
     public class PrescriptionPad {
@@ -83,6 +84,17 @@ public with sharing class ClinicalDocumentService {
         public String authorName { get; set; }
     }
 
+    public class CoverageRow {
+        public String name { get; set; }
+        public String payerName { get; set; }
+        public String memberId { get; set; }
+        public String planName { get; set; }
+        public String priority { get; set; }
+        public String status { get; set; }
+        public Date effectiveStart { get; set; }
+        public Date effectiveEnd { get; set; }
+    }
+
     public class PrescriptionRow {
         public String display { get; set; }
         public String code { get; set; }
@@ -109,6 +121,7 @@ public with sharing class ClinicalDocumentService {
         summary.labs = new List<ObservationRow>();
         summary.procedures = new List<ProcedureRow>();
         summary.signedNotes = new List<NoteRow>();
+        summary.coverages = new List<CoverageRow>();
         summary.generatedAt = Datetime.now();
 
         if (patientId == null) {
@@ -120,6 +133,35 @@ public with sharing class ClinicalDocumentService {
             return summary;
         }
         summary.patient = toHeader(patient);
+
+        for (Coverage__c row : [
+            SELECT
+                Name,
+                Payer__r.Name,
+                Member_Id__c,
+                Plan_Name__c,
+                Priority__c,
+                Status__c,
+                Effective_Start__c,
+                Effective_End__c
+            FROM Coverage__c
+            WHERE Patient__c = :patientId AND Status__c = :STATUS_ACTIVE
+            ORDER BY Priority__c ASC NULLS LAST, Effective_Start__c DESC NULLS LAST
+            LIMIT :MAX_CLINICAL
+        ]) {
+            CoverageRow item = new CoverageRow();
+            item.name = String.isNotBlank(row.Name)
+                ? row.Name
+                : formatCoverageName(row.Plan_Name__c, row.Status__c, row.Name);
+            item.payerName = row.Payer__r == null ? null : row.Payer__r.Name;
+            item.memberId = row.Member_Id__c;
+            item.planName = row.Plan_Name__c;
+            item.priority = row.Priority__c;
+            item.status = row.Status__c;
+            item.effectiveStart = row.Effective_Start__c;
+            item.effectiveEnd = row.Effective_End__c;
+            summary.coverages.add(item);
+        }
 
         for (Condition__c row : [
             SELECT
@@ -395,6 +437,17 @@ public with sharing class ClinicalDocumentService {
         item.effectiveDateTime = row.Effective_DateTime__c;
         item.interpretation = row.Interpretation__c;
         return item;
+    }
+
+    private static String formatCoverageName(String planName, String status, String fallback) {
+        List<String> parts = new List<String>();
+        if (String.isNotBlank(planName)) {
+            parts.add(planName);
+        }
+        if (String.isNotBlank(status)) {
+            parts.add(status);
+        }
+        return parts.isEmpty() ? fallback : String.join(parts, ' - ');
     }
 
     private static String formatName(String firstName, String lastName) {

@@ -35,6 +35,23 @@ public with sharing class PatientBannerController {
         public String value { get; set; }
     }
 
+    public class ActiveCoverage {
+        @AuraEnabled
+        public Id coverageId { get; set; }
+        @AuraEnabled
+        public String name { get; set; }
+        @AuraEnabled
+        public String payerName { get; set; }
+        @AuraEnabled
+        public String planName { get; set; }
+        @AuraEnabled
+        public String memberId { get; set; }
+        @AuraEnabled
+        public String priority { get; set; }
+        @AuraEnabled
+        public String status { get; set; }
+    }
+
     @AuraEnabled(cacheable=true)
     public static LatestVitals getLatestVitals(Id patientId) {
         LatestVitals result = new LatestVitals();
@@ -80,6 +97,46 @@ public with sharing class PatientBannerController {
 
         result.recordedAt = mostRecent(latestByCode.values());
         return result;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static ActiveCoverage getActiveCoverage(Id patientId) {
+        if (patientId == null) {
+            return null;
+        }
+        List<Coverage__c> rows = [
+            SELECT Name, Payer__r.Name, Plan_Name__c, Member_Id__c, Priority__c, Status__c
+            FROM Coverage__c
+            WHERE Patient__c = :patientId AND Status__c = 'Active'
+            ORDER BY Priority__c ASC NULLS LAST, Effective_Start__c DESC NULLS LAST
+            LIMIT 1
+        ];
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Coverage__c row = rows[0];
+        ActiveCoverage coverage = new ActiveCoverage();
+        coverage.coverageId = row.Id;
+        coverage.name = String.isNotBlank(row.Name)
+            ? row.Name
+            : formatCoverageName(row.Plan_Name__c, row.Status__c, row.Name);
+        coverage.payerName = row.Payer__r == null ? null : row.Payer__r.Name;
+        coverage.planName = row.Plan_Name__c;
+        coverage.memberId = row.Member_Id__c;
+        coverage.priority = row.Priority__c;
+        coverage.status = row.Status__c;
+        return coverage;
+    }
+
+    private static String formatCoverageName(String planName, String status, String fallback) {
+        List<String> parts = new List<String>();
+        if (String.isNotBlank(planName)) {
+            parts.add(planName);
+        }
+        if (String.isNotBlank(status)) {
+            parts.add(status);
+        }
+        return parts.isEmpty() ? fallback : String.join(parts, ' - ');
     }
 
     private static VitalItem buildBloodPressure(Observation__c systolic, Observation__c diastolic) {

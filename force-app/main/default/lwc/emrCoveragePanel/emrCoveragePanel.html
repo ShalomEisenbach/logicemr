@@ -9,6 +9,18 @@
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>
+        <template lwc:if={showEligibility}>
+            <c-emr-modal title="Check Eligibility" size="large" onclose={handleCloseEligibility}>
+                <c-emr-eligibility-check
+                    record-id={eligibilityCoverageId}
+                    embedded={true}
+                    oneligibilitychecked={handleEligibilityChecked}
+                ></c-emr-eligibility-check>
+                <div slot="footer">
+                    <lightning-button label="Close" variant="neutral" onclick={handleCloseEligibility}></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
         <template lwc:if={showForm}>
             <c-emr-modal title={formTitle} onclose={handleCloseForm}>
                 <template lwc:if={errorMessage}>
@@ -103,9 +115,73 @@
                     class="slds-m-top_small"
                     onchange={handleStatusChange}
                 ></lightning-combobox>
+                <section class="id-card-section">
+                    <h3 class="id-card-heading">ID card</h3>
+                    <template lwc:if={idCardHint}>
+                        <p class="id-card-hint">{idCardHint}</p>
+                    </template>
+                    <template lwc:if={canUploadIdCard}>
+                        <div class="id-card-grid">
+                            <div>
+                                <lightning-file-upload
+                                    name="idCardFront"
+                                    label="Front"
+                                    accept={idCardAccept}
+                                    record-id={editingId}
+                                    disabled={isSaving}
+                                    onuploadfinished={handleFrontUploadFinished}
+                                ></lightning-file-upload>
+                                <template lwc:if={frontIdCard}>
+                                    <div class="id-card-preview">
+                                        <template lwc:if={frontIdCard.isImage}>
+                                            <img src={frontIdCard.previewUrl} alt="ID card front" />
+                                        </template>
+                                        <a href={frontIdCard.downloadUrl} target="_blank" rel="noreferrer">
+                                            {frontIdCard.title}
+                                        </a>
+                                        <lightning-button
+                                            label="Remove"
+                                            variant="base"
+                                            data-document-id={frontIdCard.contentDocumentId}
+                                            disabled={isSaving}
+                                            onclick={handleRemoveIdCard}
+                                        ></lightning-button>
+                                    </div>
+                                </template>
+                            </div>
+                            <div>
+                                <lightning-file-upload
+                                    name="idCardBack"
+                                    label="Back"
+                                    accept={idCardAccept}
+                                    record-id={editingId}
+                                    disabled={isSaving}
+                                    onuploadfinished={handleBackUploadFinished}
+                                ></lightning-file-upload>
+                                <template lwc:if={backIdCard}>
+                                    <div class="id-card-preview">
+                                        <template lwc:if={backIdCard.isImage}>
+                                            <img src={backIdCard.previewUrl} alt="ID card back" />
+                                        </template>
+                                        <a href={backIdCard.downloadUrl} target="_blank" rel="noreferrer">
+                                            {backIdCard.title}
+                                        </a>
+                                        <lightning-button
+                                            label="Remove"
+                                            variant="base"
+                                            data-document-id={backIdCard.contentDocumentId}
+                                            disabled={isSaving}
+                                            onclick={handleRemoveIdCard}
+                                        ></lightning-button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </section>
                 <div slot="footer">
                     <lightning-button
-                        label="Cancel"
+                        label={closeLabel}
                         variant="neutral"
                         onclick={handleCloseForm}
                         class="slds-m-right_small"
@@ -144,6 +220,15 @@
                             <p class="stack-detail">{row.detail}</p>
                         </template>
                         <div class="stack-actions">
+                            <template lwc:if={canRunEligibility}>
+                                <lightning-button
+                                    label="Check Eligibility"
+                                    variant="neutral"
+                                    data-id={row.id}
+                                    disabled={isSaving}
+                                    onclick={handleCheckEligibilityCard}
+                                ></lightning-button>
+                            </template>
                             <lightning-button
                                 label="Edit"
                                 variant="neutral"
