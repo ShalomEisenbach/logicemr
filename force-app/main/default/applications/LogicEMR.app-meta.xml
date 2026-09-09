@@ -19,6 +19,7 @@
     <label>LogicEMR</label>
     <navType>Standard</navType>
     <tabs>Patient_Search</tabs>
+    <tabs>LogicEMR_Admin</tabs>
     <tabs>Patient__c</tabs>
     <tabs>Encounter__c</tabs>
     <tabs>Scheduling</tabs>

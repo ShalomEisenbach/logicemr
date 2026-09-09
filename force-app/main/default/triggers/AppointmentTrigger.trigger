@@ -11,5 +11,6 @@ trigger AppointmentTrigger on Appointment__c(before insert, before update, after
         } else if (Trigger.isUpdate) {
             AppointmentCommunicationHandler.afterUpdate(Trigger.new, Trigger.oldMap);
         }
+        AppointmentSharingHandler.recalculate(Trigger.new);
     }
 }

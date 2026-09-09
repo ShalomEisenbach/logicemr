@@ -1,5 +1,9 @@
 <template>
     <lightning-card title="Patient Search" icon-name="standard:people">
+        <c-emr-patient-registration
+            slot="actions"
+            onpatientcreated={handlePatientCreated}
+        ></c-emr-patient-registration>
         <div class="slds-p-horizontal_medium slds-p-bottom_medium">
             <lightning-input
                 type="search"

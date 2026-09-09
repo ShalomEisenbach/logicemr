@@ -120,9 +120,10 @@ export default class EmrOrderEntry extends LightningElement {
         this.orders = (data || []).map((row) => ({
             ...row,
             objectApiName:
-                row.orderType === TYPE_PRESCRIPTION
+                row.objectApiName ||
+                (row.orderType === TYPE_PRESCRIPTION
                     ? MEDICATION_REQUEST_OBJECT.objectApiName
-                    : SERVICE_REQUEST_OBJECT.objectApiName
+                    : SERVICE_REQUEST_OBJECT.objectApiName)
         }));
     }
 

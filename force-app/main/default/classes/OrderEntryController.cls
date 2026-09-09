@@ -56,6 +56,8 @@ public with sharing class OrderEntryController {
         public Datetime authoredOn { get; set; }
         @AuraEnabled
         public String orderedBy { get; set; }
+        @AuraEnabled
+        public String objectApiName { get; set; }
 
         public Integer compareTo(Object other) {
             EncounterOrderRow that = (EncounterOrderRow) other;
@@ -218,6 +220,7 @@ public with sharing class OrderEntryController {
                 request.Requester__r,
                 request.CreatedBy.Name
             );
+            row.objectApiName = ServiceRequest__c.SObjectType.getDescribe().getName();
             rows.add(row);
         }
 
@@ -256,6 +259,7 @@ public with sharing class OrderEntryController {
                 request.Requester__r,
                 request.CreatedBy.Name
             );
+            row.objectApiName = MedicationRequest__c.SObjectType.getDescribe().getName();
             rows.add(row);
         }
 

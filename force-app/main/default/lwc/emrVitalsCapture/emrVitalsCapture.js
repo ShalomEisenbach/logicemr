@@ -59,12 +59,12 @@ const VITAL_DEFS = {
     },
     temp: {
         key: 'temp',
-        label: 'Temp (°C)',
+        label: 'Temp (°F)',
         display: 'Body temperature',
-        unit: 'Cel',
+        unit: 'F',
         loinc: '8310-5',
-        min: 30,
-        max: 45,
+        min: 86,
+        max: 113,
         step: '0.1'
     },
     spo2: {

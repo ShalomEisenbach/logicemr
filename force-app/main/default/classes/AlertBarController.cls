@@ -595,6 +595,9 @@ public with sharing class AlertBarController {
         if (unit == 'Cel') {
             return '°C';
         }
+        if (unit == 'F' || unit == '[degF]') {
+            return '°F';
+        }
         return unit;
     }
 

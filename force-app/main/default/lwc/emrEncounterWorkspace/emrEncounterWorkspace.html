@@ -233,6 +233,12 @@
             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_medium">
                 <c-emr-order-entry record-id={recordId}></c-emr-order-entry>
             </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_medium">
+                <c-emr-immunization-panel
+                    record-id={recordId}
+                    context-object-api-name={encounterObjectApiName}
+                ></c-emr-immunization-panel>
+            </div>
         </div>
     </div>
 </template>

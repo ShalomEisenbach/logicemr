@@ -1,0 +1,142 @@
+<template>
+    <template lwc:if={canRegister}>
+        <lightning-button
+            label={buttonLabel}
+            variant={buttonVariant}
+            onclick={open}
+        ></lightning-button>
+    </template>
+    <template lwc:if={isOpen}>
+        <c-emr-modal title="Register patient" size="large" onclose={handleClose}>
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+                    {errorMessage}
+                </div>
+            </template>
+
+            <template lwc:if={hasDuplicates}>
+                <div class="duplicates slds-m-bottom_medium">
+                    <p class="slds-text-title_bold slds-m-bottom_x-small">Potential matches</p>
+                    <template for:each={duplicates} for:item="row">
+                        <div key={row.Id} class="duplicate-row">
+                            <div>
+                                <p class="slds-text-body_regular">{row.displayName}</p>
+                                <p class="slds-text-body_small slds-text-color_weak">
+                                    MRN {row.MRN__c}
+                                    <template lwc:if={row.Date_of_Birth__c}> · DOB {row.Date_of_Birth__c}</template>
+                                </p>
+                            </div>
+                            <lightning-button
+                                label="Use existing"
+                                variant="neutral"
+                                data-id={row.Id}
+                                onclick={handleUseExisting}
+                            ></lightning-button>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <div class="slds-grid slds-gutters slds-wrap">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-input
+                        name="mrn"
+                        label="MRN"
+                        value={mrn}
+                        maxlength="64"
+                        required
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-combobox
+                        name="status"
+                        label="Status"
+                        value={status}
+                        options={statusOptions}
+                        onchange={handleInput}
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-input
+                        name="firstName"
+                        label="First name"
+                        value={firstName}
+                        maxlength="80"
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-input
+                        name="lastName"
+                        label="Last name"
+                        value={lastName}
+                        maxlength="80"
+                        required
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-input
+                        name="dateOfBirth"
+                        type="date"
+                        label="Date of birth"
+                        value={dateOfBirth}
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-combobox
+                        name="sexAtBirth"
+                        label="Sex at birth"
+                        value={sexAtBirth}
+                        options={sexOptions}
+                        onchange={handleInput}
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-input
+                        name="phone"
+                        type="tel"
+                        label="Phone"
+                        value={phone}
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-input
+                        name="email"
+                        type="email"
+                        label="Email"
+                        value={email}
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1">
+                    <lightning-input
+                        name="smsOptIn"
+                        type="checkbox"
+                        label="Patient opted in to SMS"
+                        checked={smsOptIn}
+                        onchange={handleInput}
+                    ></lightning-input>
+                </div>
+            </div>
+
+            <div slot="footer">
+                <lightning-button
+                    label="Cancel"
+                    variant="neutral"
+                    class="slds-m-right_small"
+                    onclick={handleClose}
+                ></lightning-button>
+                <lightning-button
+                    label="Register patient"
+                    variant="brand"
+                    disabled={isSaving}
+                    onclick={handleSave}
+                ></lightning-button>
+            </div>
+        </c-emr-modal>
+    </template>
+</template>

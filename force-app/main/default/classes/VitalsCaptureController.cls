@@ -35,7 +35,7 @@ public with sharing class VitalsCaptureController {
         KEY_DIASTOLIC => new VitalDef('8462-4', 'Diastolic blood pressure', 'mmHg', 30, 160),
         'hr' => new VitalDef('8867-4', 'Heart rate', '/min', 20, 250),
         'rr' => new VitalDef('9279-1', 'Respiratory rate', '/min', 4, 80),
-        'temp' => new VitalDef('8310-5', 'Body temperature', 'Cel', 30, 45),
+        'temp' => new VitalDef('8310-5', 'Body temperature', 'F', 86, 113),
         'spo2' => new VitalDef('59408-5', 'Oxygen saturation', '%', 50, 100),
         'height' => new VitalDef('8302-2', 'Body height', 'in', 12, 108),
         'weight' => new VitalDef('29463-7', 'Body weight', 'lbs', 1, 1100)

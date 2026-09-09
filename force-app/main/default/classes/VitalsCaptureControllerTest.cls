@@ -8,7 +8,7 @@ private class VitalsCaptureControllerTest {
             vital('diastolic', 80),
             vital('hr', 72),
             vital('rr', 16),
-            vital('temp', 36.8),
+            vital('temp', 98.6),
             vital('spo2', 98),
             vital('height', 67),
             vital('weight', 154)
@@ -42,7 +42,7 @@ private class VitalsCaptureControllerTest {
         assertVital(byCode.get('8462-4'), encounter, 'Diastolic blood pressure', 80, 'mmHg');
         assertVital(byCode.get('8867-4'), encounter, 'Heart rate', 72, '/min');
         assertVital(byCode.get('9279-1'), encounter, 'Respiratory rate', 16, '/min');
-        assertVital(byCode.get('8310-5'), encounter, 'Body temperature', 36.8, 'Cel');
+        assertVital(byCode.get('8310-5'), encounter, 'Body temperature', 98.6, 'F');
         assertVital(byCode.get('59408-5'), encounter, 'Oxygen saturation', 98, '%');
         assertVital(byCode.get('8302-2'), encounter, 'Body height', 67, 'in');
         assertVital(byCode.get('29463-7'), encounter, 'Body weight', 154, 'lbs');
@@ -162,7 +162,7 @@ private class VitalsCaptureControllerTest {
         Encounter__c encounter = insertEncounter('MRN-VIT-LOAD');
         VitalsCaptureController.saveVitals(
             encounter.Id,
-            new List<VitalsCaptureController.VitalInput>{ vital('hr', 64), vital('temp', 36.8) }
+            new List<VitalsCaptureController.VitalInput>{ vital('hr', 64), vital('temp', 98.6) }
         );
         insert new Observation__c(
             Patient__c = encounter.Patient__c,
@@ -183,7 +183,7 @@ private class VitalsCaptureControllerTest {
         Test.stopTest();
 
         System.assertEquals(88, latest.get('hr'), 'Latest heart rate should win');
-        System.assertEquals(36.8, latest.get('temp'), 'Temperature should load');
+        System.assertEquals(98.6, latest.get('temp'), 'Temperature should load');
         System.assertEquals(true, blank.isEmpty(), 'Null encounter should return no vitals');
     }
 

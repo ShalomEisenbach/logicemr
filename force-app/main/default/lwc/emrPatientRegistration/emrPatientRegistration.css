@@ -1,0 +1,19 @@
+.duplicates {
+    padding: 0.75rem;
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-radius: 0.25rem;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.duplicate-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+}
+
+.duplicate-row:first-of-type {
+    border-top: 0;
+}

@@ -5,6 +5,14 @@
         <visible>true</visible>
     </applicationVisibilities>
     <classAccesses>
+        <apexClass>AdminConsoleController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AdminConsoleDeployCallback</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AlertBarController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -141,6 +149,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>ImmunizationPanelController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>MappingBatch</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -186,6 +198,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>PatientChartSummaryController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>PatientRegistrationController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -246,13 +262,17 @@
     </customMetadataTypeAccesses>
     <customPermissions>
         <enabled>true</enabled>
+        <name>LogicEMR_Manage_Settings</name>
+    </customPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
         <name>LogicEMR_Run_Eligibility</name>
     </customPermissions>
     <customPermissions>
         <enabled>true</enabled>
         <name>LogicEMR_View_Data_Quality</name>
     </customPermissions>
-    <description>Full CRUD on all LogicEMR objects and access to the LogicEMR app. Includes LogicEMR_Run_Eligibility so admins can run and schedule eligibility checks.</description>
+    <description>Full CRUD on LogicEMR objects, Admin Console (LogicEMR_Manage_Settings), eligibility run, and data quality tools.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Admin</label>
     <fieldPermissions>
@@ -1900,6 +1920,10 @@
         <enabled>true</enabled>
     </pageAccesses>
     <tabSettings>
+        <tab>LogicEMR_Admin</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
         <tab>Encounter__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
@@ -1945,6 +1969,10 @@
     </tabSettings>
     <tabSettings>
         <tab>Scheduling</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Schedule_Creator</tab>
         <visibility>Visible</visibility>
     </tabSettings>
     <tabSettings>

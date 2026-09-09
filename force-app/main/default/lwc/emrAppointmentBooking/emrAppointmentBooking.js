@@ -271,6 +271,12 @@ export default class EmrAppointmentBooking extends LightningElement {
         this.booking = undefined;
     }
 
+    handlePatientCreated(event) {
+        this.patientId = event.detail?.patientId;
+        this.errorMessage = undefined;
+        this.booking = undefined;
+    }
+
     handleLocationChange(event) {
         this.locationKey = event.detail.value;
         this.resetProviderState();

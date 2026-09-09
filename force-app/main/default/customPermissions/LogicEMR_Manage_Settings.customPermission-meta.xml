@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Open the LogicEMR Admin Console and manage package settings, jobs, and practitioner-user links.</description>
+    <isLicensed>false</isLicensed>
+    <label>LogicEMR Manage Settings</label>
+</CustomPermission>

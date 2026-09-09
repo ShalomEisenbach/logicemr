@@ -1,0 +1,540 @@
+<template>
+    <div class="console">
+        <div class="slds-page-header slds-m-bottom_medium">
+            <div class="slds-page-header__row">
+                <div class="slds-page-header__col-title">
+                    <h1 class="slds-page-header__title">LogicEMR Admin</h1>
+                    <p class="slds-page-header__name-meta">
+                        Package settings, credentials status, jobs, and admin tools in one place.
+                    </p>
+                </div>
+                <div class="slds-page-header__col-actions">
+                    <lightning-button
+                        label="Refresh"
+                        onclick={handleRefreshOverview}
+                        disabled={isSaving}
+                    ></lightning-button>
+                </div>
+            </div>
+        </div>
+
+        <template lwc:if={loadError}>
+            <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium" role="alert">
+                {loadError}
+            </div>
+        </template>
+
+        <div class="slds-grid slds-gutters">
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_3-of-12">
+                <nav class="slds-nav-vertical" aria-label="Admin sections">
+                    <ul>
+                        <template for:each={sections} for:item="section">
+                            <li key={section.id} class="slds-nav-vertical__item">
+                                <button
+                                    type="button"
+                                    class={section.buttonClass}
+                                    data-section={section.id}
+                                    aria-current={section.ariaCurrent}
+                                    onclick={handleSectionClick}
+                                >
+                                    {section.label}
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </nav>
+            </div>
+
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_9-of-12">
+                <template lwc:if={isOverview}>
+                    <c-emr-chart-panel title="Setup health">
+                        <template lwc:if={overview}>
+                            <div class="slds-grid slds-wrap slds-gutters">
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Stedi credential</p>
+                                    <p class="slds-text-heading_small">{stediStatusLabel}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Twilio credential</p>
+                                    <p class="slds-text-heading_small">{twilioStatusLabel}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Reminder job</p>
+                                    <p class="slds-text-heading_small">{reminderJobLabel}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Eligibility job</p>
+                                    <p class="slds-text-heading_small">{eligibilityJobLabel}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Practitioners missing User</p>
+                                    <p class="slds-text-heading_small">{overview.practitionersMissingUser}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Active note templates</p>
+                                    <p class="slds-text-heading_small">{overview.activeNoteTemplates}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Code catalog rows</p>
+                                    <p class="slds-text-heading_small">{overview.codeCatalogCount}</p>
+                                </div>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <p>Loading setup health…</p>
+                        </template>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isCredentials}>
+                    <c-emr-chart-panel title="Credentials">
+                        <template lwc:if={overview}>
+                            <p class="slds-m-bottom_small">
+                                API keys are never stored in the package or this console. Complete secrets in Setup.
+                            </p>
+                            <div class="slds-box slds-m-bottom_medium">
+                                <h3 class="slds-text-heading_small">Stedi Eligibility</h3>
+                                <p class="slds-m-top_x-small">Named Credential status: <strong>{stediStatusLabel}</strong></p>
+                                <p class="slds-m-top_small slds-text-body_regular">{overview.stediSetupHint}</p>
+                            </div>
+                            <div class="slds-box">
+                                <h3 class="slds-text-heading_small">Twilio SMS</h3>
+                                <p class="slds-m-top-x-small">
+                                    Expected Named Credential:
+                                    <strong>{overview.twilioNamedCredentialExpected}</strong>
+                                    - status: <strong>{twilioStatusLabel}</strong>
+                                </p>
+                                <p class="slds-m-top_small slds-text-body_regular">{overview.twilioSetupHint}</p>
+                            </div>
+                        </template>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isEligibility}>
+                    <c-emr-chart-panel title="Eligibility setting">
+                        <template lwc:if={eligibilityDraft}>
+                            <lightning-input
+                                label="Provider Name"
+                                value={eligibilityDraft.providerName}
+                                data-field="providerName"
+                                onchange={handleEligibilityChange}
+                            ></lightning-input>
+                            <lightning-input
+                                label="Named Credential"
+                                value={eligibilityDraft.namedCredential}
+                                data-field="namedCredential"
+                                onchange={handleEligibilityChange}
+                            ></lightning-input>
+                            <lightning-input
+                                label="Default Service Type"
+                                value={eligibilityDraft.defaultServiceType}
+                                data-field="defaultServiceType"
+                                onchange={handleEligibilityChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="checkbox"
+                                label="Active"
+                                checked={eligibilityDraft.active}
+                                data-field="active"
+                                onchange={handleEligibilityChange}
+                            ></lightning-input>
+                            <div class="slds-m-top_medium">
+                                <lightning-button
+                                    variant="brand"
+                                    label="Save eligibility setting"
+                                    onclick={handleSaveEligibility}
+                                    disabled={isSaving}
+                                ></lightning-button>
+                            </div>
+                            <p class="slds-m-top_small slds-text-body_small">
+                                Saves via metadata deploy (Customize Application required). Refresh Overview after deploy completes.
+                            </p>
+                        </template>
+                        <template lwc:else>
+                            <p>No Eligibility Setting custom metadata found.</p>
+                        </template>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isCommunications}>
+                    <c-emr-chart-panel title="Appointment communications">
+                        <template lwc:if={commDraft}>
+                            <div class="slds-grid slds-wrap slds-gutters">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <lightning-input
+                                        type="checkbox"
+                                        label="Email enabled"
+                                        checked={commDraft.emailEnabled}
+                                        data-field="emailEnabled"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        type="checkbox"
+                                        label="SMS enabled"
+                                        checked={commDraft.smsEnabled}
+                                        data-field="smsEnabled"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        type="checkbox"
+                                        label="Auto-send confirmation"
+                                        checked={commDraft.autoSendConfirmation}
+                                        data-field="autoSendConfirmation"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        type="checkbox"
+                                        label="Auto-send reminder"
+                                        checked={commDraft.autoSendReminder}
+                                        data-field="autoSendReminder"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                    <lightning-input
+                                        type="number"
+                                        label="Reminder hours before"
+                                        value={commDraft.reminderHoursBefore}
+                                        data-field="reminderHoursBefore"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        label="Twilio Named Credential"
+                                        value={commDraft.twilioNamedCredential}
+                                        data-field="twilioNamedCredential"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        label="Twilio Account SID"
+                                        value={commDraft.twilioAccountSid}
+                                        data-field="twilioAccountSid"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        label="Twilio From Number"
+                                        value={commDraft.twilioFromNumber}
+                                        data-field="twilioFromNumber"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                    <lightning-input
+                                        label="Org-Wide Email Address"
+                                        value={commDraft.orgWideEmailAddress}
+                                        data-field="orgWideEmailAddress"
+                                        onchange={handleCommChange}
+                                    ></lightning-input>
+                                </div>
+                            </div>
+                            <div class="slds-m-top_medium">
+                                <lightning-button
+                                    variant="brand"
+                                    label="Save communications"
+                                    onclick={handleSaveComm}
+                                    disabled={isSaving}
+                                ></lightning-button>
+                            </div>
+                        </template>
+                    </c-emr-chart-panel>
+
+                    <div class="slds-m-top_medium">
+                        <c-emr-chart-panel title="Message templates">
+                            <lightning-datatable
+                                key-field="developerName"
+                                data={messageTemplates}
+                                columns={messageTemplateColumns}
+                                hide-checkbox-column
+                                onrowaction={handleMessageRowAction}
+                            ></lightning-datatable>
+                            <template lwc:if={selectedMessageTemplate}>
+                                <div class="slds-m-top_medium slds-box">
+                                    <h3 class="slds-text-heading_small slds-m-bottom_small">
+                                        Edit {selectedMessageTemplate.masterLabel}
+                                    </h3>
+                                    <lightning-input
+                                        label="Subject"
+                                        value={selectedMessageTemplate.subject}
+                                        data-field="subject"
+                                        onchange={handleMessageTemplateChange}
+                                    ></lightning-input>
+                                    <lightning-textarea
+                                        label="Body"
+                                        value={selectedMessageTemplate.body}
+                                        data-field="body"
+                                        onchange={handleMessageTemplateChange}
+                                    ></lightning-textarea>
+                                    <lightning-input
+                                        type="checkbox"
+                                        label="Active"
+                                        checked={selectedMessageTemplate.active}
+                                        data-field="active"
+                                        onchange={handleMessageTemplateChange}
+                                    ></lightning-input>
+                                    <div class="slds-m-top_small">
+                                        <lightning-button
+                                            label="Cancel"
+                                            onclick={handleCancelMessageTemplate}
+                                            class="slds-m-right_small"
+                                        ></lightning-button>
+                                        <lightning-button
+                                            variant="brand"
+                                            label="Save template"
+                                            onclick={handleSaveMessageTemplate}
+                                            disabled={isSaving}
+                                        ></lightning-button>
+                                    </div>
+                                </div>
+                            </template>
+                        </c-emr-chart-panel>
+                    </div>
+                </template>
+
+                <template lwc:elseif={isNoteTemplates}>
+                    <c-emr-chart-panel title="Note templates">
+                        <lightning-button
+                            slot="actions"
+                            label="New"
+                            variant="neutral"
+                            onclick={handleNewNoteTemplate}
+                        ></lightning-button>
+                        <lightning-datatable
+                            key-field="Id"
+                            data={noteTemplates}
+                            columns={noteColumns}
+                            hide-checkbox-column
+                            onrowaction={handleNoteRowAction}
+                        ></lightning-datatable>
+                    </c-emr-chart-panel>
+                    <template lwc:if={showNoteModal}>
+                        <c-emr-modal title={noteModalTitle} onclose={handleCloseNoteModal}>
+                            <lightning-record-edit-form
+                                object-api-name={noteTemplateObjectApiName}
+                                record-id={noteEditId}
+                                onsuccess={handleNoteSuccess}
+                                onerror={handleNoteError}
+                            >
+                                <lightning-messages></lightning-messages>
+                                <lightning-input-field field-name="Name"></lightning-input-field>
+                                <lightning-input-field field-name="Shortcut__c"></lightning-input-field>
+                                <lightning-input-field field-name="Category__c"></lightning-input-field>
+                                <lightning-input-field field-name="Body__c"></lightning-input-field>
+                                <lightning-input-field field-name="Active__c"></lightning-input-field>
+                                <div class="slds-m-top_medium">
+                                    <lightning-button
+                                        type="submit"
+                                        variant="brand"
+                                        label="Save"
+                                    ></lightning-button>
+                                </div>
+                            </lightning-record-edit-form>
+                            <div slot="footer">
+                                <lightning-button
+                                    label="Cancel"
+                                    onclick={handleCloseNoteModal}
+                                ></lightning-button>
+                            </div>
+                        </c-emr-modal>
+                    </template>
+                </template>
+
+                <template lwc:elseif={isCodeSets}>
+                    <c-emr-chart-panel title="Code sets">
+                        <lightning-button
+                            slot="actions"
+                            label="Open Code Reference"
+                            onclick={handleOpenCodeReference}
+                        ></lightning-button>
+                        <c-emr-code-set-import></c-emr-code-set-import>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isNameFormats}>
+                    <c-emr-chart-panel title="Name formats">
+                        <lightning-datatable
+                            key-field="developerName"
+                            data={nameFormats}
+                            columns={nameFormatColumns}
+                            hide-checkbox-column
+                            onrowaction={handleNameFormatRowAction}
+                        ></lightning-datatable>
+                        <template lwc:if={selectedNameFormat}>
+                            <div class="slds-m-top_medium slds-box">
+                                <h3 class="slds-text-heading_small slds-m-bottom_small">
+                                    Edit {selectedNameFormat.objectApiName}
+                                </h3>
+                                <lightning-input
+                                    label="Object API Name"
+                                    value={selectedNameFormat.objectApiName}
+                                    data-field="objectApiName"
+                                    onchange={handleNameFormatChange}
+                                ></lightning-input>
+                                <lightning-input
+                                    label="Format"
+                                    value={selectedNameFormat.formatPattern}
+                                    data-field="formatPattern"
+                                    onchange={handleNameFormatChange}
+                                ></lightning-input>
+                                <lightning-input
+                                    type="checkbox"
+                                    label="Active"
+                                    checked={selectedNameFormat.active}
+                                    data-field="active"
+                                    onchange={handleNameFormatChange}
+                                ></lightning-input>
+                                <div class="slds-m-top_small">
+                                    <lightning-button
+                                        label="Cancel"
+                                        onclick={handleCancelNameFormat}
+                                        class="slds-m-right_small"
+                                    ></lightning-button>
+                                    <lightning-button
+                                        variant="brand"
+                                        label="Save name format"
+                                        onclick={handleSaveNameFormat}
+                                        disabled={isSaving}
+                                    ></lightning-button>
+                                </div>
+                            </div>
+                        </template>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isPractitioners}>
+                    <c-emr-chart-panel title="Practitioner user links">
+                        <p class="slds-m-bottom_small">
+                            Link each Practitioner to a Salesforce User. Required for provider Home and care-team sharing.
+                            Paste the User Id into the editable User Id column, then Save.
+                        </p>
+                        <lightning-button
+                            slot="actions"
+                            label="Save links"
+                            variant="brand"
+                            onclick={handleSavePractitioners}
+                            disabled={isSaving}
+                        ></lightning-button>
+                        <lightning-datatable
+                            key-field="id"
+                            data={practitioners}
+                            columns={practitionerColumns}
+                            hide-checkbox-column
+                            oncellchange={handlePractitionerCellChange}
+                        ></lightning-datatable>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isSchedules}>
+                    <c-emr-schedule-management></c-emr-schedule-management>
+                </template>
+
+                <template lwc:elseif={isMapping}>
+                    <div class="slds-m-bottom_large">
+                        <c-emr-mapping-builder></c-emr-mapping-builder>
+                    </div>
+                    <c-emr-mapping-runner></c-emr-mapping-runner>
+                </template>
+
+                <template lwc:elseif={isJobs}>
+                    <c-emr-chart-panel title="Scheduled jobs">
+                        <div class="slds-box slds-m-bottom_medium">
+                            <h3 class="slds-text-heading_small">Appointment reminders</h3>
+                            <p class="slds-m-top_x-small">Status: <strong>{reminderJobLabel}</strong></p>
+                            <template lwc:if={reminderNextFire}>
+                                <p>Next fire: {reminderNextFire}</p>
+                            </template>
+                            <div class="slds-m-top_small">
+                                <lightning-button
+                                    label="Schedule hourly"
+                                    variant="brand"
+                                    onclick={handleScheduleReminder}
+                                    disabled={isSaving}
+                                    class="slds-m-right_small"
+                                ></lightning-button>
+                                <lightning-button
+                                    label="Abort"
+                                    onclick={handleAbortReminder}
+                                    disabled={isSaving}
+                                ></lightning-button>
+                            </div>
+                        </div>
+                        <div class="slds-box slds-m-bottom_medium">
+                            <h3 class="slds-text-heading_small">Eligibility re-verify</h3>
+                            <p class="slds-m-top-x-small">Status: <strong>{eligibilityJobLabel}</strong></p>
+                            <template lwc:if={eligibilityNextFire}>
+                                <p>Next fire: {eligibilityNextFire}</p>
+                            </template>
+                            <div class="slds-m-top_small slds-grid slds-grid_vertical-align-end">
+                                <lightning-input
+                                    type="number"
+                                    label="Lookahead days (run now)"
+                                    value={eligibilityLookaheadDays}
+                                    onchange={handleLookaheadChange}
+                                    class="slds-m-right_small"
+                                ></lightning-input>
+                                <lightning-button
+                                    label="Schedule daily 2am"
+                                    variant="brand"
+                                    onclick={handleScheduleEligibility}
+                                    disabled={isSaving}
+                                    class="slds-m-right_small"
+                                ></lightning-button>
+                                <lightning-button
+                                    label="Run now"
+                                    onclick={handleRunEligibilityNow}
+                                    disabled={isSaving}
+                                    class="slds-m-right_small"
+                                ></lightning-button>
+                                <lightning-button
+                                    label="Abort"
+                                    onclick={handleAbortEligibility}
+                                    disabled={isSaving}
+                                ></lightning-button>
+                            </div>
+                        </div>
+                        <div class="slds-box slds-m-bottom_medium">
+                            <h3 class="slds-text-heading_small">Name backfill</h3>
+                            <p class="slds-m-top_x-small">
+                                Recompose Name from Name Format metadata. Skip on empty orgs.
+                            </p>
+                            <lightning-combobox
+                                label="Object"
+                                value={selectedNameBackfillObject}
+                                options={nameBackfillOptions}
+                                onchange={handleNameBackfillChange}
+                            ></lightning-combobox>
+                            <div class="slds-m-top_small">
+                                <lightning-button
+                                    label="Enqueue name backfill"
+                                    variant="brand"
+                                    onclick={handleEnqueueNameBackfill}
+                                    disabled={isSaving}
+                                ></lightning-button>
+                            </div>
+                        </div>
+                        <div class="slds-box">
+                            <h3 class="slds-text-heading_small">Catalog link backfill</h3>
+                            <p class="slds-m-top_x-small">
+                                Fill Code Reference lookups on older coded rows. Skip on empty orgs.
+                            </p>
+                            <lightning-combobox
+                                label="Target"
+                                value={selectedCatalogKey}
+                                options={catalogOptions}
+                                onchange={handleCatalogChange}
+                            ></lightning-combobox>
+                            <div class="slds-m-top_small">
+                                <lightning-button
+                                    label="Enqueue catalog link backfill"
+                                    variant="brand"
+                                    onclick={handleEnqueueCatalogLink}
+                                    disabled={isSaving}
+                                ></lightning-button>
+                            </div>
+                        </div>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isDataQuality}>
+                    <c-emr-duplicate-patients></c-emr-duplicate-patients>
+                </template>
+            </div>
+        </div>
+    </div>
+</template>

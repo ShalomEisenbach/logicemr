@@ -106,6 +106,10 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
         return PATIENT_OBJECT.objectApiName;
     }
 
+    get encounterObjectApiName() {
+        return ENCOUNTER_OBJECT.objectApiName;
+    }
+
     get practitionerObjectApiName() {
         return PRACTITIONER_OBJECT.objectApiName;
     }

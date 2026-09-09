@@ -714,6 +714,10 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.bookingPatientId = event.detail.recordId;
     }
 
+    handlePatientCreated(event) {
+        this.bookingPatientId = event.detail?.patientId;
+    }
+
     handleBookingType(event) {
         this.bookingType = event.detail.value;
     }

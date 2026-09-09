@@ -200,6 +200,9 @@ public with sharing class PatientBannerController {
         if (unit == 'Cel') {
             return '°C';
         }
+        if (unit == 'F' || unit == '[degF]') {
+            return '°F';
+        }
         return unit;
     }
 

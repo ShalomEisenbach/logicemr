@@ -1,0 +1,131 @@
+<template>
+    <c-emr-chart-panel title="Immunizations" view-all-label="View All" has-records={hasImmunizations} onviewall={handleViewAll}>
+        <lightning-button
+            slot="actions"
+            label="Add"
+            variant="neutral"
+            onclick={handleToggleAdd}
+        ></lightning-button>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={showAddForm}>
+            <c-emr-modal title="Add immunization" onclose={handleCloseAdd}>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+                </template>
+                <c-emr-code-search
+                    label="Vaccine"
+                    placeholder="Search CVX or SNOMED"
+                    required
+                    include-record-id
+                    code-systems={codeSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <lightning-combobox
+                    name="status"
+                    label="Status"
+                    value={status}
+                    options={statusOptions}
+                    onchange={handleStatusChange}
+                ></lightning-combobox>
+                <lightning-input
+                    type="date"
+                    label="Occurrence date"
+                    value={occurrenceDate}
+                    onchange={handleOccurrenceChange}
+                ></lightning-input>
+                <lightning-input
+                    type="text"
+                    name="lotNumber"
+                    label="Lot number"
+                    maxlength="50"
+                    value={lotNumber}
+                    onchange={handleLotChange}
+                ></lightning-input>
+                <lightning-record-picker
+                    label="Performer"
+                    placeholder="Search practitioners"
+                    object-api-name={practitionerObjectApiName}
+                    value={performerId}
+                    onchange={handlePerformerChange}
+                ></lightning-record-picker>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        variant="neutral"
+                        onclick={handleCloseAdd}
+                        class="slds-m-right_small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Save immunization"
+                        variant="brand"
+                        disabled={isSaving}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+        <template lwc:if={hasImmunizations}>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="Id"
+                    data={immunizations}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={immunizationCards} for:item="row">
+                    <article key={row.id} class="stack-card">
+                        <p class="stack-title">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={row.objectApiName}
+                                label={row.title}
+                            ></c-emr-record-link>
+                        </p>
+                        <p class="stack-meta">{row.meta}</p>
+                        <template lwc:if={row.occurrenceDate}>
+                            <p class="stack-detail">
+                                <lightning-formatted-date-time
+                                    value={row.occurrenceDate}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    time-zone="UTC"
+                                ></lightning-formatted-date-time>
+                            </p>
+                        </template>
+                        <template lwc:if={row.performerName}>
+                            <p class="stack-detail">{row.performerName}</p>
+                        </template>
+                        <div class="stack-actions">
+                            <template lwc:if={row.canMarkError}>
+                                <lightning-button
+                                    label="Entered in Error"
+                                    variant="neutral"
+                                    data-id={row.id}
+                                    disabled={isSaving}
+                                    onclick={handleEnteredInErrorCard}
+                                ></lightning-button>
+                            </template>
+                            <lightning-button
+                                label="Delete"
+                                variant="neutral"
+                                data-id={row.id}
+                                disabled={isSaving}
+                                onclick={handleDeleteCard}
+                            ></lightning-button>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No immunizations.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

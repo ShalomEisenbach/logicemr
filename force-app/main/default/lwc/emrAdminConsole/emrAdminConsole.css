@@ -1,0 +1,15 @@
+.console {
+    padding: 0.75rem;
+}
+
+.slds-nav-vertical__action {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.slds-nav-vertical__action.slds-is-active {
+    font-weight: 700;
+}

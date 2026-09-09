@@ -13,7 +13,7 @@ private class PatientBannerControllerTest {
         insertObservation(patient.Id, '8867-4', 60, '/min', older);
         insertObservation(patient.Id, '8867-4', 74, '/min', newer);
         insertObservation(patient.Id, '9279-1', 16, '/min', newer);
-        insertObservation(patient.Id, '8310-5', 36.80, 'Cel', newer);
+        insertObservation(patient.Id, '8310-5', 98.60, 'F', newer);
         insertObservation(patient.Id, '59408-5', 98, '%', newer);
         insertObservation(patient.Id, '29463-7', 70.50, 'kg', newer);
         insertObservation(other.Id, '8867-4', 99, '/min', newer);
@@ -30,7 +30,7 @@ private class PatientBannerControllerTest {
         System.assertEquals('128/76 mmHg', byKey.get('bp'), 'BP should pair latest systolic with latest diastolic');
         System.assertEquals('74 /min', byKey.get('hr'), 'Heart rate should use the newest observation');
         System.assertEquals('16 /min', byKey.get('rr'), 'Respiratory rate should be included');
-        System.assertEquals('36.8 °C', byKey.get('temp'), 'Temperature should drop trailing zeros and show °C');
+        System.assertEquals('98.6 °F', byKey.get('temp'), 'Temperature should drop trailing zeros and show °F');
         System.assertEquals('98 %', byKey.get('spo2'), 'SpO2 should include the percent unit');
         System.assertEquals('70.5 kg', byKey.get('weight'), 'Weight should include the unit');
         System.assertEquals(newer, vitals.recordedAt, 'Recorded time should be the newest vital timestamp');

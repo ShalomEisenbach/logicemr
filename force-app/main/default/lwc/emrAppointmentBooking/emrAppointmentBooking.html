@@ -29,6 +29,11 @@
                         required
                         onchange={handlePatientChange}
                     ></lightning-record-picker>
+                    <c-emr-patient-registration
+                        button-variant="base"
+                        class="slds-m-top_x-small"
+                        onpatientcreated={handlePatientCreated}
+                    ></c-emr-patient-registration>
                     <lightning-combobox
                         name="appointmentType"
                         label="Appointment type"
@@ -83,6 +88,11 @@
                         required
                         onchange={handlePatientChange}
                     ></lightning-record-picker>
+                    <c-emr-patient-registration
+                        button-variant="base"
+                        class="slds-m-top_x-small"
+                        onpatientcreated={handlePatientCreated}
+                    ></c-emr-patient-registration>
                 </div>
             </template>
 

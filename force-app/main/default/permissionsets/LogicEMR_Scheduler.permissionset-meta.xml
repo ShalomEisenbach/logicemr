@@ -4,7 +4,7 @@
         <application>LogicEMR</application>
         <visible>true</visible>
     </applicationVisibilities>
-    <description>Scheduling desk access: CRUD on Appointment, Schedule, and Slot; create Encounter on Arrive; read Patient and Practitioner; LogicEMR scheduling tabs and app page.</description>
+    <description>Scheduling desk access: CRUD on Appointment, Schedule, and Slot; register and update Patient demographics; create Encounter on Arrive; read Practitioner; LogicEMR scheduling tabs and app page.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Scheduler</label>
     <classAccesses>
@@ -49,6 +49,14 @@
     </classAccesses>
     <classAccesses>
         <apexClass>AppointmentSmsQueueable</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>PatientRegistrationController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>PatientSearchController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -231,7 +239,7 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Patient__c.Date_of_Birth__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -241,12 +249,12 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Patient__c.First_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Patient__c.Last_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -266,7 +274,7 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Patient__c.Sex_at_Birth__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -276,7 +284,7 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Patient__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -468,9 +476,9 @@
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
-        <allowCreate>false</allowCreate>
+        <allowCreate>true</allowCreate>
         <allowDelete>false</allowDelete>
-        <allowEdit>false</allowEdit>
+        <allowEdit>true</allowEdit>
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
         <object>Patient__c</object>

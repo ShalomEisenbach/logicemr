@@ -39,6 +39,16 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
+                <componentName>emrImmunizationPanel</componentName>
+                <identifier>emrImmunizationPanel</identifier>
+            </componentInstance>
+        </itemInstances>
+        <name>immunizationsTabContent</name>
+        <type>Facet</type>
+    </flexiPageRegions>
+    <flexiPageRegions>
+        <itemInstances>
+            <componentInstance>
                 <componentName>emrMedicationPanel</componentName>
                 <identifier>emrMedicationPanel</identifier>
             </componentInstance>
@@ -121,6 +131,24 @@
                 </componentInstanceProperties>
                 <componentName>flexipage:tab</componentName>
                 <identifier>flexipage_tab_allergies</identifier>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
+                <componentInstanceProperties>
+                    <name>active</name>
+                    <value>false</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>body</name>
+                    <value>immunizationsTabContent</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>title</name>
+                    <value>Immunizations</value>
+                </componentInstanceProperties>
+                <componentName>flexipage:tab</componentName>
+                <identifier>flexipage_tab_immunizations</identifier>
             </componentInstance>
         </itemInstances>
         <itemInstances>

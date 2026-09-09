@@ -139,6 +139,21 @@ export default class EmrPatientSearch extends NavigationMixin(LightningElement) 
         });
     }
 
+    handlePatientCreated(event) {
+        const patientId = event.detail?.patientId;
+        if (!patientId) {
+            return;
+        }
+        this[NavigationMixin.Navigate]({
+            type: 'standard__recordPage',
+            attributes: {
+                recordId: patientId,
+                objectApiName: PATIENT_OBJECT.objectApiName,
+                actionName: 'view'
+            }
+        });
+    }
+
     handleRowAction(event) {
         if (event.detail.action.name !== OPEN_CHART) {
             return;

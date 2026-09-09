@@ -33,9 +33,9 @@ private class FlowsheetControllerTest {
             'Vital Signs',
             '8310-5',
             'Body temperature',
-            38.50,
+            101.30,
             null,
-            'Cel',
+            'F',
             'High',
             newer
         );
@@ -91,8 +91,8 @@ private class FlowsheetControllerTest {
         System.assertEquals('8310-5', vitals.rows[0].code, 'Row should expose observation code');
         System.assertEquals('Heart rate', vitals.rows[1].display, 'Second row should be heart rate');
         System.assertEquals(2, vitals.rows[0].cells.size(), 'Each row should have a cell per column');
-        System.assertEquals('38.5', vitals.rows[0].cells[0].value, 'Quantity should drop trailing zeros');
-        System.assertEquals('Cel', vitals.rows[0].cells[0].unit, 'Cell should include unit');
+        System.assertEquals('101.3', vitals.rows[0].cells[0].value, 'Quantity should drop trailing zeros');
+        System.assertEquals('F', vitals.rows[0].cells[0].unit, 'Cell should include unit');
         System.assertEquals('High', vitals.rows[0].cells[0].interpretation, 'Cell should include interpretation');
         System.assertEquals(temp.Id, vitals.rows[0].cells[0].observationId, 'Newer temp cell should map to temp');
         System.assertEquals(null, vitals.rows[0].cells[1].value, 'Missing time point should be an empty cell');
