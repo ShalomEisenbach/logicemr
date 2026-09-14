@@ -41,6 +41,10 @@ public with sharing class AdminConsoleController {
         @AuraEnabled
         public List<NameFormatDto> nameFormats;
         @AuraEnabled
+        public String billingOrganizationName;
+        @AuraEnabled
+        public String billingOrganizationNpi;
+        @AuraEnabled
         public String stediSetupHint;
         @AuraEnabled
         public String twilioSetupHint;
@@ -153,6 +157,31 @@ public with sharing class AdminConsoleController {
         public Id userId { get; set; }
     }
 
+    public class BillingOrganizationDto {
+        @AuraEnabled
+        public Id id { get; set; }
+        @AuraEnabled
+        public String name { get; set; }
+        @AuraEnabled
+        public String npi { get; set; }
+        @AuraEnabled
+        public String ein { get; set; }
+        @AuraEnabled
+        public String street { get; set; }
+        @AuraEnabled
+        public String city { get; set; }
+        @AuraEnabled
+        public String state { get; set; }
+        @AuraEnabled
+        public String postalCode { get; set; }
+        @AuraEnabled
+        public String country { get; set; }
+        @AuraEnabled
+        public Boolean active { get; set; }
+        @AuraEnabled
+        public Boolean isDefaultBilling { get; set; }
+    }
+
     public class ActionResult {
         @AuraEnabled
         public Boolean success;
@@ -206,6 +235,11 @@ public with sharing class AdminConsoleController {
             WHERE Active__c = TRUE
         ];
         payload.codeCatalogCount = [SELECT COUNT() FROM Code_Reference__c];
+        Organization__c billingOrg = queryDefaultBillingOrganization();
+        if (billingOrg != null) {
+            payload.billingOrganizationName = billingOrg.Name;
+            payload.billingOrganizationNpi = billingOrg.NPI__c;
+        }
         payload.eligibilitySetting = loadEligibilitySetting();
         payload.messageTemplates = loadMessageTemplates();
         payload.nameFormats = loadNameFormats();
@@ -294,6 +328,118 @@ public with sharing class AdminConsoleController {
             update toUpdate;
         }
         return toUpdate.size();
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static BillingOrganizationDto getBillingOrganization() {
+        requireManageSettings();
+        return toBillingDto(queryDefaultBillingOrganization());
+    }
+
+    @AuraEnabled
+    public static BillingOrganizationDto saveBillingOrganization(BillingOrganizationDto input) {
+        requireManageSettings();
+        if (input == null || String.isBlank(input.name)) {
+            throw auraError('Organization name is required.');
+        }
+        Organization__c orgRecord = input.id == null
+            ? new Organization__c()
+            : new Organization__c(Id = input.id);
+        orgRecord.Name = input.name.trim();
+        orgRecord.NPI__c = trimToNull(input.npi);
+        orgRecord.EIN__c = trimToNull(input.ein);
+        orgRecord.Street__c = trimToNull(input.street);
+        orgRecord.City__c = trimToNull(input.city);
+        orgRecord.State__c = trimToNull(input.state);
+        orgRecord.Postal_Code__c = trimToNull(input.postalCode);
+        orgRecord.Country__c = String.isBlank(input.country) ? 'US' : input.country.trim();
+        orgRecord.Active__c = input.active != false;
+        orgRecord.Is_Default_Billing__c = true;
+        upsert orgRecord;
+        clearOtherDefaultBilling(orgRecord.Id);
+        return toBillingDto(queryOrganization(orgRecord.Id));
+    }
+
+    private static Organization__c queryDefaultBillingOrganization() {
+        List<Organization__c> rows = [
+            SELECT
+                Id,
+                Name,
+                NPI__c,
+                EIN__c,
+                Street__c,
+                City__c,
+                State__c,
+                Postal_Code__c,
+                Country__c,
+                Active__c,
+                Is_Default_Billing__c
+            FROM Organization__c
+            WHERE Active__c = TRUE
+            ORDER BY Is_Default_Billing__c DESC, LastModifiedDate DESC
+            LIMIT 1
+        ];
+        return rows.isEmpty() ? null : rows[0];
+    }
+
+    private static Organization__c queryOrganization(Id organizationId) {
+        return [
+            SELECT
+                Id,
+                Name,
+                NPI__c,
+                EIN__c,
+                Street__c,
+                City__c,
+                State__c,
+                Postal_Code__c,
+                Country__c,
+                Active__c,
+                Is_Default_Billing__c
+            FROM Organization__c
+            WHERE Id = :organizationId
+            LIMIT 1
+        ];
+    }
+
+    private static void clearOtherDefaultBilling(Id keepId) {
+        List<Organization__c> others = [
+            SELECT Id
+            FROM Organization__c
+            WHERE Is_Default_Billing__c = TRUE AND Id != :keepId
+        ];
+        for (Organization__c row : others) {
+            row.Is_Default_Billing__c = false;
+        }
+        if (!others.isEmpty()) {
+            update others;
+        }
+    }
+
+    private static BillingOrganizationDto toBillingDto(Organization__c row) {
+        BillingOrganizationDto dto = new BillingOrganizationDto();
+        if (row == null) {
+            dto.active = true;
+            dto.isDefaultBilling = true;
+            dto.country = 'US';
+            return dto;
+        }
+        dto.id = row.Id;
+        dto.name = row.Name;
+        dto.npi = row.NPI__c;
+        dto.ein = row.EIN__c;
+        dto.street = row.Street__c;
+        dto.city = row.City__c;
+        dto.state = row.State__c;
+        dto.postalCode = row.Postal_Code__c;
+        dto.country = row.Country__c;
+        dto.active = row.Active__c;
+        dto.isDefaultBilling = row.Is_Default_Billing__c;
+        return dto;
+    }
+
+    private static String trimToNull(String value) {
+        return String.isBlank(value) ? null : value.trim();
     }
 
     @AuraEnabled

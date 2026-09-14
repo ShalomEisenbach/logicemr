@@ -1,57 +1,33 @@
 <template>
-    <lightning-card title="Patient Search" icon-name="standard:people">
-        <c-emr-patient-registration
-            slot="actions"
-            onpatientcreated={handlePatientCreated}
-        ></c-emr-patient-registration>
-        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
-            <lightning-input
-                type="search"
-                label="Search patients"
-                placeholder="Name, MRN, DOB, phone, or email"
-                onchange={handleSearchChange}
-            ></lightning-input>
-            <template lwc:if={errorMessage}>
-                <div class="slds-text-color_error slds-p-top_small" role="alert">
-                    {errorMessage}
-                </div>
-            </template>
-            <template lwc:if={hasResults}>
-                <div class="slds-p-top_small table-wide">
-                    <lightning-datatable
-                        key-field="Id"
-                        data={patients}
-                        columns={columns}
-                        hide-checkbox-column
-                        onrowaction={handleRowAction}
-                    ></lightning-datatable>
-                </div>
-                <div class="slds-p-top_small stack-narrow">
-                    <template for:each={patientCards} for:item="row">
-                        <article key={row.id} class="stack-card">
-                            <p class="stack-title">
-                                <c-emr-record-link
-                                    record-id={row.id}
-                                    object-api-name={row.objectApiName}
-                                    label={row.title}
-                                ></c-emr-record-link>
-                            </p>
-                            <p class="stack-meta">{row.meta}</p>
-                            <div class="stack-actions">
-                                <lightning-button
-                                    label="Open chart"
-                                    variant="neutral"
-                                    data-id={row.id}
-                                    onclick={handleOpenCard}
-                                ></lightning-button>
-                            </div>
-                        </article>
-                    </template>
-                </div>
-            </template>
-            <template lwc:elseif={showNoResults}>
-                <p class="slds-p-top_small slds-text-body_regular">No matching patients.</p>
-            </template>
-        </div>
-    </lightning-card>
+	<lightning-card title="Patient Search" icon-name="standard:people">
+		<c-emr-patient-registration slot="actions" onpatientcreated={handlePatientCreated} onpatientupdated={handlePatientUpdated}></c-emr-patient-registration>
+		<div class="slds-p-horizontal_medium slds-p-bottom_medium">
+			<lightning-input type="search" label="Search patients" placeholder="Name, MRN, DOB, phone, or email" onchange={handleSearchChange}></lightning-input>
+			<template lwc:if={errorMessage}>
+				<div class="slds-text-color_error slds-p-top_small" role="alert">{errorMessage}</div>
+			</template>
+			<template lwc:if={hasResults}>
+				<div class="slds-p-top_small table-wide">
+					<lightning-datatable key-field="Id" data={patients} columns={columns} hide-checkbox-column onrowaction={handleRowAction}></lightning-datatable>
+				</div>
+				<div class="slds-p-top_small stack-narrow">
+					<template for:each={patientCards} for:item="row">
+						<article key={row.id} class="stack-card">
+							<p class="stack-title">
+								<c-emr-record-link record-id={row.id} object-api-name={row.objectApiName} label={row.title}></c-emr-record-link>
+							</p>
+							<p class="stack-meta">{row.meta}</p>
+							<div class="stack-actions">
+								<lightning-button label="Open chart" variant="neutral" data-id={row.id} onclick={handleOpenCard}></lightning-button>
+								<lightning-button label="Edit demographics" variant="neutral" data-id={row.id} onclick={handleEditCard}></lightning-button>
+							</div>
+						</article>
+					</template>
+				</div>
+			</template>
+			<template lwc:elseif={showNoResults}>
+				<p class="slds-p-top_small slds-text-body_regular">No matching patients.</p>
+			</template>
+		</div>
+	</lightning-card>
 </template>

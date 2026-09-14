@@ -6,7 +6,18 @@ private class ProviderHomeControllerTest {
     static void setup() {
         User admin = [SELECT Id FROM User WHERE Id = :UserInfo.getUserId()];
         System.runAs(admin) {
-            insert newUser(PROVIDER_ALIAS);
+            User provider = newUser(PROVIDER_ALIAS);
+            insert provider;
+            PermissionSet clinician = [
+                SELECT Id
+                FROM PermissionSet
+                WHERE Name = 'LogicEMR_Clinician'
+                LIMIT 1
+            ];
+            insert new PermissionSetAssignment(
+                AssigneeId = provider.Id,
+                PermissionSetId = clinician.Id
+            );
         }
     }
 
@@ -233,6 +244,30 @@ private class ProviderHomeControllerTest {
         System.assertEquals(0, payload.lists.resultsToReview.size(), 'Results to review should be empty');
         System.assertEquals(0, payload.lists.unsignedNotes.size(), 'Unsigned notes should be empty');
         System.assertEquals(0, payload.recentPatients.size(), 'A user with no patient access should see no recent patients');
+    }
+
+    @IsTest
+    static void getHomeIncludesPatientsMatchedByPractitionerWithoutUser() {
+        User provider = getUser(PROVIDER_ALIAS);
+        Practitioner__c myPractitioner = insertPractitioner(provider.Id, 'Pat', 'PractitionerOnly');
+        Patient__c practitionerOnlyPatient = insertPatient('MRN-HOME-PRAC', 'PracOnly');
+        Patient__c userOnlyPatient = insertPatient('MRN-HOME-USER', 'UserOnly');
+
+        assignCareTeam(practitionerOnlyPatient.Id, myPractitioner.Id, null, true);
+        assignCareTeam(userOnlyPatient.Id, myPractitioner.Id, provider.Id, true);
+
+        Test.startTest();
+        ProviderHomeController.HomePayload payload;
+        System.runAs(provider) {
+            payload = ProviderHomeController.getHome();
+        }
+        Test.stopTest();
+
+        System.assertEquals(
+            2,
+            payload.metrics.myActivePatients,
+            'Home should count patients matched by User or by Practitioner.User'
+        );
     }
 
     @IsTest

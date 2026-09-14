@@ -14,6 +14,10 @@ import STATUS_FIELD from '@salesforce/schema/Patient__c.Status__c';
 import SEX_FIELD from '@salesforce/schema/Patient__c.Sex_at_Birth__c';
 import PHONE_FIELD from '@salesforce/schema/Patient__c.Phone__c';
 import EMAIL_FIELD from '@salesforce/schema/Patient__c.Email__c';
+import STREET_FIELD from '@salesforce/schema/Patient__c.Street__c';
+import CITY_FIELD from '@salesforce/schema/Patient__c.City__c';
+import STATE_FIELD from '@salesforce/schema/Patient__c.State__c';
+import POSTAL_CODE_FIELD from '@salesforce/schema/Patient__c.Postal_Code__c';
 
 const PATIENT_FIELDS = [
     FIRST_NAME_FIELD,
@@ -23,7 +27,11 @@ const PATIENT_FIELDS = [
     STATUS_FIELD,
     SEX_FIELD,
     PHONE_FIELD,
-    EMAIL_FIELD
+    EMAIL_FIELD,
+    STREET_FIELD,
+    CITY_FIELD,
+    STATE_FIELD,
+    POSTAL_CODE_FIELD
 ];
 
 export default class EmrPatientBanner extends LightningElement {
@@ -169,6 +177,15 @@ export default class EmrPatientBanner extends LightningElement {
 
     get email() {
         return getFieldValue(this.patient, EMAIL_FIELD) || '';
+    }
+
+    get address() {
+        const street = getFieldValue(this.patient, STREET_FIELD) || '';
+        const city = getFieldValue(this.patient, CITY_FIELD) || '';
+        const state = getFieldValue(this.patient, STATE_FIELD) || '';
+        const postal = getFieldValue(this.patient, POSTAL_CODE_FIELD) || '';
+        const locality = [city, state].filter((part) => part).join(', ');
+        return [street, locality, postal].filter((part) => part).join(', ');
     }
 
     get status() {

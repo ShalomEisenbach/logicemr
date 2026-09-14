@@ -5,5 +5,6 @@
     <fields>First_Name__c</fields>
     <fields>MRN__c</fields>
     <fields>Date_of_Birth__c</fields>
+    <fields>City__c</fields>
     <label>Patient Compact</label>
 </CompactLayout>

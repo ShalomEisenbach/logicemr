@@ -6,6 +6,8 @@ import getOverview from '@salesforce/apex/AdminConsoleController.getOverview';
 import getNoteTemplates from '@salesforce/apex/AdminConsoleController.getNoteTemplates';
 import getPractitioners from '@salesforce/apex/AdminConsoleController.getPractitioners';
 import savePractitionerUsers from '@salesforce/apex/AdminConsoleController.savePractitionerUsers';
+import getBillingOrganization from '@salesforce/apex/AdminConsoleController.getBillingOrganization';
+import saveBillingOrganization from '@salesforce/apex/AdminConsoleController.saveBillingOrganization';
 import saveEligibilitySetting from '@salesforce/apex/AdminConsoleController.saveEligibilitySetting';
 import saveCommConfig from '@salesforce/apex/AdminConsoleController.saveCommConfig';
 import saveMessageTemplate from '@salesforce/apex/AdminConsoleController.saveMessageTemplate';
@@ -31,6 +33,7 @@ const SECTIONS = [
     { id: 'codeSets', label: 'Code sets' },
     { id: 'nameFormats', label: 'Name formats' },
     { id: 'practitioners', label: 'Practitioners' },
+    { id: 'billingOrg', label: 'Billing organization' },
     { id: 'schedules', label: 'Schedules' },
     { id: 'mapping', label: 'Mapping' },
     { id: 'jobs', label: 'Jobs' },
@@ -42,6 +45,7 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     @track overview;
     @track noteTemplates = [];
     @track practitioners = [];
+    @track billingOrgDraft = {};
     @track eligibilityDraft;
     @track commDraft;
     @track messageTemplates = [];
@@ -61,6 +65,7 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     wiredOverviewResult;
     wiredNotesResult;
     wiredPractitionersResult;
+    wiredBillingOrgResult;
     wiredNameBackfillResult;
     wiredCatalogResult;
     dirtyPractitionerUsers = new Map();
@@ -100,6 +105,9 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     get isPractitioners() {
         return this.activeSection === 'practitioners';
     }
+    get isBillingOrg() {
+        return this.activeSection === 'billingOrg';
+    }
     get isSchedules() {
         return this.activeSection === 'schedules';
     }
@@ -135,6 +143,15 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
 
     get eligibilityJobLabel() {
         return this.overview?.eligibilityJob?.scheduled ? 'Scheduled' : 'Not scheduled';
+    }
+
+    get billingOrgOverviewLabel() {
+        const name = this.overview?.billingOrganizationName;
+        const npi = this.overview?.billingOrganizationNpi;
+        if (!name) {
+            return 'Not set';
+        }
+        return npi ? `${name} (${npi})` : name;
     }
 
     get reminderNextFire() {
@@ -251,6 +268,14 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
         }
     }
 
+    @wire(getBillingOrganization)
+    wiredBillingOrg(result) {
+        this.wiredBillingOrgResult = result;
+        if (result.data) {
+            this.billingOrgDraft = { ...result.data };
+        }
+    }
+
     @wire(getNameBackfillObjects)
     wiredNameBackfill(result) {
         this.wiredNameBackfillResult = result;
@@ -292,6 +317,9 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
         }
         if (this.wiredPractitionersResult) {
             jobs.push(refreshApex(this.wiredPractitionersResult));
+        }
+        if (this.wiredBillingOrgResult) {
+            jobs.push(refreshApex(this.wiredBillingOrgResult));
         }
         await Promise.all(jobs);
     }
@@ -443,6 +471,26 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
         this.dirtyPractitionerUsers = new Map();
         if (this.wiredPractitionersResult) {
             await refreshApex(this.wiredPractitionersResult);
+        }
+        if (this.wiredOverviewResult) {
+            await refreshApex(this.wiredOverviewResult);
+        }
+    }
+
+    handleBillingOrgChange(event) {
+        const field = event.target.dataset.field;
+        const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+        this.billingOrgDraft = { ...this.billingOrgDraft, [field]: value };
+    }
+
+    async handleSaveBillingOrg() {
+        await this.runAction(async () => {
+            const saved = await saveBillingOrganization({ input: this.billingOrgDraft });
+            this.billingOrgDraft = { ...saved };
+            return { message: 'Billing organization saved.' };
+        });
+        if (this.wiredBillingOrgResult) {
+            await refreshApex(this.wiredBillingOrgResult);
         }
         if (this.wiredOverviewResult) {
             await refreshApex(this.wiredOverviewResult);

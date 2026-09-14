@@ -102,11 +102,24 @@ public with sharing class ProviderHomeController {
 
     private static Set<Id> resolveCareTeamPatientIds(Id userId) {
         Set<Id> patientIds = new Set<Id>();
-        for (CareTeamMember__c member : [
-            SELECT Care_Team__r.Patient__c
-            FROM CareTeamMember__c
-            WHERE User__c = :userId AND Active__c = TRUE
-        ]) {
+        Id practitionerId = resolvePractitionerId(userId);
+        List<CareTeamMember__c> members;
+        if (practitionerId == null) {
+            members = [
+                SELECT Care_Team__r.Patient__c
+                FROM CareTeamMember__c
+                WHERE User__c = :userId AND Active__c = TRUE
+            ];
+        } else {
+            members = [
+                SELECT Care_Team__r.Patient__c
+                FROM CareTeamMember__c
+                WHERE
+                    Active__c = TRUE
+                    AND (User__c = :userId OR Practitioner__c = :practitionerId)
+            ];
+        }
+        for (CareTeamMember__c member : members) {
             if (member.Care_Team__r != null && member.Care_Team__r.Patient__c != null) {
                 patientIds.add(member.Care_Team__r.Patient__c);
             }

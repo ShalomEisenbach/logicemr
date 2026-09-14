@@ -43,11 +43,14 @@ Do not send production PHI with a test key, and do not point a production org at
 
 The External Credential adds the `Authorization` header at callout time. Apex does not set that header.
 
+The packaged `Stedi_API` principal is structure only. If you skip the `ApiKey` parameter, Stedi returns **Unauthorized** on payer search and eligibility. Seeing the principal already listed is not enough — you must edit it and add `ApiKey`.
+
 ### 2. Confirm Named Credential access
 
 1. Setup → **Named Credentials** → **Stedi Eligibility** (`Stedi_Eligibility`).
 2. Confirm it is enabled for callouts and uses External Credential `Stedi_Eligibility`.
 3. Leave **Generate Authorization Header** disabled (Custom auth supplies `Authorization`).
+4. Enable **Allow Formulas in HTTP Header** so `{!$Credential.Stedi_Eligibility.ApiKey}` resolves.
 
 ### 3. Permission sets
 
@@ -76,7 +79,7 @@ Eligibility cannot run until `Payer__c.Payer_Identifier__c` holds the Stedi paye
 
 The search uses the active `EligibilityProvider` (`EligibilityProviderFactory.getProvider().searchPayers`). For Stedi that is a GET to `callout:{Named_Credential__c}/2024-04-01/payers/search`. The id you select is what the 270 sends as the trading-partner service id.
 
-If search returns no match, confirm the External Credential key (step 1) and that the Named Credential can call out.
+If search returns **Unauthorized**, the callout reached Stedi without a valid key. Complete step 1 (`ApiKey` on `Stedi_API`) and step 3 (principal access), then search again. If search returns no match, confirm the key and that the Named Credential can call out.
 
 ### 5. Eligibility Setting
 

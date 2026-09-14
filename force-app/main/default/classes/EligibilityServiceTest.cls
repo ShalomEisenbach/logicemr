@@ -109,6 +109,96 @@ private class EligibilityServiceTest {
         System.assertEquals(true, unknownThrown, 'Unknown patient Id should throw');
     }
 
+    @IsTest
+    static void runCheckPersistsForNonAdminUserWithCreateAccess() {
+        User admin = [SELECT Id FROM User WHERE Id = :UserInfo.getUserId()];
+        User checker;
+        System.runAs(admin) {
+            checker = new User(
+                Alias = 'eligusr',
+                Email = 'eligusr@logicemr.test',
+                EmailEncodingKey = 'UTF-8',
+                LastName = 'EligUser',
+                LanguageLocaleKey = 'en_US',
+                LocaleSidKey = 'en_US',
+                TimeZoneSidKey = 'America/New_York',
+                ProfileId = [
+                    SELECT Id
+                    FROM Profile
+                    WHERE Name IN ('Minimum Access - Salesforce', 'Standard User')
+                    ORDER BY Name
+                    LIMIT 1
+                ]
+                .Id,
+                Username = 'eligusr.' + String.valueOf(Crypto.getRandomInteger()) + '@logicemr.test'
+            );
+            insert checker;
+
+            PermissionSet clinicianPs = [
+                SELECT Id
+                FROM PermissionSet
+                WHERE Name = 'LogicEMR_Clinician'
+                LIMIT 1
+            ];
+            insert new PermissionSetAssignment(AssigneeId = checker.Id, PermissionSetId = clinicianPs.Id);
+        }
+
+        Patient__c patient = insertPatient();
+        patient.OwnerId = checker.Id;
+        update patient;
+
+        Payer__c payer = new Payer__c(
+            Name = 'UHC',
+            Type__c = 'Commercial',
+            Active__c = true,
+            Payer_Identifier__c = '87726'
+        );
+        insert payer;
+        Coverage__c coverage = new Coverage__c(
+            Patient__c = patient.Id,
+            Payer__c = payer.Id,
+            Member_Id__c = 'MEM-NONADMIN',
+            Type__c = 'Medical',
+            Status__c = 'Active',
+            Priority__c = 'Primary'
+        );
+        insert coverage;
+        insert new Practitioner__c(
+            First_Name__c = 'Non',
+            Last_Name__c = 'Admin',
+            NPI__c = '1679051141',
+            Active__c = true
+        );
+        EligibilityProviderFactory.settingsOverride = new List<Eligibility_Setting__mdt>{
+            new Eligibility_Setting__mdt(
+                Provider_Name__c = 'Stedi',
+                Named_Credential__c = 'Stedi_Eligibility',
+                Default_Service_Type__c = '30',
+                Active__c = true
+            )
+        };
+        Test.setMock(HttpCalloutMock.class, new ActiveMock());
+
+        Eligibility_Check__c stored;
+        Test.startTest();
+        System.runAs(checker) {
+            stored = EligibilityService.runCheck(patient.Id, coverage.Id, '30');
+        }
+        Test.stopTest();
+
+        System.assertNotEquals(null, stored.Id, 'Non-admin user with create access should persist the check');
+        System.assertEquals('Active', stored.Status__c, 'Parsed status should persist for the clinician user');
+        System.assertEquals(
+            1,
+            [
+                SELECT COUNT()
+                FROM Eligibility_Check__c
+                WHERE Id = :stored.Id AND Patient__c = :patient.Id
+            ],
+            'Persisted eligibility check should remain queryable'
+        );
+    }
+
     private static Patient__c insertPatient() {
         Patient__c patient = new Patient__c(
             First_Name__c = 'John',

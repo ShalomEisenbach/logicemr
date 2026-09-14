@@ -71,6 +71,10 @@
                                     <p class="slds-text-heading_small">{overview.practitionersMissingUser}</p>
                                 </div>
                                 <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Billing organization</p>
+                                    <p class="slds-text-heading_small">{billingOrgOverviewLabel}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
                                     <p class="slds-text-title_caps">Active note templates</p>
                                     <p class="slds-text-heading_small">{overview.activeNoteTemplates}</p>
                                 </div>
@@ -417,6 +421,99 @@
                             hide-checkbox-column
                             oncellchange={handlePractitionerCellChange}
                         ></lightning-datatable>
+                    </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isBillingOrg}>
+                    <c-emr-chart-panel title="Billing organization">
+                        <p class="slds-m-bottom_small">
+                            Type 2 NPI and EIN for eligibility 270s and later claims. Saving this form marks the record as the default billing organization.
+                        </p>
+                        <div class="slds-grid slds-gutters slds-wrap">
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="Name"
+                                    value={billingOrgDraft.name}
+                                    data-field="name"
+                                    required
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="Type 2 NPI"
+                                    value={billingOrgDraft.npi}
+                                    data-field="npi"
+                                    maxlength="10"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="EIN"
+                                    value={billingOrgDraft.ein}
+                                    data-field="ein"
+                                    maxlength="20"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1">
+                                <lightning-input
+                                    label="Street"
+                                    value={billingOrgDraft.street}
+                                    data-field="street"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="City"
+                                    value={billingOrgDraft.city}
+                                    data-field="city"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="State"
+                                    value={billingOrgDraft.state}
+                                    data-field="state"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="Postal code"
+                                    value={billingOrgDraft.postalCode}
+                                    data-field="postalCode"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    label="Country"
+                                    value={billingOrgDraft.country}
+                                    data-field="country"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1">
+                                <lightning-input
+                                    type="checkbox"
+                                    label="Active"
+                                    checked={billingOrgDraft.active}
+                                    data-field="active"
+                                    onchange={handleBillingOrgChange}
+                                ></lightning-input>
+                            </div>
+                        </div>
+                        <lightning-button
+                            class="slds-m-top_small"
+                            label="Save billing organization"
+                            variant="brand"
+                            onclick={handleSaveBillingOrg}
+                            disabled={isSaving}
+                        ></lightning-button>
                     </c-emr-chart-panel>
                 </template>
 

@@ -220,6 +220,47 @@ private class StediEligibilityProviderTest {
     }
 
     @IsTest
+    static void checkUsesDefaultBillingOrganizationWhenRequestOmitsNpi() {
+        Fixture data = insertFixture();
+        insert new Organization__c(
+            Name = 'Logic Clinic Billing',
+            NPI__c = '1999999984',
+            EIN__c = '12-3456789',
+            Active__c = true,
+            Is_Default_Billing__c = true
+        );
+        EligibilityProviderFactory.settingsOverride = new List<Eligibility_Setting__mdt>{
+            setting('Stedi_Eligibility', '30')
+        };
+        Test.setMock(HttpCalloutMock.class, new EligibilityMock(200, activeCoverageJson()));
+
+        EligibilityRequest req = new EligibilityRequest();
+        req.patient = data.patient.Id;
+        req.coverage = data.coverage.Id;
+        req.payerId = data.payer.Payer_Identifier__c;
+        req.serviceType = '30';
+
+        Test.startTest();
+        EligibilityResult result = new StediEligibilityProvider().check(req);
+        Test.stopTest();
+
+        System.assertEquals('Active', result.status, 'Default billing org should allow the 270');
+        Eligibility_Check__c stored = queryCheck(result.eligibilityCheckId);
+        System.assert(
+            stored.Request_Payload__c.contains('1999999984'),
+            '270 provider NPI should be the Type 2 billing org: ' + stored.Request_Payload__c
+        );
+        System.assert(
+            stored.Request_Payload__c.contains('Logic Clinic Billing'),
+            '270 provider name should be the billing org: ' + stored.Request_Payload__c
+        );
+        System.assert(
+            !stored.Request_Payload__c.contains(data.practitioner.NPI__c),
+            'Practitioner NPI should not be used when a default billing org exists'
+        );
+    }
+
+    @IsTest
     static void checkErrorsOnEmptyResponse() {
         Fixture data = insertFixture();
         EligibilityProviderFactory.settingsOverride = new List<Eligibility_Setting__mdt>{
@@ -433,6 +474,27 @@ private class StediEligibilityProviderTest {
         Test.stopTest();
 
         System.assertEquals(true, thrown, 'Payer search HTTP errors should throw');
+    }
+
+    @IsTest
+    static void searchPayersExplainsUnauthorized() {
+        EligibilityProviderFactory.settingsOverride = new List<Eligibility_Setting__mdt>{
+            setting('Stedi_Eligibility', '30')
+        };
+        Test.setMock(HttpCalloutMock.class, new PayerSearchMock(401, '{"message":"Unauthorized"}'));
+
+        Boolean thrown = false;
+        Test.startTest();
+        try {
+            new StediEligibilityProvider().searchPayers('Aetna');
+        } catch (EligibilityProviderFactory.EligibilityException e) {
+            thrown =
+                e.getMessage().contains('ApiKey') &&
+                e.getMessage().contains('Stedi_API');
+        }
+        Test.stopTest();
+
+        System.assertEquals(true, thrown, '401 should tell the admin to set ApiKey on Stedi_API');
     }
 
     @IsTest

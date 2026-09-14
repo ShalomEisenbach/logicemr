@@ -159,17 +159,13 @@ public with sharing class StediEligibilityProvider implements EligibilityProvide
             return;
         }
 
-        String npi = String.isNotBlank(req.providerNpi) ? req.providerNpi : findProviderNpi();
-        if (String.isBlank(npi)) {
+        BillingIdentity identity = resolveBillingIdentity(req);
+        if (String.isBlank(identity.npi)) {
             ctx.buildError = 'Provider NPI is required.';
             return;
         }
-        String organizationName = String.isNotBlank(req.providerOrganizationName)
-            ? req.providerOrganizationName
-            : UserInfo.getOrganizationName();
-        if (String.isBlank(organizationName)) {
-            // TODO: Replace with a packaged practice/organization record when that object exists.
-            organizationName = 'Organization';
+        if (String.isBlank(identity.organizationName)) {
+            identity.organizationName = 'Organization';
         }
 
         Map<String, Object> subscriber = new Map<String, Object>();
@@ -194,12 +190,47 @@ public with sharing class StediEligibilityProvider implements EligibilityProvide
             'controlNumber' => newControlNumber(),
             'tradingPartnerServiceId' => payerId,
             'provider' => new Map<String, Object>{
-                'organizationName' => organizationName,
-                'npi' => npi
+                'organizationName' => identity.organizationName,
+                'npi' => identity.npi
             },
             'subscriber' => subscriber,
             'encounter' => new Map<String, Object>{ 'serviceTypeCodes' => serviceTypeCodes }
         };
+    }
+
+    private class BillingIdentity {
+        String npi;
+        String organizationName;
+    }
+
+    private static BillingIdentity resolveBillingIdentity(EligibilityRequest req) {
+        BillingIdentity identity = new BillingIdentity();
+        if (String.isNotBlank(req.providerNpi)) {
+            identity.npi = req.providerNpi;
+            identity.organizationName = String.isNotBlank(req.providerOrganizationName)
+                ? req.providerOrganizationName
+                : UserInfo.getOrganizationName();
+            return identity;
+        }
+        List<Organization__c> orgs = [
+            SELECT Name, NPI__c
+            FROM Organization__c
+            WHERE Active__c = TRUE AND Is_Default_Billing__c = TRUE AND NPI__c != NULL
+            ORDER BY LastModifiedDate DESC
+            LIMIT 1
+        ];
+        if (!orgs.isEmpty()) {
+            identity.npi = orgs[0].NPI__c;
+            identity.organizationName = String.isNotBlank(req.providerOrganizationName)
+                ? req.providerOrganizationName
+                : orgs[0].Name;
+            return identity;
+        }
+        identity.npi = findProviderNpi();
+        identity.organizationName = String.isNotBlank(req.providerOrganizationName)
+            ? req.providerOrganizationName
+            : UserInfo.getOrganizationName();
+        return identity;
     }
 
     private static String findProviderNpi() {
@@ -509,12 +540,23 @@ public with sharing class StediEligibilityProvider implements EligibilityProvide
         if (response == null) {
             return 'HTTP 0';
         }
+        Integer statusCode = response.getStatusCode();
+        if (statusCode == 401 || statusCode == 403) {
+            return unauthorizedSetupMessage();
+        }
         String body = response.getBody();
         String parsed = firstErrorMessage(asMap(tryParse(body)));
         if (String.isNotBlank(parsed)) {
             return parsed;
         }
-        return String.isBlank(body) ? 'HTTP ' + response.getStatusCode() : 'HTTP ' + response.getStatusCode() + ': ' + body;
+        return String.isBlank(body) ? 'HTTP ' + statusCode : 'HTTP ' + statusCode + ': ' + body;
+    }
+
+    private static String unauthorizedSetupMessage() {
+        return
+            'Stedi returned Unauthorized. Edit External Credential Stedi Eligibility → principal Stedi_API → ' +
+            'add authentication parameter ApiKey (exact name) with your Stedi API key. ' +
+            'Then grant External Credential Principal Access Stedi_Eligibility-Stedi_API on LogicEMR Admin, Clinician, and Billing.';
     }
 
     private static String firstErrorMessage(Map<String, Object> root) {

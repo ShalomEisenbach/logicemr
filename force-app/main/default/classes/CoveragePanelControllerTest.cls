@@ -476,6 +476,53 @@ private class CoveragePanelControllerTest {
         System.assertEquals(true, missingFile, 'Already replaced file should not delete');
     }
 
+    @IsTest
+    static void saveCoverageCreatesAndEditsForFrontDeskBilling() {
+        Patient__c patient = insertPatient('MRN-COV-FRONT');
+        Payer__c payer = insertPayer('Aetna Front Desk');
+
+        Test.startTest();
+        Coverage__c created = CoveragePanelController.saveCoverage(
+            null,
+            patient.Id,
+            payer.Id,
+            'MEM-FRONT',
+            'GRP-FRONT',
+            null,
+            'Medical',
+            'Self',
+            'Ada Lovelace',
+            'Active',
+            null,
+            null,
+            'Primary'
+        );
+        Coverage__c edited = CoveragePanelController.saveCoverage(
+            created.Id,
+            patient.Id,
+            payer.Id,
+            'MEM-FRONT-2',
+            'GRP-FRONT',
+            null,
+            'Medical',
+            'Self',
+            'Ada Lovelace',
+            'Active',
+            null,
+            null,
+            'Primary'
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, created.Id, 'Scheduler/billing create should insert coverage');
+        System.assertEquals('MEM-FRONT-2', edited.Member_Id__c, 'Billing edit should update member Id');
+        System.assertEquals(
+            1,
+            [SELECT COUNT() FROM Coverage__c WHERE Patient__c = :patient.Id],
+            'Edit must update the same coverage row'
+        );
+    }
+
     private static Patient__c insertPatient(String mrn) {
         Patient__c patient = new Patient__c(MRN__c = mrn, Last_Name__c = 'Coverage');
         insert patient;

@@ -93,6 +93,82 @@ private class AdminConsoleControllerTest {
     }
 
     @IsTest
+    static void getBillingOrganizationReturnsEmptyDraftWhenNoneExist() {
+        AdminConsoleController.manageSettingsOverride = true;
+
+        Test.startTest();
+        AdminConsoleController.BillingOrganizationDto dto = AdminConsoleController.getBillingOrganization();
+        Test.stopTest();
+
+        System.assertEquals(null, dto.id, 'No organization should exist yet');
+        System.assertEquals(true, dto.active, 'Draft should default to active');
+        System.assertEquals(true, dto.isDefaultBilling, 'Draft should be the default billing org');
+        System.assertEquals('US', dto.country, 'Draft country should default to US');
+    }
+
+    @IsTest
+    static void saveBillingOrganizationCreatesDefaultAndClearsOthers() {
+        AdminConsoleController.manageSettingsOverride = true;
+        insert new Organization__c(
+            Name = 'Old Billing',
+            NPI__c = '1111111116',
+            Active__c = true,
+            Is_Default_Billing__c = true
+        );
+
+        AdminConsoleController.BillingOrganizationDto input = new AdminConsoleController.BillingOrganizationDto();
+        input.name = ' Logic Clinic ';
+        input.npi = '1999999984';
+        input.ein = '12-3456789';
+        input.street = '1 Clinic Way';
+        input.city = 'Boston';
+        input.state = 'MA';
+        input.postalCode = '02108';
+        input.country = '';
+        input.active = true;
+
+        Test.startTest();
+        AdminConsoleController.BillingOrganizationDto saved = AdminConsoleController.saveBillingOrganization(input);
+        AdminConsoleController.OverviewPayload overview = AdminConsoleController.getOverview();
+        Test.stopTest();
+
+        System.assertNotEquals(null, saved.id, 'Organization should be inserted');
+        System.assertEquals('Logic Clinic', saved.name, 'Name should be trimmed');
+        System.assertEquals('1999999984', saved.npi, 'Type 2 NPI should persist');
+        System.assertEquals('12-3456789', saved.ein, 'EIN should persist');
+        System.assertEquals('US', saved.country, 'Blank country should default to US');
+        System.assertEquals(true, saved.isDefaultBilling, 'Saved org should be default billing');
+        System.assertEquals('Logic Clinic', overview.billingOrganizationName, 'Overview should show billing org name');
+        System.assertEquals('1999999984', overview.billingOrganizationNpi, 'Overview should show billing org NPI');
+        System.assertEquals(
+            1,
+            [SELECT COUNT() FROM Organization__c WHERE Is_Default_Billing__c = TRUE],
+            'Only one default billing organization should remain'
+        );
+        System.assertEquals(
+            false,
+            [SELECT Is_Default_Billing__c FROM Organization__c WHERE Name = 'Old Billing'].Is_Default_Billing__c,
+            'Previous default should be cleared'
+        );
+    }
+
+    @IsTest
+    static void saveBillingOrganizationRequiresName() {
+        AdminConsoleController.manageSettingsOverride = true;
+        Boolean denied = false;
+
+        Test.startTest();
+        try {
+            AdminConsoleController.saveBillingOrganization(new AdminConsoleController.BillingOrganizationDto());
+        } catch (AuraHandledException e) {
+            denied = true;
+        }
+        Test.stopTest();
+
+        System.assertEquals(true, denied, 'Blank organization name should be rejected');
+    }
+
+    @IsTest
     static void savePractitionerUsersUpdatesLink() {
         AdminConsoleController.manageSettingsOverride = true;
         Practitioner__c practitioner = [SELECT Id, User__c FROM Practitioner__c LIMIT 1];
