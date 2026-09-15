@@ -4,6 +4,18 @@
             <header class="slds-media slds-media_center slds-has-flexi-truncate">
                 <div class="slds-media__body">
                     <h2 class="slds-card__header-title">
+                        <template lwc:if={collapsible}>
+                            <lightning-button-icon
+                                class="section-toggle"
+                                icon-name={toggleIconName}
+                                variant="bare"
+                                size="small"
+                                alternative-text={toggleLabel}
+                                title={toggleLabel}
+                                aria-expanded={isExpanded}
+                                onclick={handleToggle}
+                            ></lightning-button-icon>
+                        </template>
                         <span class="slds-truncate">{title}</span>
                     </h2>
                 </div>
@@ -12,17 +24,19 @@
                 </div>
             </header>
         </div>
-        <div class="slds-card__body slds-card__body_inner">
-            <slot></slot>
-            <template lwc:if={showViewAll}>
-                <div class="view-all">
-                    <lightning-button
-                        variant="base"
-                        label={viewAllLabel}
-                        onclick={handleViewAll}
-                    ></lightning-button>
-                </div>
-            </template>
-        </div>
+        <template lwc:if={isExpanded}>
+            <div class="slds-card__body slds-card__body_inner">
+                <slot></slot>
+                <template lwc:if={showViewAll}>
+                    <div class="view-all">
+                        <lightning-button
+                            variant="base"
+                            label={viewAllLabel}
+                            onclick={handleViewAll}
+                        ></lightning-button>
+                    </div>
+                </template>
+            </div>
+        </template>
     </article>
 </template>

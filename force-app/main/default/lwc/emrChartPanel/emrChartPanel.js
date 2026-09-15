@@ -11,6 +11,8 @@ import { LightningElement, api } from 'lwc';
  * - title (String): header text
  * - viewAllLabel (String, optional): when set with hasRecords, View All is shown under the table
  * - hasRecords (Boolean): View All is shown only when true
+ * - collapsible (Boolean): shows a control that independently expands or collapses the panel
+ * - expanded (Boolean): initial and externally controlled expanded state; defaults to true
  * - viewall event: fired when View All is clicked
  * - actions slot: optional header buttons (Add) on the top right
  * - default slot: panel body
@@ -32,6 +34,30 @@ export default class EmrChartPanel extends LightningElement {
     @api title;
     @api viewAllLabel;
     @api hasRecords = false;
+    @api collapsible = false;
+
+    _isExpanded = true;
+
+    @api
+    get expanded() {
+        return this._isExpanded;
+    }
+
+    set expanded(value) {
+        this._isExpanded = value !== false && value !== 'false';
+    }
+
+    get isExpanded() {
+        return !this.collapsible || this._isExpanded;
+    }
+
+    get toggleIconName() {
+        return this.isExpanded ? 'utility:chevrondown' : 'utility:chevronright';
+    }
+
+    get toggleLabel() {
+        return this.isExpanded ? `Collapse ${this.title}` : `Expand ${this.title}`;
+    }
 
     get showViewAll() {
         return !!this.viewAllLabel && this.hasRecords;
@@ -39,5 +65,14 @@ export default class EmrChartPanel extends LightningElement {
 
     handleViewAll() {
         this.dispatchEvent(new CustomEvent('viewall'));
+    }
+
+    handleToggle() {
+        this._isExpanded = !this._isExpanded;
+        this.dispatchEvent(
+            new CustomEvent('toggle', {
+                detail: { expanded: this._isExpanded }
+            })
+        );
     }
 }

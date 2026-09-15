@@ -1,8 +1,10 @@
 <template>
     <c-emr-chart-panel
         title="Appointments"
-        view-all-label="View All"
+        view-all-label="View All Appointments"
         has-records={hasAppointments}
+        collapsible
+        expanded
         onviewall={handleViewAll}
     >
         <lightning-button

@@ -317,14 +317,14 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
-                <componentName>emrEncounterPanel</componentName>
-                <identifier>emrEncounterPanel</identifier>
+                <componentName>emrAppointmentPanel</componentName>
+                <identifier>emrAppointmentPanel</identifier>
             </componentInstance>
         </itemInstances>
         <itemInstances>
             <componentInstance>
-                <componentName>emrAppointmentPanel</componentName>
-                <identifier>emrAppointmentPanel</identifier>
+                <componentName>emrEncounterPanel</componentName>
+                <identifier>emrEncounterPanel</identifier>
             </componentInstance>
         </itemInstances>
         <itemInstances>

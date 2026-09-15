@@ -22,7 +22,7 @@ export default class EmrAlertBar extends LightningElement {
     sections = [];
     errorMessage;
     hasLoaded = false;
-    medicationsExpanded = false;
+    sectionExpanded = { medications: false };
     wiredSummaryResult;
     refreshHandlerId;
 
@@ -71,8 +71,8 @@ export default class EmrAlertBar extends LightningElement {
             const isList = variant === 'list';
             const isMetrics = variant === 'metrics';
             const hasItems = items.length > 0;
-            const isCollapsible = section.key === 'medications' && hasItems;
-            const isExpanded = !isCollapsible || this.medicationsExpanded;
+            const isCollapsible = hasItems;
+            const isExpanded = !isCollapsible || this.isSectionExpanded(section.key);
             const itemCount = section.totalCount || items.length;
             return {
                 key: section.key,
@@ -83,14 +83,14 @@ export default class EmrAlertBar extends LightningElement {
                 isMetrics,
                 isCollapsible,
                 isExpanded,
-                showBody: !isCollapsible || this.medicationsExpanded,
+                showBody: !isCollapsible || isExpanded,
                 countLabel: isCollapsible ? String(itemCount) : '',
-                toggleIcon: this.medicationsExpanded ? 'utility:chevrondown' : 'utility:chevronright',
-                toggleLabel: this.medicationsExpanded
-                    ? `Collapse medications, ${itemCount}`
-                    : `Expand medications, ${itemCount}`,
+                toggleIcon: isExpanded ? 'utility:chevrondown' : 'utility:chevronright',
+                toggleLabel: isExpanded
+                    ? `Collapse ${section.label}, ${itemCount}`
+                    : `Expand ${section.label}, ${itemCount}`,
                 overflowLabel: overflow > 0 && isExpanded ? `+${overflow} more` : '',
-                stripClass: this.stripClassFor(section.tone, variant, isCollapsible && !this.medicationsExpanded),
+                stripClass: this.stripClassFor(section.tone, variant, isCollapsible && !isExpanded),
                 role: section.tone === 'high' ? 'alert' : 'status',
                 iconName: ICON_BY_TONE[section.tone] || '',
                 iconVariant: ICON_VARIANT_BY_TONE[section.tone] || 'inverse',
@@ -154,8 +154,19 @@ export default class EmrAlertBar extends LightningElement {
         return 'metric-flag';
     }
 
-    handleToggleMedications() {
-        this.medicationsExpanded = !this.medicationsExpanded;
+    isSectionExpanded(key) {
+        return this.sectionExpanded[key] !== false;
+    }
+
+    handleToggleSection(event) {
+        const key = event.currentTarget.dataset.key;
+        if (!key) {
+            return;
+        }
+        this.sectionExpanded = {
+            ...this.sectionExpanded,
+            [key]: !this.isSectionExpanded(key)
+        };
     }
 
     stripClassFor(tone, variant, collapsed) {

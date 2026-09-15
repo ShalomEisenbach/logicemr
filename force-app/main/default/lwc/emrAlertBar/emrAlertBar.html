@@ -20,9 +20,10 @@
                             <button
                                 type="button"
                                 class="strip-toggle"
+                                data-key={section.key}
                                 aria-expanded={section.isExpanded}
                                 aria-label={section.toggleLabel}
-                                onclick={handleToggleMedications}
+                                onclick={handleToggleSection}
                             >
                                 <span class="alert-label">{section.label}</span>
                                 <span class="section-count">{section.countLabel}</span>

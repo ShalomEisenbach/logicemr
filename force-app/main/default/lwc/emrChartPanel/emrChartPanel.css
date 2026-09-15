@@ -26,6 +26,10 @@
     gap: 0.5rem;
 }
 
+.section-toggle {
+    margin-right: 0.375rem;
+}
+
 .view-all {
     margin-top: 0.75rem;
     padding-top: 0.5rem;
