@@ -1981,11 +1981,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
-        <field>Claim_Submission__c.Attempt_Number__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
         <field>Claim_Submission__c.Clearinghouse_Claim_Id__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -2011,17 +2006,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
-        <field>Claim_Submission__c.Idempotency_Key__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
         <field>Claim_Submission__c.Last_Attempt_At__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>Claim_Submission__c.Patient_Control_Number__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -2051,17 +2036,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
-        <field>Claim_Submission__c.Status__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
         <field>Claim_Submission__c.Submitted_At__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>Claim_Submission__c.Superbill__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -2437,27 +2412,27 @@
     </tabSettings>
     <tabSettings>
         <tab>Practitioner__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Condition__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>MedicationRequest__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Observation__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Procedure__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>ServiceRequest__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Appointment__c</tab>
@@ -2465,7 +2440,7 @@
     </tabSettings>
     <tabSettings>
         <tab>Schedule__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Scheduling</tab>
@@ -2477,7 +2452,7 @@
     </tabSettings>
     <tabSettings>
         <tab>NoteTemplate__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Mapping_Builder</tab>
@@ -2485,7 +2460,7 @@
     </tabSettings>
     <tabSettings>
         <tab>Mapping_Definition__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Mapping_Runner</tab>
@@ -2493,15 +2468,15 @@
     </tabSettings>
     <tabSettings>
         <tab>Code_Reference__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Payer__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Organization__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Code_Set_Import</tab>
@@ -2509,6 +2484,6 @@
     </tabSettings>
     <tabSettings>
         <tab>Fee_Schedule__c</tab>
-        <visibility>Visible</visibility>
+        <visibility>Available</visibility>
     </tabSettings>
 </PermissionSet>

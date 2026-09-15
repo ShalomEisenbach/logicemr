@@ -20,22 +20,13 @@
     <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
     <label>LogicEMR Clinical</label>
     <navType>Standard</navType>
+    <tabs>standard-home</tabs>
     <tabs>Patient_Search</tabs>
     <tabs>Patient__c</tabs>
     <tabs>Encounter__c</tabs>
-    <tabs>Condition__c</tabs>
-    <tabs>Observation__c</tabs>
-    <tabs>MedicationRequest__c</tabs>
-    <tabs>ServiceRequest__c</tabs>
-    <tabs>Procedure__c</tabs>
-    <tabs>NoteTemplate__c</tabs>
-    <tabs>Practitioner__c</tabs>
-    <tabs>Organization__c</tabs>
     <tabs>LogicEMR_Admin</tabs>
-    <tabs>Mapping_Definition__c</tabs>
     <tabs>Mapping_Builder</tabs>
     <tabs>Mapping_Runner</tabs>
-    <tabs>Code_Reference__c</tabs>
     <tabs>Code_Set_Import</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>LogicEMR_UtilityBar</utilityBar>

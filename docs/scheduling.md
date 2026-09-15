@@ -20,7 +20,7 @@ Access ships as permission sets only. Assign **LogicEMR Scheduler** to the sched
 | LogicEMR Clinician | Read + Create (View All; no Edit) | Read | Existing clinical access |
 | LogicEMR Admin | Full CRUD + View All / Modify All | Full CRUD + View All / Modify All | Existing admin access |
 
-The LogicEMR app navigation groups a **Scheduling** app page (today’s and upcoming appointments, active schedules) with the `Appointment__c` and `Schedule__c` tabs.
+The LogicEMR Scheduling app keeps the default navigation focused on **Home**, the calendar-only **Scheduling** page, **Schedule Creator**, **Appointments**, and **Patient Search**. Raw Schedule, Slot, Patient, Practitioner, and Organization tabs remain available through Salesforce navigation when needed but are not displayed by default.
 
 ## Appointment sharing
 

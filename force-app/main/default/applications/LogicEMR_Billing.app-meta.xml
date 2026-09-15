@@ -13,12 +13,11 @@
     <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
     <label>LogicEMR Billing</label>
     <navType>Standard</navType>
+    <tabs>standard-home</tabs>
     <tabs>Superbill__c</tabs>
+    <tabs>Claim_Submission__c</tabs>
     <tabs>Payer__c</tabs>
     <tabs>Fee_Schedule__c</tabs>
-    <tabs>Patient__c</tabs>
-    <tabs>Encounter__c</tabs>
-    <tabs>Organization__c</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>LogicEMR_UtilityBar</utilityBar>
 </CustomApplication>
