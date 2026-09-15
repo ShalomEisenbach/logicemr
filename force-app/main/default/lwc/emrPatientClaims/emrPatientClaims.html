@@ -1,0 +1,94 @@
+<template>
+    <c-emr-chart-panel title="Claims &amp; Superbills">
+        <lightning-button-icon
+            slot="actions"
+            icon-name="utility:refresh"
+            alternative-text="Refresh claims"
+            title="Refresh claims"
+            disabled={isLoading}
+            onclick={handleRefresh}
+        ></lightning-button-icon>
+
+        <template lwc:if={isLoading}>
+            <lightning-spinner alternative-text="Loading claims" size="small"></lightning-spinner>
+        </template>
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={hasClaims}>
+            <div class="table-wide">
+                <lightning-datatable
+                    key-field="id"
+                    data={claims}
+                    columns={columns}
+                    hide-checkbox-column
+                ></lightning-datatable>
+            </div>
+            <div class="stack-narrow">
+                <template for:each={claims} for:item="row">
+                    <div key={row.id} class="claim-row">
+                        <p class="slds-text-heading_small">
+                            <c-emr-record-link
+                                record-id={row.id}
+                                object-api-name={superbillObjectApiName}
+                                label={row.name}
+                            ></c-emr-record-link>
+                        </p>
+                        <dl class="claim-facts">
+                            <div>
+                                <dt>Status</dt>
+                                <dd>{row.status}</dd>
+                            </div>
+                            <div>
+                                <dt>Date of service</dt>
+                                <dd>
+                                    <lightning-formatted-date-time
+                                        value={row.dateOfService}
+                                        year="numeric"
+                                        month="short"
+                                        day="2-digit"
+                                        time-zone="UTC"
+                                    ></lightning-formatted-date-time>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Total</dt>
+                                <dd>
+                                    <lightning-formatted-number
+                                        value={row.totalCharges}
+                                        format-style="currency"
+                                        currency-code="USD"
+                                    ></lightning-formatted-number>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Encounter</dt>
+                                <dd>
+                                    <c-emr-record-link
+                                        record-id={row.encounterId}
+                                        object-api-name={encounterObjectApiName}
+                                        label={row.encounterName}
+                                    ></c-emr-record-link>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Rendering provider</dt>
+                                <dd>{row.renderingPractitionerName}</dd>
+                            </div>
+                            <div>
+                                <dt>Payer</dt>
+                                <dd>{row.payerName}</dd>
+                            </div>
+                        </dl>
+                        <template lwc:if={row.validationMessages}>
+                            <p class="issues">{row.validationMessages}</p>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template lwc:elseif={showEmpty}>
+            <p class="slds-text-body_regular">No superbills.</p>
+        </template>
+    </c-emr-chart-panel>
+</template>

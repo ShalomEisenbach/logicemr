@@ -1,0 +1,53 @@
+.table-wide {
+    display: block;
+    min-height: 10rem;
+}
+
+.stack-narrow {
+    display: none;
+}
+
+.claim-row {
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--lwc-colorBorder, #d8dde6);
+}
+
+.claim-row:last-child {
+    border-bottom: 0;
+}
+
+.claim-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-top: 0.75rem;
+}
+
+.claim-facts dt {
+    color: var(--lwc-colorTextWeak, #5f6a7d);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.claim-facts dd {
+    margin: 0.125rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.issues {
+    margin-top: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--lwc-colorBorderError, #ba0517);
+    color: var(--lwc-colorTextError, #ba0517);
+    white-space: pre-line;
+}
+
+@media (max-width: 48rem) {
+    .table-wide {
+        display: none;
+    }
+
+    .stack-narrow {
+        display: block;
+    }
+}

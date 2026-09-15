@@ -1,9 +1,17 @@
 <template>
     <div class="slds-p-around_medium">
+        <lightning-record-view-form
+            record-id={recordId}
+            object-api-name={patientObject}
+        >
+            <div class="slds-form-element slds-m-bottom_medium">
+                <lightning-output-field field-name={nameField}></lightning-output-field>
+            </div>
+        </lightning-record-view-form>
         <lightning-record-form
             record-id={recordId}
             object-api-name={patientObject}
-            layout-type="Full"
+            fields={editableFields}
             columns="2"
             mode="view"
             onsuccess={handleSuccess}

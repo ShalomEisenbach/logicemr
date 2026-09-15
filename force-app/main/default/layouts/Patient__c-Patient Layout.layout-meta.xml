@@ -178,6 +178,15 @@
     </relatedLists>
     <relatedLists>
         <fields>NAME</fields>
+        <fields>Encounter__c</fields>
+        <fields>Date_of_Service__c</fields>
+        <fields>Status__c</fields>
+        <fields>Coverage__c</fields>
+        <fields>Rendering_Practitioner__c</fields>
+        <relatedList>Superbill__c.Patient__c</relatedList>
+    </relatedLists>
+    <relatedLists>
+        <fields>NAME</fields>
         <fields>Diagnosis_Display__c</fields>
         <fields>Diagnosis_Code__c</fields>
         <fields>Clinical_Status__c</fields>
