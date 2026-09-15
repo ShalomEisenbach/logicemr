@@ -11,7 +11,7 @@ jest.mock(
     { virtual: true }
 );
 
-const flushPromises = () => Promise.resolve();
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('c-emr-patient-claims', () => {
     afterEach(() => {
@@ -43,11 +43,13 @@ describe('c-emr-patient-claims', () => {
         await flushPromises();
         await flushPromises();
 
-        const table = element.shadowRoot.querySelector('lightning-datatable');
+        const panel = element.shadowRoot.querySelector('c-emr-chart-panel');
+        const table = panel.querySelector('lightning-datatable');
         expect(table).not.toBeNull();
         expect(table.data).toHaveLength(1);
         expect(table.data[0].name).toBe('SB-00000001');
-        expect(element.shadowRoot.textContent).toContain('Ready');
+        expect(panel.count).toBe(1);
+        expect(panel.textContent).toContain('Ready');
     });
 
     it('renders the empty state', async () => {
@@ -59,6 +61,8 @@ describe('c-emr-patient-claims', () => {
         await flushPromises();
         await flushPromises();
 
-        expect(element.shadowRoot.textContent).toContain('No superbills.');
+        const panel = element.shadowRoot.querySelector('c-emr-chart-panel');
+        expect(panel.count).toBe(0);
+        expect(panel.textContent).toContain('No superbills.');
     });
 });
