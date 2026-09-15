@@ -22,6 +22,17 @@ describe('c-emr-chart-panel', () => {
         expect(element.shadowRoot.querySelector('.slds-card__body')).toBeTruthy();
     });
 
+    it('renders an optional record count next to the title', () => {
+        const element = createElement('c-emr-chart-panel', { is: EmrChartPanel });
+        element.title = 'Appointments';
+        element.count = 4;
+        document.body.appendChild(element);
+
+        expect(element.shadowRoot.querySelector('.slds-truncate').textContent).toBe(
+            'Appointments (4)'
+        );
+    });
+
     it('independently collapses and expands its body', async () => {
         const element = createElement('c-emr-chart-panel', { is: EmrChartPanel });
         element.title = 'Encounters';

@@ -9,6 +9,7 @@ import { LightningElement, api } from 'lwc';
  *
  * Public API
  * - title (String): header text
+ * - count (Number, optional): appends the record count to the header text
  * - viewAllLabel (String, optional): when set with hasRecords, View All is shown under the table
  * - hasRecords (Boolean): View All is shown only when true
  * - collapsible (Boolean): shows a control that independently expands or collapses the panel
@@ -32,6 +33,7 @@ import { LightningElement, api } from 'lwc';
  */
 export default class EmrChartPanel extends LightningElement {
     @api title;
+    @api count;
     @api viewAllLabel;
     @api hasRecords = false;
     @api collapsible = false;
@@ -51,12 +53,18 @@ export default class EmrChartPanel extends LightningElement {
         return !this.collapsible || this._isExpanded;
     }
 
+    get displayTitle() {
+        return this.count === undefined || this.count === null || this.count === ''
+            ? this.title
+            : `${this.title} (${this.count})`;
+    }
+
     get toggleIconName() {
         return this.isExpanded ? 'utility:chevrondown' : 'utility:chevronright';
     }
 
     get toggleLabel() {
-        return this.isExpanded ? `Collapse ${this.title}` : `Expand ${this.title}`;
+        return this.isExpanded ? `Collapse ${this.displayTitle}` : `Expand ${this.displayTitle}`;
     }
 
     get showViewAll() {

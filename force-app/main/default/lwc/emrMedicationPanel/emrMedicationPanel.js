@@ -197,6 +197,10 @@ export default class EmrMedicationPanel extends NavigationMixin(LightningElement
         return this.hasActiveOrders || this.hasReported;
     }
 
+    get recordCount() {
+        return this.activeOrders.length + this.reportedMedications.length;
+    }
+
     get showEmpty() {
         return (
             !this.errorMessage &&

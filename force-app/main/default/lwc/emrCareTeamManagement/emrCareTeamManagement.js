@@ -59,6 +59,10 @@ export default class EmrCareTeamManagement extends LightningElement {
         return this.members && this.members.length > 0;
     }
 
+    get memberCount() {
+        return Array.isArray(this.members) ? this.members.length : undefined;
+    }
+
     get showEmpty() {
         return this.members && this.members.length === 0 && !this.errorMessage;
     }

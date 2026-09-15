@@ -87,6 +87,10 @@ export default class EmrFlowsheet extends NavigationMixin(LightningElement) {
         return this.rows.length > 0 && this.columns.length > 0;
     }
 
+    get observationCount() {
+        return this.wiredResult?.data ? this.totalObservationCount : undefined;
+    }
+
     get showEmpty() {
         return !this.isLoading && !this.errorMessage && !this.hasGrid;
     }

@@ -126,6 +126,10 @@ export default class EmrProblemListPanel extends NavigationMixin(LightningElemen
         return this.hasActive || this.hasResolved;
     }
 
+    get recordCount() {
+        return this.activeProblems.length + this.resolvedProblems.length;
+    }
+
     get showEmpty() {
         return (
             !this.errorMessage &&

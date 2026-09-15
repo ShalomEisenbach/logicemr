@@ -1,18 +1,30 @@
 <template>
     <c-emr-chart-panel
         title="Appointments"
+        count={appointmentCount}
         view-all-label="View All Appointments"
         has-records={hasAppointments}
         collapsible
         expanded
         onviewall={handleViewAll}
     >
-        <lightning-button
-            slot="actions"
-            label="Schedule"
-            variant="neutral"
-            onclick={handleSchedule}
-        ></lightning-button>
+        <div slot="actions" class="appointment-actions">
+            <lightning-input
+                class="upcoming-toggle"
+                type="toggle"
+                label="Upcoming only"
+                title="Show appointments starting today or later that have not arrived"
+                checked={upcomingOnly}
+                message-toggle-active=""
+                message-toggle-inactive=""
+                onchange={handleUpcomingToggle}
+            ></lightning-input>
+            <lightning-button
+                label="Schedule"
+                variant="neutral"
+                onclick={handleSchedule}
+            ></lightning-button>
+        </div>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>

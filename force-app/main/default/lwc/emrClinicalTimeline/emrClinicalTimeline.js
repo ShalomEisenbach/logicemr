@@ -98,6 +98,10 @@ export default class EmrClinicalTimeline extends NavigationMixin(LightningElemen
         return this.visibleEvents.length > 0;
     }
 
+    get eventCount() {
+        return Array.isArray(this.events) ? this.visibleEvents.length : undefined;
+    }
+
     get showEmpty() {
         return Array.isArray(this.events) && !this.errorMessage && this.visibleEvents.length === 0;
     }

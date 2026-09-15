@@ -1,5 +1,5 @@
 <template>
-    <c-emr-chart-panel title="Clinical Timeline" collapsible expanded>
+    <c-emr-chart-panel title="Clinical Timeline" count={eventCount} collapsible expanded>
         <template lwc:if={errorMessage}>
             <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
         </template>

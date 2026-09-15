@@ -129,6 +129,10 @@ export default class EmrImmunizationPanel extends NavigationMixin(LightningEleme
         return this.immunizations && this.immunizations.length > 0;
     }
 
+    get immunizationCount() {
+        return Array.isArray(this.immunizations) ? this.immunizations.length : undefined;
+    }
+
     get showEmpty() {
         return this.immunizations && this.immunizations.length === 0 && !this.errorMessage;
     }

@@ -25,6 +25,7 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
     @api recordId;
 
     appointments;
+    upcomingOnly = true;
     errorMessage;
     showScheduleForm = false;
     scheduleStarted = false;
@@ -57,7 +58,7 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
         ];
     }
 
-    @wire(getAppointments, { patientId: '$recordId' })
+    @wire(getAppointments, { patientId: '$recordId', upcomingOnly: '$upcomingOnly' })
     wiredAppointments(result) {
         this.wiredAppointmentsResult = result;
         const { data, error } = result;
@@ -136,6 +137,10 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
         return this.appointments && this.appointments.length > 0;
     }
 
+    get appointmentCount() {
+        return Array.isArray(this.appointments) ? this.appointments.length : undefined;
+    }
+
     get showEmpty() {
         return this.appointments && this.appointments.length === 0 && !this.errorMessage;
     }
@@ -159,6 +164,10 @@ export default class EmrAppointmentPanel extends NavigationMixin(LightningElemen
 
     get notifyModalTitle() {
         return this.notifyMessageType === 'Reminder' ? 'Send reminder' : 'Send confirmation';
+    }
+
+    handleUpcomingToggle(event) {
+        this.upcomingOnly = event.target.checked;
     }
 
     handleSchedule() {

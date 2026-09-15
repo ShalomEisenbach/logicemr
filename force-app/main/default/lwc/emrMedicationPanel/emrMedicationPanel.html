@@ -1,5 +1,11 @@
 <template>
-    <c-emr-chart-panel title="Medications" view-all-label="View All" has-records={hasRecords} onviewall={handleViewAll}>
+    <c-emr-chart-panel
+        title="Medications"
+        count={recordCount}
+        view-all-label="View All"
+        has-records={hasRecords}
+        onviewall={handleViewAll}
+    >
         <lightning-button
             slot="actions"
             label="Add"

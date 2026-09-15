@@ -154,6 +154,10 @@ export default class EmrEncounterPanel extends NavigationMixin(LightningElement)
         return this.encounters && this.encounters.length > 0;
     }
 
+    get encounterCount() {
+        return Array.isArray(this.encounters) ? this.encounters.length : undefined;
+    }
+
     get showEmpty() {
         return this.encounters && this.encounters.length === 0 && !this.errorMessage;
     }

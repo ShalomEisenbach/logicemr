@@ -274,6 +274,10 @@ export default class EmrCoveragePanel extends NavigationMixin(LightningElement) 
         return this.coverages && this.coverages.length > 0;
     }
 
+    get coverageCount() {
+        return Array.isArray(this.coverages) ? this.coverages.length : undefined;
+    }
+
     get showEmpty() {
         return this.coverages && this.coverages.length === 0 && !this.errorMessage;
     }

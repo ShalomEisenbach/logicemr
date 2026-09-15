@@ -28,7 +28,7 @@ private class AppointmentPanelControllerTest {
         insertAppointment(otherPatient.Id, attending.Id, newerStart, 'Routine', 'Booked', 'Other patient');
 
         Test.startTest();
-        List<Appointment__c> results = AppointmentPanelController.getAppointments(patient.Id);
+        List<Appointment__c> results = AppointmentPanelController.getAppointments(patient.Id, false);
         Test.stopTest();
 
         System.assertEquals(2, results.size(), 'Should return only this patient\'s appointments');
@@ -56,12 +56,73 @@ private class AppointmentPanelControllerTest {
         Patient__c patient = insertPatient('MRN-APPT-3');
 
         Test.startTest();
-        List<Appointment__c> blankId = AppointmentPanelController.getAppointments(null);
-        List<Appointment__c> none = AppointmentPanelController.getAppointments(patient.Id);
+        List<Appointment__c> blankId = AppointmentPanelController.getAppointments(null, true);
+        List<Appointment__c> none = AppointmentPanelController.getAppointments(patient.Id, true);
         Test.stopTest();
 
         System.assertEquals(0, blankId.size(), 'Null patient Id should return no rows');
         System.assertEquals(0, none.size(), 'A patient with no appointments should return no rows');
+    }
+
+    @IsTest
+    static void getAppointmentsFiltersToUpcomingPreArrivalStatusesByDefault() {
+        Patient__c patient = insertPatient('MRN-APPT-4');
+        Practitioner__c attending = insertPractitioner('Priya', 'Patel');
+        Datetime today = Datetime.newInstance(Date.today(), Time.newInstance(12, 0, 0, 0));
+        Datetime tomorrow = today.addDays(1);
+
+        Appointment__c proposedToday = insertAppointment(
+            patient.Id,
+            attending.Id,
+            today,
+            'Follow-up',
+            'Proposed',
+            'Today proposed'
+        );
+        Appointment__c bookedTomorrow = insertAppointment(
+            patient.Id,
+            attending.Id,
+            tomorrow,
+            'Follow-up',
+            'Booked',
+            'Tomorrow booked'
+        );
+        insertAppointment(
+            patient.Id,
+            attending.Id,
+            today.addDays(-1),
+            'Follow-up',
+            'Booked',
+            'Past booked'
+        );
+        insertAppointment(
+            patient.Id,
+            attending.Id,
+            tomorrow,
+            'Follow-up',
+            'Arrived',
+            'Already arrived'
+        );
+        insertAppointment(
+            patient.Id,
+            attending.Id,
+            tomorrow,
+            'Follow-up',
+            'Cancelled',
+            'Cancelled'
+        );
+
+        Test.startTest();
+        List<Appointment__c> results = AppointmentPanelController.getAppointments(patient.Id, true);
+        Test.stopTest();
+
+        System.assertEquals(
+            2,
+            results.size(),
+            'Only future Proposed and Booked appointments should be returned'
+        );
+        System.assertEquals(proposedToday.Id, results[0].Id, 'Today should sort before future appointments');
+        System.assertEquals(bookedTomorrow.Id, results[1].Id, 'The next future appointment should follow');
     }
 
     private static Patient__c insertPatient(String mrn) {

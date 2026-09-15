@@ -106,6 +106,10 @@ export default class EmrProcedurePanel extends NavigationMixin(LightningElement)
         return this.procedures && this.procedures.length > 0;
     }
 
+    get procedureCount() {
+        return Array.isArray(this.procedures) ? this.procedures.length : undefined;
+    }
+
     get showEmpty() {
         return this.procedures && this.procedures.length === 0 && !this.errorMessage;
     }

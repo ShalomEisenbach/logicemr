@@ -101,6 +101,10 @@ export default class EmrAllergyPanel extends NavigationMixin(LightningElement) {
         return this.allergies && this.allergies.length > 0;
     }
 
+    get allergyCount() {
+        return Array.isArray(this.allergies) ? this.allergies.length : undefined;
+    }
+
     get showEmpty() {
         return this.allergies && this.allergies.length === 0 && !this.errorMessage;
     }

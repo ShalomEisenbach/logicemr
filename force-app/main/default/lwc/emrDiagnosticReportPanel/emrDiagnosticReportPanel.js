@@ -136,6 +136,10 @@ export default class EmrDiagnosticReportPanel extends NavigationMixin(LightningE
         return this.hasUnreviewed || this.hasReviewed;
     }
 
+    get recordCount() {
+        return this.unreviewedReports.length + this.reviewedReports.length;
+    }
+
     get showEmpty() {
         return (
             !this.errorMessage &&
