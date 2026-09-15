@@ -53,6 +53,15 @@
                         <p>{coverageName}</p>
                     </div>
                     <div>
+                        <lightning-combobox
+                            label="Place of service"
+                            value={placeOfServiceCode}
+                            options={placeOfServiceOptions}
+                            disabled={isLockedOrSaving}
+                            onchange={handlePlaceOfServiceChange}
+                        ></lightning-combobox>
+                    </div>
+                    <div>
                         <p class="summary-label">Total charges</p>
                         <lightning-formatted-number
                             value={totalCharges}
@@ -166,18 +175,20 @@
                 </section>
 
                 <div class="footer-actions">
-                    <template lwc:if={isReady}>
+                    <template lwc:if={canPreviewExport}>
                         <lightning-button
                             class="slds-m-right_small"
                             label="Preview canonical export"
                             disabled={isSaving}
                             onclick={handlePreviewExport}
                         ></lightning-button>
-                        <lightning-button
-                            label="Reopen review"
-                            disabled={isSaving}
-                            onclick={handleReopen}
-                        ></lightning-button>
+                        <template lwc:if={isReady}>
+                            <lightning-button
+                                label="Reopen review"
+                                disabled={isSaving}
+                                onclick={handleReopen}
+                            ></lightning-button>
+                        </template>
                     </template>
                     <template lwc:else>
                         <lightning-button
@@ -188,6 +199,9 @@
                         ></lightning-button>
                     </template>
                 </div>
+                <template lwc:if={showSubmissionPanel}>
+                    <c-emr-claim-submission superbill-id={superbillId} claim-status={status}></c-emr-claim-submission>
+                </template>
             </template>
 
             <template lwc:else>

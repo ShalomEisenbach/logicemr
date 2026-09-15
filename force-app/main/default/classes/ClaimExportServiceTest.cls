@@ -12,12 +12,15 @@ private class ClaimExportServiceTest {
         String payload = ClaimExportService.serialize(data.superbill.Id);
         Test.stopTest();
 
-        System.assertEquals('1.0', claim.schemaVersion);
+        System.assertEquals('1.1', claim.schemaVersion);
         System.assertEquals('professional', claim.claimType);
         System.assertEquals('USD', claim.currencyCode);
         System.assertEquals('Frozen', claim.patient.name.first, 'Export must use the patient snapshot');
         System.assertEquals('Subscriber', claim.subscriber.name.last);
         System.assertEquals('PAYER-EXPORT', claim.payer.identifier);
+        System.assertEquals('11', claim.placeOfServiceCode);
+        System.assertEquals('CI', claim.claimFilingCode);
+        System.assertEquals('Pat', claim.renderingProvider.firstName);
         System.assertEquals('1999999984', claim.renderingProvider.npi);
         System.assertEquals('123456789', claim.billingProvider.taxIdentifier, 'EIN should normalize to digits');
         System.assertEquals(1, claim.diagnoses.size());
@@ -26,7 +29,7 @@ private class ClaimExportServiceTest {
         System.assertEquals(new List<String>{ '25', '59' }, claim.serviceLines[0].modifiers);
         System.assertEquals(new List<Integer>{ 1 }, claim.serviceLines[0].diagnosisPointers);
         System.assertEquals(200, claim.totalCharge);
-        System.assert(payload.contains('"schemaVersion" : "1.0"'));
+        System.assert(payload.contains('"schemaVersion" : "1.1"'));
         System.assert(payload.contains('"first" : "Frozen"'));
         System.assert(!payload.contains('Changed Source'), 'Live source changes must not leak into exports');
     }
@@ -114,6 +117,7 @@ private class ClaimExportServiceTest {
             Rendering_Practitioner__c = practitioner.Id,
             Billing_Organization__c = organization.Id,
             Date_of_Service__c = serviceDate,
+            Place_of_Service_Code__c = '11',
             Status__c = 'Ready',
             Ready_Date__c = Datetime.now(),
             Snapshot_Refreshed_At__c = Datetime.now(),
@@ -143,7 +147,10 @@ private class ClaimExportServiceTest {
             Coverage_Effective_End__c = serviceDate.addYears(1),
             Payer_Name__c = 'Frozen Payer',
             Payer_Identifier__c = 'PAYER-EXPORT',
+            Claim_Filing_Code__c = 'CI',
             Rendering_Provider_Name__c = 'Frozen Rendering Provider',
+            Rendering_Provider_First_Name__c = 'Pat',
+            Rendering_Provider_Last_Name__c = 'Provider',
             Rendering_Provider_NPI__c = '1999999984',
             Rendering_Provider_Taxonomy__c = '207Q00000X',
             Billing_Provider_Name__c = 'Frozen Billing Clinic',

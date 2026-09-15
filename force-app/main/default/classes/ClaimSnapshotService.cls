@@ -2,7 +2,8 @@ public with sharing class ClaimSnapshotService {
     private static final Set<String> FROZEN_STATUSES = new Set<String>{ 'Ready', 'Exported', 'Voided' };
     private static final List<String> CLAIM_CONTEXT_FIELDS = new List<String>{
         'Encounter__c', 'Encounter_Key__c', 'Patient__c', 'Coverage__c',
-        'Rendering_Practitioner__c', 'Billing_Organization__c', 'Date_of_Service__c'
+        'Rendering_Practitioner__c', 'Billing_Organization__c', 'Date_of_Service__c',
+        'Place_of_Service_Code__c'
     };
     private static final List<String> SNAPSHOT_FIELDS = new List<String>{
         'Snapshot_Refreshed_At__c', 'Snapshot_Version__c',
@@ -13,8 +14,9 @@ public with sharing class ClaimSnapshotService {
         'Subscriber_Sex__c', 'Subscriber_Relationship__c', 'Subscriber_Member_Id__c',
         'Subscriber_Group_Number__c', 'Subscriber_Street__c', 'Subscriber_City__c',
         'Subscriber_State__c', 'Subscriber_Postal_Code__c', 'Subscriber_Country__c',
-        'Payer_Name__c', 'Payer_Identifier__c', 'Coverage_Effective_Start__c',
-        'Coverage_Effective_End__c', 'Rendering_Provider_Name__c', 'Rendering_Provider_NPI__c',
+        'Payer_Name__c', 'Payer_Identifier__c', 'Claim_Filing_Code__c', 'Coverage_Effective_Start__c',
+        'Coverage_Effective_End__c', 'Rendering_Provider_Name__c',
+        'Rendering_Provider_First_Name__c', 'Rendering_Provider_Last_Name__c', 'Rendering_Provider_NPI__c',
         'Rendering_Provider_Taxonomy__c', 'Billing_Provider_Name__c', 'Billing_Provider_NPI__c',
         'Billing_Provider_EIN__c', 'Billing_Provider_Taxonomy__c', 'Billing_Provider_Street__c',
         'Billing_Provider_City__c', 'Billing_Provider_State__c', 'Billing_Provider_Postal_Code__c',
@@ -53,7 +55,8 @@ public with sharing class ClaimSnapshotService {
                        Subscriber_Date_of_Birth__c, Subscriber_Sex__c, Subscriber_Street__c,
                        Subscriber_City__c, Subscriber_State__c, Subscriber_Postal_Code__c,
                        Subscriber_Country__c, Effective_Start__c, Effective_End__c,
-                       Payer__c, Payer__r.Name, Payer__r.Payer_Identifier__c
+                       Payer__c, Payer__r.Name, Payer__r.Payer_Identifier__c,
+                       Payer__r.Claim_Filing_Code__c, Payer__r.Type__c
                 FROM Coverage__c
                 WHERE Id = :superbill.Coverage__c
                 LIMIT 1
@@ -69,6 +72,10 @@ public with sharing class ClaimSnapshotService {
             if (coverage.Payer__c != null) {
                 superbill.Payer_Name__c = coverage.Payer__r.Name;
                 superbill.Payer_Identifier__c = coverage.Payer__r.Payer_Identifier__c;
+                superbill.Claim_Filing_Code__c = claimFilingCode(
+                    coverage.Payer__r.Claim_Filing_Code__c,
+                    coverage.Payer__r.Type__c
+                );
             }
 
             if (coverage.Relationship_to_Subscriber__c == 'Self' && patient != null) {
@@ -95,6 +102,8 @@ public with sharing class ClaimSnapshotService {
                 LIMIT 1
             ];
             superbill.Rendering_Provider_Name__c = joinName(practitioner.First_Name__c, practitioner.Last_Name__c);
+            superbill.Rendering_Provider_First_Name__c = practitioner.First_Name__c;
+            superbill.Rendering_Provider_Last_Name__c = practitioner.Last_Name__c;
             superbill.Rendering_Provider_NPI__c = practitioner.NPI__c;
             superbill.Rendering_Provider_Taxonomy__c = practitioner.Taxonomy_Code__c;
         }
@@ -165,6 +174,10 @@ public with sharing class ClaimSnapshotService {
             }
             if (String.isBlank(superbill.Payer_Name__c)) issues.add('Payer name snapshot is required.');
             if (String.isBlank(superbill.Payer_Identifier__c)) issues.add('Payer identifier snapshot is required.');
+            if (String.isBlank(superbill.Claim_Filing_Code__c) ||
+                !Pattern.matches('^[A-Za-z0-9]{1,2}$', superbill.Claim_Filing_Code__c)) {
+                issues.add('Payer claim filing code snapshot is required.');
+            }
             if (superbill.Date_of_Service__c != null &&
                 ((superbill.Coverage_Effective_Start__c != null && superbill.Coverage_Effective_Start__c > superbill.Date_of_Service__c) ||
                  (superbill.Coverage_Effective_End__c != null && superbill.Coverage_Effective_End__c < superbill.Date_of_Service__c))) {
@@ -174,6 +187,8 @@ public with sharing class ClaimSnapshotService {
 
         if (superbill.Rendering_Practitioner__c != null) {
             if (String.isBlank(superbill.Rendering_Provider_Name__c)) issues.add('Rendering provider name snapshot is required.');
+            if (String.isBlank(superbill.Rendering_Provider_First_Name__c)) issues.add('Rendering provider first name snapshot is required.');
+            if (String.isBlank(superbill.Rendering_Provider_Last_Name__c)) issues.add('Rendering provider last name snapshot is required.');
             if (!isTenCharacterIdentifier(superbill.Rendering_Provider_NPI__c)) {
                 issues.add('Rendering provider snapshot requires a 10-digit NPI.');
             }
@@ -256,6 +271,15 @@ public with sharing class ClaimSnapshotService {
         if (!String.isBlank(firstName)) parts.add(firstName.trim());
         if (!String.isBlank(lastName)) parts.add(lastName.trim());
         return parts.isEmpty() ? null : String.join(parts, ' ');
+    }
+
+    private static String claimFilingCode(String configuredCode, String payerType) {
+        if (String.isNotBlank(configuredCode)) return configuredCode.trim().toUpperCase();
+        if (payerType == 'Commercial') return 'CI';
+        if (payerType == 'Medicare') return 'MB';
+        if (payerType == 'Medicaid') return 'MC';
+        if (payerType == 'Other') return 'ZZ';
+        return null;
     }
 
     private static Boolean isAddressIncomplete(String street, String city, String state, String postalCode) {

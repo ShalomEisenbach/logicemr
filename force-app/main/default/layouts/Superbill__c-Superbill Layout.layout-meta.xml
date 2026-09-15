@@ -14,6 +14,7 @@
         </layoutColumns>
         <layoutColumns>
             <layoutItems><behavior>Edit</behavior><field>Date_of_Service__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Place_of_Service_Code__c</field></layoutItems>
             <layoutItems><behavior>Edit</behavior><field>Rendering_Practitioner__c</field></layoutItems>
             <layoutItems><behavior>Edit</behavior><field>Billing_Organization__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Ready_Date__c</field></layoutItems>
@@ -58,6 +59,7 @@
         <layoutColumns>
             <layoutItems><behavior>Readonly</behavior><field>Payer_Name__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Payer_Identifier__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Claim_Filing_Code__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Coverage_Effective_Start__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Coverage_Effective_End__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Subscriber_Street__c</field></layoutItems>
@@ -75,6 +77,8 @@
         <label>Provider Snapshot</label>
         <layoutColumns>
             <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_First_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_Last_Name__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_NPI__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_Taxonomy__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Snapshot_Refreshed_At__c</field></layoutItems>
@@ -106,6 +110,11 @@
     </layoutSections>
     <relatedLists><relatedList>Charge_Line__c.Superbill__c</relatedList></relatedLists>
     <relatedLists><relatedList>Superbill_Diagnosis__c.Superbill__c</relatedList></relatedLists>
+    <relatedLists>
+        <fields>NAME</fields><fields>Status__c</fields><fields>Provider_Used__c</fields>
+        <fields>Patient_Control_Number__c</fields><fields>Submitted_At__c</fields>
+        <relatedList>Claim_Submission__c.Superbill__c</relatedList>
+    </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>
     <showHighlightsPanel>true</showHighlightsPanel>
     <showInteractionLogPanel>false</showInteractionLogPanel>

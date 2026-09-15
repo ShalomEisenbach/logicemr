@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Claim_Filing_Code__c</fullName><description>Frozen X12 claim filing indicator from the payer.</description><label>Claim Filing Code</label><length>2</length><type>Text</type>
+</CustomField>

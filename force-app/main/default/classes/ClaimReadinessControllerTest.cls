@@ -14,10 +14,13 @@ private class ClaimReadinessControllerTest {
         System.assertEquals('Needs Review', initialized.superbill.Status__c, 'New superbill should enter review');
         System.assertEquals(data.patient.Id, initialized.superbill.Patient__c, 'Patient should snapshot from encounter');
         System.assertEquals(data.coverage.Id, initialized.superbill.Coverage__c, 'Primary coverage should be selected');
+        System.assertEquals('11', initialized.superbill.Place_of_Service_Code__c, 'Outpatient encounters should default to office');
         System.assertEquals(data.organization.Id, initialized.superbill.Billing_Organization__c, 'Billing org should be selected');
         System.assertEquals('Jamie', initialized.superbill.Patient_First_Name__c, 'Patient demographics should snapshot');
         System.assertEquals('Jamie', initialized.superbill.Subscriber_First_Name__c, 'Self coverage should snapshot patient as subscriber');
         System.assertEquals('MEMBER-' + 'FINISHED', initialized.superbill.Subscriber_Member_Id__c, 'Member ID should snapshot');
+        System.assertEquals('CI', initialized.superbill.Claim_Filing_Code__c, 'Commercial filing code should be derived');
+        System.assertEquals('Pat', initialized.superbill.Rendering_Provider_First_Name__c, 'Rendering first name should snapshot');
         System.assertEquals(data.practitioner.NPI__c, initialized.superbill.Rendering_Provider_NPI__c, 'Rendering NPI should snapshot');
         System.assertEquals(data.organization.EIN__c, initialized.superbill.Billing_Provider_EIN__c, 'Billing EIN should snapshot');
         System.assertEquals(1, initialized.superbill.Snapshot_Version__c, 'First snapshot should be version one');
@@ -28,12 +31,14 @@ private class ClaimReadinessControllerTest {
         System.assertEquals(175, initialized.charges[0].Charge_Amount__c, 'Procedure should be priced automatically');
         System.assertEquals(data.officeRate.Id, initialized.charges[0].Fee_Schedule_Rate__c, 'Rate source should be stored');
         System.assertEquals(false, initialized.charges[0].Rate_Override__c, 'Scheduled rate is not an override');
-        ClaimReadinessController.Workspace ready = ClaimReadinessController.markReady(initialized.superbill.Id);
+        ClaimReadinessController.Workspace updated = ClaimReadinessController.updateClaimDetails(initialized.superbill.Id, '22');
+        ClaimReadinessController.Workspace ready = ClaimReadinessController.markReady(updated.superbill.Id);
         Test.stopTest();
 
         System.assertEquals(0, initialized.issues.size(), 'Complete priced data should pass validation');
         System.assertEquals(175, initialized.totalCharges, 'Total should sum charge amounts');
         System.assertEquals('Ready', ready.superbill.Status__c, 'Validated superbill should be ready');
+        System.assertEquals('22', ready.superbill.Place_of_Service_Code__c, 'Billing should control place of service');
         System.assertEquals(true, ready.ready, 'Workspace should report ready');
         System.assertNotEquals(null, ready.superbill.Ready_Date__c, 'Ready timestamp should be stored');
     }

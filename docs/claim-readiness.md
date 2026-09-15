@@ -1,6 +1,6 @@
 # Claim readiness and superbills
 
-LogicEMR creates a claim-ready billing snapshot from a finished encounter. This first release stops at a validated superbill; it does not submit an 837P, receive a 277CA/835, post payments, or manage denials.
+LogicEMR creates a claim-ready billing snapshot from a finished encounter and can queue a frozen professional claim for clearinghouse submission. Acknowledgment ingestion, 835 posting, and denial management remain later increments.
 
 ## Workflow
 
@@ -11,6 +11,7 @@ LogicEMR creates a claim-ready billing snapshot from a finished encounter. This 
 5. Completed encounter procedures are copied to `Charge_Line__c` and priced from the fee schedule effective on the service date. Billing can also add CPT or HCPCS lines manually; those lines use the same pricing service.
 6. Claim-level patient, subscriber, payer, rendering-provider, and billing-provider values are copied onto the superbill with a refresh timestamp and revision number.
 7. Billing resolves the validation list and marks the superbill **Ready**.
+8. Billing submits the frozen claim through the configured adapter. A successful clearinghouse handoff marks the superbill **Exported**.
 
 The **Claim Readiness** panel is on the Encounter Workspace sidebar. The **Superbills** tab opens the claim-readiness work queue.
 
@@ -23,6 +24,7 @@ A superbill can move to `Ready` only when:
 - the rendering provider snapshot has a name, 10-digit NPI, and 10-character taxonomy code;
 - the billing provider snapshot has a name, 10-digit NPI, 9-digit EIN, taxonomy code, and complete address;
 - the subscriber snapshot has structured name, date of birth, sex, address, relationship, and member ID, and its payer snapshot has a name and clearinghouse payer identifier;
+- the payer snapshot has an X12 claim filing code and the superbill has a two-digit place of service;
 - at least one signed encounter note exists;
 - at least one coded diagnosis exists;
 - at least one CPT/HCPCS charge has a service date, positive units and amount, a current payer/self-pay rate source (or an authorized override with a reason), and valid diagnosis pointers.
@@ -57,17 +59,26 @@ The script is safe to rerun. It refreshes four representative unlocked superbill
 
 ## Canonical claim export
 
-`ClaimExportService` maps a frozen `Ready` or `Exported` superbill into the versioned `VendorNeutralClaim` contract. Schema version 1.0 contains:
+`ClaimExportService` maps a frozen `Ready` or `Exported` superbill into the versioned `VendorNeutralClaim` contract. Schema version 1.1 contains:
 
 - frozen patient, subscriber, payer, rendering-provider, and billing-provider parties;
 - ordered diagnosis snapshots;
 - ordered professional service lines with modifiers and numeric diagnosis pointers;
 - snapshotted unit rate, rate source, override indicator, and override reason;
 - claim identifiers, dates, currency, total charge, and snapshot revision metadata.
+- claim filing and place-of-service codes plus structured rendering-provider name components.
 
 The export queries claim snapshot fields and billing child snapshots only; it does not read current patient demographics, coverage details, payer identifiers, or provider records. It also performs a final structural validation and refuses claims still in review or malformed frozen lines.
 
-Ready claims expose **Preview canonical export** in Claim Readiness. `ClaimExportController.getCanonicalJson` returns pretty-printed canonical JSON behind `LogicEMR_Manage_Claims`. It does not change claim status or create a submission; the future clearinghouse adapter owns those side effects.
+Ready and Exported claims expose **Preview canonical export** in Claim Readiness. `ClaimExportController.getCanonicalJson` returns pretty-printed canonical JSON behind `LogicEMR_Manage_Claims`. Preview is read-only.
+
+## 837P submission
+
+Ready claims expose **Submit 837P**. `ClaimSubmissionService` creates an auditable `Claim_Submission__c` record and queues a callout through `ClaimSubmissionProvider`. The packaged `StediClaimSubmissionProvider` transforms only the frozen canonical claim into Stedi's 837P JSON contract, sends an idempotency key, and captures the synchronous request, response, correlation ID, control number, HTTP result, and error details.
+
+Submission states are `Queued`, `Submitted`, `Rejected`, and `Failed`. A `Rejected` attempt represents a clearinghouse validation response and remains available while billing reopens and corrects the claim. A `Failed` attempt represents a transport or processing failure and can be retried with the same patient control number and idempotency key. Only `Submitted` changes the parent superbill from `Ready` to `Exported`.
+
+See [claim-submission.md](claim-submission.md) for Stedi setup and operational safeguards.
 
 ## Access
 
@@ -75,5 +86,5 @@ Ready claims expose **Preview canonical export** in Claim Readiness. `ClaimExpor
 
 ## Next billing increments
 
-- Add an 837P adapter that consumes `VendorNeutralClaim` and owns transmission lifecycle records.
-- Add acknowledgement, rejection, denial, remittance, and payment posting objects after outbound claim data is stable.
+- Add 277CA acknowledgment ingestion and claim-level rejection workflows.
+- Add 835 remittance, payment posting, denial management, and secondary-claim support after acknowledgment correlation is stable.

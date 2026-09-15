@@ -1,0 +1,53 @@
+.submission-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #dddbda;
+    border-radius: 0.25rem;
+    background: #fafaf9;
+}
+
+.heading,
+.submission-row,
+.attempt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.submission-row {
+    padding: 0.75rem 0;
+    border-top: 1px solid #dddbda;
+}
+
+.detail {
+    color: #5c5c5c;
+    font-size: 0.75rem;
+}
+
+.error-detail {
+    color: #ba0517;
+    font-size: 0.75rem;
+    max-width: 44rem;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.status-queued { background: #fff3cd; color: #6f4e00; }
+.status-submitted { background: #d4edda; color: #194e31; }
+.status-rejected,
+.status-failed { background: #fddde3; color: #8e030f; }
+
+@media (max-width: 48rem) {
+    .heading,
+    .submission-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

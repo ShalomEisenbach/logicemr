@@ -99,6 +99,22 @@ public with sharing class ClaimReadinessController {
         return buildWorkspaceForSuperbill(requerySuperbill(superbill.Id));
     }
 
+    @AuraEnabled
+    public static Workspace updateClaimDetails(Id superbillId, String placeOfServiceCode) {
+        requireManageClaims();
+        Superbill__c superbill = requireEditableSuperbill(superbillId);
+        if (String.isBlank(placeOfServiceCode) || !Pattern.matches('^[0-9]{2}$', placeOfServiceCode)) {
+            throw new AuraHandledException('Select a valid two-digit place of service code.');
+        }
+        superbill.Place_of_Service_Code__c = placeOfServiceCode;
+        superbill.Status__c = STATUS_NEEDS_REVIEW;
+        superbill.Ready_Date__c = null;
+        update superbill;
+        Workspace workspace = buildWorkspaceForSuperbill(requerySuperbill(superbill.Id));
+        persistValidation(workspace);
+        return buildWorkspaceForSuperbill(requerySuperbill(superbill.Id));
+    }
+
     @AuraEnabled(cacheable=true)
     public static FeeScheduleService.RateQuote quoteRate(
         Id superbillId,
@@ -117,7 +133,7 @@ public with sharing class ClaimReadinessController {
             throw new AuraHandledException('Encounter Id is required.');
         }
         Encounter__c encounter = [
-            SELECT Id, Status__c, Patient__c, Practitioner__c, Start__c
+            SELECT Id, Status__c, Class__c, Patient__c, Practitioner__c, Start__c
             FROM Encounter__c
             WHERE Id = :encounterId
             LIMIT 1
@@ -137,6 +153,9 @@ public with sharing class ClaimReadinessController {
         superbill.Patient__c = encounter.Patient__c;
         superbill.Rendering_Practitioner__c = encounter.Practitioner__c;
         superbill.Date_of_Service__c = serviceDate;
+        if (String.isBlank(superbill.Place_of_Service_Code__c)) {
+            superbill.Place_of_Service_Code__c = defaultPlaceOfService(encounter.Class__c);
+        }
         superbill.Coverage__c = findCoverage(encounter.Patient__c, serviceDate);
         superbill.Billing_Organization__c = findBillingOrganization();
         ClaimSnapshotService.populate(superbill);
@@ -433,6 +452,9 @@ public with sharing class ClaimReadinessController {
         if (superbill.Date_of_Service__c == null) {
             issues.add('Date of service is required.');
         }
+        if (String.isBlank(superbill.Place_of_Service_Code__c)) {
+            issues.add('Place of service is required.');
+        }
         if (superbill.Rendering_Practitioner__c == null) issues.add('Rendering practitioner is required.');
         if (superbill.Billing_Organization__c == null) {
             issues.add('Default billing organization is required.');
@@ -601,7 +623,7 @@ public with sharing class ClaimReadinessController {
                    Billing_Organization__r.City__c, Billing_Organization__r.State__c,
                    Billing_Organization__r.Postal_Code__c,
                    Rendering_Practitioner__c, Rendering_Practitioner__r.Name,
-                   Rendering_Practitioner__r.NPI__c, Date_of_Service__c, Status__c,
+                   Rendering_Practitioner__r.NPI__c, Date_of_Service__c, Place_of_Service_Code__c, Status__c,
                    Ready_Date__c, Validation_Messages__c,
                    Snapshot_Refreshed_At__c, Snapshot_Version__c,
                    Patient_First_Name__c, Patient_Last_Name__c, Patient_Date_of_Birth__c,
@@ -612,8 +634,9 @@ public with sharing class ClaimReadinessController {
                    Subscriber_Relationship__c, Subscriber_Member_Id__c,
                    Subscriber_Group_Number__c, Subscriber_Street__c, Subscriber_City__c,
                    Subscriber_State__c, Subscriber_Postal_Code__c, Subscriber_Country__c,
-                   Payer_Name__c, Payer_Identifier__c, Coverage_Effective_Start__c,
+                   Payer_Name__c, Payer_Identifier__c, Claim_Filing_Code__c, Coverage_Effective_Start__c,
                    Coverage_Effective_End__c, Rendering_Provider_Name__c,
+                   Rendering_Provider_First_Name__c, Rendering_Provider_Last_Name__c,
                    Rendering_Provider_NPI__c, Rendering_Provider_Taxonomy__c,
                    Billing_Provider_Name__c, Billing_Provider_NPI__c,
                    Billing_Provider_EIN__c, Billing_Provider_Taxonomy__c,
@@ -639,6 +662,13 @@ public with sharing class ClaimReadinessController {
             throw new AuraHandledException('Ready, exported, or voided superbills cannot be changed. Reopen a Ready superbill first.');
         }
         return superbill;
+    }
+
+    private static String defaultPlaceOfService(String encounterClass) {
+        if (encounterClass == 'Inpatient') return '21';
+        if (encounterClass == 'Emergency') return '23';
+        if (encounterClass == 'Virtual') return '02';
+        return '11';
     }
 
     private static Charge_Line__c requireCharge(Id chargeLineId, Id superbillId) {

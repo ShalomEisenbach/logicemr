@@ -1,5 +1,5 @@
 public with sharing class ClaimExportService {
-    public static final String SCHEMA_VERSION = '1.0';
+    public static final String SCHEMA_VERSION = '1.1';
     private static final Set<String> EXPORTABLE_STATUSES = new Set<String>{ 'Ready', 'Exported' };
 
     public static VendorNeutralClaim build(Id superbillId) {
@@ -8,6 +8,7 @@ public with sharing class ClaimExportService {
             SELECT Id, Name, Status__c, Date_of_Service__c, Ready_Date__c,
                    Encounter__c, Patient__c, Coverage__c, Rendering_Practitioner__c,
                    Billing_Organization__c, Snapshot_Refreshed_At__c, Snapshot_Version__c,
+                   Place_of_Service_Code__c, Claim_Filing_Code__c,
                    Patient_First_Name__c, Patient_Last_Name__c, Patient_Date_of_Birth__c,
                    Patient_Sex__c, Patient_Street__c, Patient_City__c, Patient_State__c,
                    Patient_Postal_Code__c, Patient_Country__c,
@@ -18,7 +19,8 @@ public with sharing class ClaimExportService {
                    Subscriber_State__c, Subscriber_Postal_Code__c, Subscriber_Country__c,
                    Coverage_Effective_Start__c, Coverage_Effective_End__c,
                    Payer_Name__c, Payer_Identifier__c,
-                   Rendering_Provider_Name__c, Rendering_Provider_NPI__c,
+                   Rendering_Provider_Name__c, Rendering_Provider_First_Name__c,
+                   Rendering_Provider_Last_Name__c, Rendering_Provider_NPI__c,
                    Rendering_Provider_Taxonomy__c, Billing_Provider_Name__c,
                    Billing_Provider_NPI__c, Billing_Provider_EIN__c,
                    Billing_Provider_Taxonomy__c, Billing_Provider_Street__c,
@@ -71,6 +73,8 @@ public with sharing class ClaimExportService {
         claim.claimIdentifier = superbill.Name;
         claim.status = superbill.Status__c;
         claim.dateOfService = superbill.Date_of_Service__c;
+        claim.placeOfServiceCode = superbill.Place_of_Service_Code__c;
+        claim.claimFilingCode = superbill.Claim_Filing_Code__c;
         claim.readyAt = superbill.Ready_Date__c;
         claim.snapshotVersion = superbill.Snapshot_Version__c;
         claim.snapshotRefreshedAt = superbill.Snapshot_Refreshed_At__c;
@@ -106,6 +110,8 @@ public with sharing class ClaimExportService {
 
         claim.renderingProvider = new VendorNeutralClaim.RenderingProvider();
         claim.renderingProvider.name = superbill.Rendering_Provider_Name__c;
+        claim.renderingProvider.firstName = superbill.Rendering_Provider_First_Name__c;
+        claim.renderingProvider.lastName = superbill.Rendering_Provider_Last_Name__c;
         claim.renderingProvider.npi = superbill.Rendering_Provider_NPI__c;
         claim.renderingProvider.taxonomyCode = superbill.Rendering_Provider_Taxonomy__c;
 
@@ -160,6 +166,8 @@ public with sharing class ClaimExportService {
         List<Charge_Line__c> charges
     ) {
         List<String> issues = ClaimSnapshotService.validate(superbill);
+        if (String.isBlank(superbill.Place_of_Service_Code__c)) issues.add('Place of service code is required.');
+        if (String.isBlank(superbill.Claim_Filing_Code__c)) issues.add('Claim filing code snapshot is required.');
         if (superbill.Encounter__c == null) issues.add('Encounter reference is required.');
         if (superbill.Patient__c == null) issues.add('Patient reference is required.');
         if (superbill.Coverage__c == null) issues.add('Coverage reference is required.');

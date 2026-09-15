@@ -20,6 +20,9 @@ jest.mock(
 jest.mock('@salesforce/apex/ClaimReadinessController.refreshClaimSnapshots', () => ({ default: jest.fn() }), {
     virtual: true
 });
+jest.mock('@salesforce/apex/ClaimReadinessController.updateClaimDetails', () => ({ default: jest.fn() }), {
+    virtual: true
+});
 jest.mock('@salesforce/apex/ClaimReadinessController.saveCharge', () => ({ default: jest.fn() }), {
     virtual: true
 });
@@ -85,7 +88,7 @@ describe('c-emr-claim-readiness', () => {
     });
 
     it('renders a ready superbill with diagnoses and charges', async () => {
-        getCanonicalJson.mockResolvedValue('{"schemaVersion":"1.0"}');
+        getCanonicalJson.mockResolvedValue('{"schemaVersion":"1.1"}');
         const element = createElement('c-emr-claim-readiness', { is: EmrClaimReadiness });
         element.recordId = 'a02000000000002';
         document.body.appendChild(element);
@@ -96,6 +99,7 @@ describe('c-emr-claim-readiness', () => {
                 Name: 'SB-00000002',
                 Status__c: 'Ready',
                 Date_of_Service__c: '2026-09-15',
+                Place_of_Service_Code__c: '11',
                 Coverage__r: { Payer__r: { Name: 'Test Payer' } },
                 Snapshot_Version__c: 2,
                 Snapshot_Refreshed_At__c: '2026-09-15T14:30:00.000Z',
@@ -109,6 +113,7 @@ describe('c-emr-claim-readiness', () => {
                 Subscriber_Member_Id__c: 'MEMBER-1',
                 Payer_Name__c: 'Test Payer',
                 Payer_Identifier__c: 'PAYER-1',
+                Claim_Filing_Code__c: 'CI',
                 Rendering_Provider_Name__c: 'Pat Provider',
                 Rendering_Provider_NPI__c: '1999999984',
                 Rendering_Provider_Taxonomy__c: '207Q00000X',
@@ -165,7 +170,7 @@ describe('c-emr-claim-readiness', () => {
         await flushPromises();
         await flushPromises();
         expect(getCanonicalJson).toHaveBeenCalledWith({ superbillId: 'a10000000000002' });
-        expect(element.shadowRoot.querySelector('lightning-textarea').value).toBe('{"schemaVersion":"1.0"}');
+        expect(element.shadowRoot.querySelector('lightning-textarea').value).toBe('{"schemaVersion":"1.1"}');
         const reopenButton = [...element.shadowRoot.querySelectorAll('lightning-button')].find(
             (button) => button.label === 'Reopen review'
         );

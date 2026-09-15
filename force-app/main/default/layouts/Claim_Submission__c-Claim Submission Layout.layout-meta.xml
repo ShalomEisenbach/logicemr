@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Layout xmlns="http://soap.sforce.com/2006/04/metadata">
+    <layoutSections>
+        <customLabel>false</customLabel><detailHeading>true</detailHeading><editHeading>true</editHeading>
+        <label>Claim Submission Information</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Name</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Superbill__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Status__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Provider_Used__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Attempt_Number__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Control_Number__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Idempotency_Key__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Correlation_Id__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Clearinghouse_Claim_Id__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Control_Number__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel><detailHeading>true</detailHeading><editHeading>false</editHeading>
+        <label>Processing</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Queued_At__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Last_Attempt_At__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Submitted_At__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Async_Job_Id__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Http_Status_Code__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Provider_Status__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel><detailHeading>true</detailHeading><editHeading>false</editHeading>
+        <label>Payloads and Errors</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Error_Message__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Request_Payload__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Response_Payload__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <showEmailCheckbox>false</showEmailCheckbox>
+    <showHighlightsPanel>true</showHighlightsPanel>
+    <showInteractionLogPanel>false</showInteractionLogPanel>
+    <showRunAssignmentRulesCheckbox>false</showRunAssignmentRulesCheckbox>
+    <showSubmitAndAttachButton>false</showSubmitAndAttachButton>
+</Layout>

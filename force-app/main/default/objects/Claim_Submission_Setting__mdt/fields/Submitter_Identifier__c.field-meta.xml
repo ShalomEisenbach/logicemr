@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Submitter_Identifier__c</fullName><description>Optional payer-assigned ETIN. When blank, Stedi uses the billing provider NPI.</description><externalId>false</externalId><fieldManageability>SubscriberControlled</fieldManageability><label>Submitter Identifier</label><length>80</length><required>false</required><type>Text</type><unique>false</unique>
+</CustomField>

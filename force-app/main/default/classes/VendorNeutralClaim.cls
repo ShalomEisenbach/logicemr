@@ -6,6 +6,8 @@ public class VendorNeutralClaim {
     public String claimIdentifier { get; set; }
     public String status { get; set; }
     public Date dateOfService { get; set; }
+    public String placeOfServiceCode { get; set; }
+    public String claimFilingCode { get; set; }
     public Datetime readyAt { get; set; }
     public Decimal snapshotVersion { get; set; }
     public Datetime snapshotRefreshedAt { get; set; }
@@ -58,6 +60,8 @@ public class VendorNeutralClaim {
 
     public class RenderingProvider {
         public String name { get; set; }
+        public String firstName { get; set; }
+        public String lastName { get; set; }
         public String npi { get; set; }
         public String taxonomyCode { get; set; }
     }

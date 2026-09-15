@@ -1,0 +1,64 @@
+<template>
+    <section class="submission-panel" aria-label="Claim submissions">
+        <div class="heading">
+            <div>
+                <h3 class="slds-text-title_caps">837P submissions</h3>
+                <p class="slds-text-body_small">The claim becomes Exported only after successful clearinghouse handoff.</p>
+            </div>
+            <div>
+                <lightning-button-icon
+                    icon-name="utility:refresh"
+                    alternative-text="Refresh submissions"
+                    title="Refresh submissions"
+                    disabled={isWorking}
+                    onclick={handleRefresh}
+                ></lightning-button-icon>
+                <lightning-button
+                    class="slds-m-left_x-small"
+                    variant="brand"
+                    label="Submit 837P"
+                    disabled={submitDisabled}
+                    onclick={handleSubmit}
+                ></lightning-button>
+            </div>
+        </div>
+
+        <template lwc:if={errorMessage}>
+            <div class="slds-text-color_error slds-m-top_small" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:if={hasSubmissions}>
+            <div class="submission-list slds-m-top_small">
+                <template for:each={submissions} for:item="submission">
+                    <article key={submission.Id} class="submission-row">
+                        <div>
+                            <span class={submission.statusClass}>{submission.Status__c}</span>
+                            <strong class="slds-m-left_x-small">{submission.Name}</strong>
+                            <p class="detail">PCN {submission.Patient_Control_Number__c} · {submission.Provider_Used__c}</p>
+                            <template lwc:if={submission.Correlation_Id__c}>
+                                <p class="detail">Correlation {submission.Correlation_Id__c}</p>
+                            </template>
+                            <template lwc:if={submission.Error_Message__c}>
+                                <p class="error-detail">{submission.Error_Message__c}</p>
+                            </template>
+                        </div>
+                        <div class="attempt">
+                            <span>Attempt {submission.Attempt_Number__c}</span>
+                            <template lwc:if={submission.canRetry}>
+                                <lightning-button
+                                    class="slds-m-left_small"
+                                    label="Retry"
+                                    data-id={submission.Id}
+                                    disabled={isWorking}
+                                    onclick={handleRetry}
+                                ></lightning-button>
+                            </template>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:else>
+            <p class="slds-text-body_small slds-m-top_small">No claim submissions yet.</p>
+        </template>
+    </section>
+</template>

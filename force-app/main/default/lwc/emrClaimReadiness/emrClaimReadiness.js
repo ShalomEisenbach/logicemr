@@ -5,6 +5,7 @@ import LightningConfirm from 'lightning/confirm';
 import getWorkspace from '@salesforce/apex/ClaimReadinessController.getWorkspace';
 import initializeSuperbill from '@salesforce/apex/ClaimReadinessController.initializeSuperbill';
 import refreshClaimSnapshots from '@salesforce/apex/ClaimReadinessController.refreshClaimSnapshots';
+import updateClaimDetails from '@salesforce/apex/ClaimReadinessController.updateClaimDetails';
 import saveCharge from '@salesforce/apex/ClaimReadinessController.saveCharge';
 import deleteCharge from '@salesforce/apex/ClaimReadinessController.deleteCharge';
 import markReady from '@salesforce/apex/ClaimReadinessController.markReady';
@@ -30,6 +31,25 @@ export default class EmrClaimReadiness extends LightningElement {
     rateMessage;
     quoteSequence = 0;
     codeSystems = ['CPT', 'HCPCS'];
+    placeOfServiceOptions = [
+        { label: '02 - Telehealth (not home)', value: '02' },
+        { label: '10 - Telehealth (home)', value: '10' },
+        { label: '11 - Office', value: '11' },
+        { label: '12 - Home', value: '12' },
+        { label: '21 - Inpatient Hospital', value: '21' },
+        { label: '22 - Outpatient Hospital', value: '22' },
+        { label: '23 - Emergency Room', value: '23' },
+        { label: '24 - Ambulatory Surgical Center', value: '24' },
+        { label: '31 - Skilled Nursing Facility', value: '31' },
+        { label: '32 - Nursing Facility', value: '32' },
+        { label: '49 - Independent Clinic', value: '49' },
+        { label: '50 - Federally Qualified Health Center', value: '50' },
+        { label: '53 - Community Mental Health Center', value: '53' },
+        { label: '71 - Public Health Clinic', value: '71' },
+        { label: '72 - Rural Health Clinic', value: '72' },
+        { label: '81 - Independent Laboratory', value: '81' },
+        { label: '99 - Other', value: '99' }
+    ];
     chargeDraft = this.emptyCharge();
 
     diagnosisColumns = [
@@ -83,12 +103,28 @@ export default class EmrClaimReadiness extends LightningElement {
         return this.workspace?.superbill?.Name;
     }
 
+    get superbillId() {
+        return this.workspace?.superbill?.Id;
+    }
+
     get status() {
         return this.workspace?.superbill?.Status__c;
     }
 
     get isReady() {
         return this.status === 'Ready';
+    }
+
+    get isExported() {
+        return this.status === 'Exported';
+    }
+
+    get canPreviewExport() {
+        return this.isReady || this.isExported;
+    }
+
+    get showSubmissionPanel() {
+        return this.isReady || this.isExported;
     }
 
     get isLocked() {
@@ -109,6 +145,10 @@ export default class EmrClaimReadiness extends LightningElement {
 
     get dateOfService() {
         return this.workspace?.superbill?.Date_of_Service__c;
+    }
+
+    get placeOfServiceCode() {
+        return this.workspace?.superbill?.Place_of_Service_Code__c;
     }
 
     get coverageName() {
@@ -168,7 +208,7 @@ export default class EmrClaimReadiness extends LightningElement {
 
     get payerSnapshot() {
         const snapshot = this.workspace?.superbill;
-        return `${snapshot?.Payer_Name__c || 'Missing'} · ${snapshot?.Payer_Identifier__c || 'payer ID missing'}`;
+        return `${snapshot?.Payer_Name__c || 'Missing'} · ${snapshot?.Payer_Identifier__c || 'payer ID missing'} · Filing ${snapshot?.Claim_Filing_Code__c || 'missing'}`;
     }
 
     get renderingProviderSnapshot() {
@@ -286,6 +326,16 @@ export default class EmrClaimReadiness extends LightningElement {
         await this.runMutation(
             () => refreshClaimSnapshots({ superbillId: this.workspace.superbill.Id }),
             'Subscriber and provider snapshots refreshed.'
+        );
+    }
+
+    async handlePlaceOfServiceChange(event) {
+        await this.runMutation(
+            () => updateClaimDetails({
+                superbillId: this.workspace.superbill.Id,
+                placeOfServiceCode: event.detail.value
+            }),
+            'Place of service updated.'
         );
     }
 
