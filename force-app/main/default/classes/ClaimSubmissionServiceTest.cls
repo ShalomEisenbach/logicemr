@@ -7,12 +7,12 @@ private class ClaimSubmissionServiceTest {
     ClaimSubmissionController.manageClaimsOverride = true;
     Test.setMock(HttpCalloutMock.class, new SuccessMock());
 
-    Claim_Submission__c queued;
+    Id queuedId;
     Test.startTest();
-    queued = ClaimSubmissionController.queueSubmission(data.superbill.Id);
+    queuedId = ClaimSubmissionController.queueSubmission(data.superbill.Id);
     Test.stopTest();
 
-    Claim_Submission__c stored = ClaimSubmissionService.getById(queued.Id);
+    Claim_Submission__c stored = ClaimSubmissionService.getById(queuedId);
     Superbill__c superbill = [
       SELECT Status__c
       FROM Superbill__c
@@ -155,9 +155,7 @@ private class ClaimSubmissionServiceTest {
     ClaimSubmissionService.skipEnqueue = true;
     ClaimSubmissionController.manageClaimsOverride = true;
 
-    Claim_Submission__c retried = ClaimSubmissionController.retrySubmission(
-      submission.Id
-    );
+    Id retriedId = ClaimSubmissionController.retrySubmission(submission.Id);
 
     Claim_Submission__c stored = [
       SELECT
@@ -166,7 +164,7 @@ private class ClaimSubmissionServiceTest {
         Patient_Control_Number__c,
         Async_Job_Id__c
       FROM Claim_Submission__c
-      WHERE Id = :retried.Id
+      WHERE Id = :retriedId
     ];
     System.assertEquals('Queued', stored.Status__c);
     System.assertEquals('IDEMPOTENCY-RETRY-1', stored.Idempotency_Key__c);
