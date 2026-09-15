@@ -11,6 +11,11 @@
         <label>CPT</label>
     </customValue>
     <customValue>
+        <fullName>HCPCS</fullName>
+        <default>false</default>
+        <label>HCPCS</label>
+    </customValue>
+    <customValue>
         <fullName>LOINC</fullName>
         <default>false</default>
         <label>LOINC</label>

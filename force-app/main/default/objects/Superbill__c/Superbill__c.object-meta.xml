@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Claim-ready snapshot of an encounter for billing review and downstream claim export.</description>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Superbill</label>
+    <nameField>
+        <displayFormat>SB-{00000000}</displayFormat>
+        <label>Superbill Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Superbills</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+</CustomObject>

@@ -69,6 +69,9 @@ public with sharing class EncounterWorkspaceController {
 
         encounter.Status__c = newStatus;
         update encounter;
+        if (newStatus == STATUS_FINISHED) {
+            ClaimReadinessController.prepareForFinishedEncounter(encounter.Id);
+        }
         return encounter;
     }
 

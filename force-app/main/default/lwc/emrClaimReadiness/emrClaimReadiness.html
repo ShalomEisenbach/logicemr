@@ -1,0 +1,215 @@
+<template>
+    <lightning-card title="Claim Readiness" icon-name="standard:orders">
+        <div slot="actions" class="actions">
+            <template lwc:if={hasSuperbill}>
+                <lightning-button-icon
+                    icon-name="utility:refresh"
+                    alternative-text="Sync from encounter"
+                    title="Sync from encounter"
+                    disabled={isLockedOrSaving}
+                    onclick={handleInitialize}
+                ></lightning-button-icon>
+                <lightning-button
+                    label="Add charge"
+                    disabled={isLockedOrSaving}
+                    onclick={handleAddCharge}
+                ></lightning-button>
+            </template>
+        </div>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+            </template>
+
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading claim readiness" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:elseif={hasSuperbill}>
+                <div class="summary">
+                    <div>
+                        <span class={statusClass}>{status}</span>
+                        <p class="summary-label">Superbill</p>
+                        <p>{superbillName}</p>
+                    </div>
+                    <div>
+                        <p class="summary-label">Date of service</p>
+                        <lightning-formatted-date-time
+                            value={dateOfService}
+                            year="numeric"
+                            month="short"
+                            day="2-digit"
+                            time-zone="UTC"
+                        ></lightning-formatted-date-time>
+                    </div>
+                    <div>
+                        <p class="summary-label">Coverage</p>
+                        <p>{coverageName}</p>
+                    </div>
+                    <div>
+                        <p class="summary-label">Total charges</p>
+                        <lightning-formatted-number
+                            value={totalCharges}
+                            format-style="currency"
+                            currency-code="USD"
+                        ></lightning-formatted-number>
+                    </div>
+                </div>
+
+                <template lwc:if={hasIssues}>
+                    <section class="issues" aria-label="Claim readiness issues">
+                        <div class="issue-heading">
+                            <lightning-icon icon-name="utility:warning" size="x-small"></lightning-icon>
+                            <span>Needs attention</span>
+                        </div>
+                        <ul>
+                            <template for:each={issues} for:item="issue">
+                                <li key={issue}>{issue}</li>
+                            </template>
+                        </ul>
+                    </section>
+                </template>
+                <template lwc:else>
+                    <div class="ready-message">
+                        <lightning-icon icon-name="utility:success" size="x-small"></lightning-icon>
+                        <span>All claim-readiness checks pass.</span>
+                    </div>
+                </template>
+
+                <section class="slds-m-top_medium">
+                    <h3 class="slds-text-title_caps slds-m-bottom_x-small">Diagnoses</h3>
+                    <template lwc:if={hasDiagnoses}>
+                        <lightning-datatable
+                            key-field="id"
+                            data={diagnoses}
+                            columns={diagnosisColumns}
+                            hide-checkbox-column
+                        ></lightning-datatable>
+                    </template>
+                    <template lwc:else><p class="empty">No diagnoses copied from the encounter.</p></template>
+                </section>
+
+                <section class="slds-m-top_medium">
+                    <h3 class="slds-text-title_caps slds-m-bottom_x-small">Charges</h3>
+                    <template lwc:if={hasCharges}>
+                        <lightning-datatable
+                            key-field="id"
+                            data={charges}
+                            columns={chargeColumns}
+                            hide-checkbox-column
+                            onrowaction={handleChargeAction}
+                        ></lightning-datatable>
+                    </template>
+                    <template lwc:else><p class="empty">No charge lines.</p></template>
+                </section>
+
+                <div class="footer-actions">
+                    <template lwc:if={isReady}>
+                        <lightning-button
+                            label="Reopen review"
+                            disabled={isSaving}
+                            onclick={handleReopen}
+                        ></lightning-button>
+                    </template>
+                    <template lwc:else>
+                        <lightning-button
+                            variant="brand"
+                            label="Mark claim ready"
+                            disabled={cannotMarkReady}
+                            onclick={handleMarkReady}
+                        ></lightning-button>
+                    </template>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <div class="empty-state">
+                    <p>Create a billing snapshot from the encounter diagnoses and completed procedures.</p>
+                    <lightning-button
+                        class="slds-m-top_small"
+                        variant="brand"
+                        label="Initialize superbill"
+                        disabled={isSaving}
+                        onclick={handleInitialize}
+                    ></lightning-button>
+                </div>
+            </template>
+        </div>
+
+        <template lwc:if={showChargeModal}>
+            <c-emr-modal title={chargeModalTitle} onclose={handleCloseCharge}>
+                <c-emr-code-search
+                    label="Procedure"
+                    placeholder="Search CPT or HCPCS"
+                    required
+                    include-record-id
+                    code-systems={codeSystems}
+                    value={codeSearchValue}
+                    oncodeselected={handleCodeSelected}
+                ></c-emr-code-search>
+                <div class="form-grid slds-m-top_small">
+                    <lightning-input
+                        type="date"
+                        name="serviceDate"
+                        label="Service date"
+                        value={chargeDraft.serviceDate}
+                        required
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                    <lightning-input
+                        type="number"
+                        name="units"
+                        label="Units"
+                        value={chargeDraft.units}
+                        min="1"
+                        step="1"
+                        required
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                    <lightning-input
+                        type="number"
+                        name="chargeAmount"
+                        label="Charge amount"
+                        value={chargeDraft.chargeAmount}
+                        min="0.01"
+                        step="0.01"
+                        formatter="currency"
+                        required
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                    <lightning-input
+                        name="modifiers"
+                        label="Modifiers"
+                        value={chargeDraft.modifiers}
+                        placeholder="25,59"
+                        maxlength="40"
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                    <lightning-input
+                        name="diagnosisPointers"
+                        label="Diagnosis pointers"
+                        value={chargeDraft.diagnosisPointers}
+                        placeholder="1,2"
+                        maxlength="40"
+                        required
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                </div>
+                <div slot="footer">
+                    <lightning-button
+                        label="Cancel"
+                        class="slds-m-right_small"
+                        onclick={handleCloseCharge}
+                    ></lightning-button>
+                    <lightning-button
+                        variant="brand"
+                        label="Save charge"
+                        disabled={isSaving}
+                        onclick={handleSaveCharge}
+                    ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+    </lightning-card>
+</template>

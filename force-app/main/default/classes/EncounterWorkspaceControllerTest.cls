@@ -43,6 +43,11 @@ private class EncounterWorkspaceControllerTest {
             .Status__c,
             'Persisted status should be Finished'
         );
+        System.assertEquals(
+            1,
+            [SELECT COUNT() FROM Superbill__c WHERE Encounter__c = :encounter.Id],
+            'Finishing an encounter should initialize one superbill'
+        );
     }
 
     @IsTest

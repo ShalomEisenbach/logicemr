@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Procedure_Ref__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Procedure Code Reference</label>
+    <referenceTo>Code_Reference__c</referenceTo>
+    <relationshipLabel>Charge Lines</relationshipLabel>
+    <relationshipName>Charge_Lines</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

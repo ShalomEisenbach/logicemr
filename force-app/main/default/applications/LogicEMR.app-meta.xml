@@ -39,6 +39,7 @@
     <tabs>Code_Reference__c</tabs>
     <tabs>Payer__c</tabs>
     <tabs>Organization__c</tabs>
+    <tabs>Superbill__c</tabs>
     <tabs>Code_Set_Import</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>LogicEMR_UtilityBar</utilityBar>

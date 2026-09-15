@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Ordered diagnosis snapshot used by a superbill and its charge-line diagnosis pointers.</description>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Superbill Diagnosis</label>
+    <nameField>
+        <displayFormat>SB-DX-{00000000}</displayFormat>
+        <label>Superbill Diagnosis Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Superbill Diagnoses</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+</CustomObject>
