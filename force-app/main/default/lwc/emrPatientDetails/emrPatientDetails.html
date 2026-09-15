@@ -1,0 +1,12 @@
+<template>
+    <div class="slds-p-around_medium">
+        <lightning-record-form
+            record-id={recordId}
+            object-api-name={patientObject}
+            layout-type="Full"
+            columns="2"
+            mode="view"
+            onsuccess={handleSuccess}
+        ></lightning-record-form>
+    </div>
+</template>
