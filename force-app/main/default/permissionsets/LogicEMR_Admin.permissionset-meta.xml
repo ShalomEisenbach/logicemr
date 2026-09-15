@@ -4,6 +4,14 @@
         <application>LogicEMR</application>
         <visible>true</visible>
     </applicationVisibilities>
+    <applicationVisibilities>
+        <application>LogicEMR_Billing</application>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <applicationVisibilities>
+        <application>LogicEMR_Scheduling</application>
+        <visible>true</visible>
+    </applicationVisibilities>
     <classAccesses>
         <apexClass>ClaimReadinessController</apexClass>
         <enabled>true</enabled>

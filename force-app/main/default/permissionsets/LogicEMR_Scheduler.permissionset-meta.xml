@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <applicationVisibilities>
-        <application>LogicEMR</application>
+        <application>LogicEMR_Scheduling</application>
         <visible>true</visible>
     </applicationVisibilities>
     <description>Scheduling desk access: CRUD on Appointment, Schedule, and Slot; register and update Patient demographics; create Encounter on Arrive; read Practitioner; LogicEMR scheduling tabs and app page.</description>
@@ -768,6 +768,10 @@
     </tabSettings>
     <tabSettings>
         <tab>Scheduling</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Slot__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
 </PermissionSet>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <brand>
+        <headerColor>#9050E9</headerColor>
+        <logo>LogicEMR_Billing_Logo</logo>
+        <logoVersion>1</logoVersion>
+        <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
+    </brand>
+    <description>LogicEMR claim readiness, fee schedule, payer, and superbill workspace.</description>
+    <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <label>LogicEMR Billing</label>
+    <navType>Standard</navType>
+    <tabs>Superbill__c</tabs>
+    <tabs>Payer__c</tabs>
+    <tabs>Fee_Schedule__c</tabs>
+    <tabs>Patient__c</tabs>
+    <tabs>Encounter__c</tabs>
+    <tabs>Organization__c</tabs>
+    <uiType>Lightning</uiType>
+    <utilityBar>LogicEMR_UtilityBar</utilityBar>
+</CustomApplication>

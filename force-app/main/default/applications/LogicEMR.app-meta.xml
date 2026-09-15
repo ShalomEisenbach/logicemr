@@ -8,39 +8,34 @@
         <type>Flexipage</type>
     </actionOverrides>
     <brand>
-        <headerColor>#0070D2</headerColor>
-        <shouldOverrideOrgTheme>false</shouldOverrideOrgTheme>
+        <headerColor>#0176D3</headerColor>
+        <logo>LogicEMR_Clinical_Logo</logo>
+        <logoVersion>1</logoVersion>
+        <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
     </brand>
-    <description>LogicEMR clinical workspace</description>
+    <description>LogicEMR clinical care and documentation workspace.</description>
     <formFactors>Small</formFactors>
     <formFactors>Large</formFactors>
     <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
     <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
-    <label>LogicEMR</label>
+    <label>LogicEMR Clinical</label>
     <navType>Standard</navType>
     <tabs>Patient_Search</tabs>
-    <tabs>LogicEMR_Admin</tabs>
     <tabs>Patient__c</tabs>
     <tabs>Encounter__c</tabs>
-    <tabs>Scheduling</tabs>
-    <tabs>Schedule_Creator</tabs>
-    <tabs>Appointment__c</tabs>
-    <tabs>Schedule__c</tabs>
-    <tabs>Practitioner__c</tabs>
     <tabs>Condition__c</tabs>
     <tabs>Observation__c</tabs>
     <tabs>MedicationRequest__c</tabs>
     <tabs>ServiceRequest__c</tabs>
     <tabs>Procedure__c</tabs>
     <tabs>NoteTemplate__c</tabs>
+    <tabs>Practitioner__c</tabs>
+    <tabs>Organization__c</tabs>
+    <tabs>LogicEMR_Admin</tabs>
     <tabs>Mapping_Definition__c</tabs>
     <tabs>Mapping_Builder</tabs>
     <tabs>Mapping_Runner</tabs>
     <tabs>Code_Reference__c</tabs>
-    <tabs>Payer__c</tabs>
-    <tabs>Fee_Schedule__c</tabs>
-    <tabs>Organization__c</tabs>
-    <tabs>Superbill__c</tabs>
     <tabs>Code_Set_Import</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>LogicEMR_UtilityBar</utilityBar>
