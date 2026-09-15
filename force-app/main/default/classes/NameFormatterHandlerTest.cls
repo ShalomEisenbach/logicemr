@@ -56,6 +56,32 @@ private class NameFormatterHandlerTest {
     }
 
     @IsTest
+    static void appointmentNamesStayMeaningfulAcrossTimeZones() {
+        Patient__c patient = new Patient__c(
+            MRN__c = 'MRN-NF-APPT',
+            First_Name__c = 'Jane',
+            Last_Name__c = 'Smith',
+            Date_of_Birth__c = Date.newInstance(1980, 5, 12)
+        );
+        insert patient;
+
+        Test.startTest();
+        Appointment__c appointment = new Appointment__c(
+            Patient__c = patient.Id,
+            Appointment_Type__c = 'Follow-up',
+            Start__c = Datetime.newInstanceGMT(2026, 9, 2, 2, 0, 0),
+            Status__c = 'Booked'
+        );
+        insert appointment;
+        Test.stopTest();
+
+        String storedName = [SELECT Name FROM Appointment__c WHERE Id = :appointment.Id].Name;
+        System.assert(storedName.contains('Smith, Jane'), storedName);
+        System.assert(storedName.contains('Follow-up'), storedName);
+        System.assert(!storedName.contains('2026-'), 'Stored Name should not embed a timezone-dependent datetime: ' + storedName);
+    }
+
+    @IsTest
     static void truncatesComposedNameToEightyCharacters() {
         Patient__c patient = insertPatient('MRN-NF-TRUNC');
         String longDisplay = 'Chest tightness ' + 'x'.repeat(80);

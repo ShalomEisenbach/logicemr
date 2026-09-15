@@ -53,7 +53,7 @@ public with sharing class StediEligibilityProvider implements EligibilityProvide
                 applyParsedBenefits(result, ctx.rawBody);
             }
         } catch (Exception e) {
-            markError(result, e.getMessage());
+            markError(result, calloutExceptionMessage(e));
             if (String.isBlank(result.rawResponse) && String.isNotBlank(ctx.rawBody)) {
                 result.rawResponse = ctx.rawBody;
             }
@@ -557,6 +557,21 @@ public with sharing class StediEligibilityProvider implements EligibilityProvide
             'Stedi returned Unauthorized. Edit External Credential Stedi Eligibility → principal Stedi_API → ' +
             'add authentication parameter ApiKey (exact name) with your Stedi API key. ' +
             'Then grant External Credential Principal Access Stedi_Eligibility-Stedi_API on LogicEMR Admin, Clinician, and Billing.';
+    }
+
+    @TestVisible
+    private static String calloutExceptionMessage(Exception error) {
+        String message = error == null ? null : error.getMessage();
+        String normalized = String.isBlank(message) ? '' : message.toLowerCase();
+        if (
+            normalized.contains('couldn\'t access credential') ||
+            normalized.contains('could not access credential') ||
+            normalized.contains('external credential') ||
+            normalized.contains('named credential') && normalized.contains('permission')
+        ) {
+            return unauthorizedSetupMessage();
+        }
+        return String.isBlank(message) ? 'Eligibility service is unavailable.' : message;
     }
 
     private static String firstErrorMessage(Map<String, Object> root) {

@@ -1,132 +1,157 @@
 <template>
-	<lightning-card>
-		<div class="slds-p-horizontal_medium slds-p-bottom_medium">
-			<template lwc:if={errorMessage}>
-				<div class="slds-text-color_error" role="alert">{errorMessage}</div>
-			</template>
-			<template lwc:elseif={hasPatient}>
-				<div class="banner">
-					<div class="identity">
-						<p class="slds-text-heading_medium">
-							<c-emr-record-link record-id={patientId} object-api-name={patientObjectApiName} label={patientName}></c-emr-record-link>
-						</p>
-						<template lwc:if={ageLabel}>
-							<p class="slds-text-body_regular slds-text-color_weak">{ageLabel}</p>
-						</template>
-					</div>
-					<div class="facts">
-						<div class="fact">
-							<p class="slds-text-title_caps">MRN</p>
-							<p class="slds-text-body_regular">{mrn}</p>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">DOB</p>
-							<template lwc:if={dateOfBirth}>
-								<p class="slds-text-body_regular">
-									<lightning-formatted-date-time value={dateOfBirth} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time>
-								</p>
-							</template>
-							<template lwc:else>
-								<p class="slds-text-body_regular">{emptyValue}</p>
-							</template>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">Sex</p>
-							<p class="slds-text-body_regular">{sexAtBirth}</p>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">Phone</p>
-							<template lwc:if={phone}>
-								<p class="slds-text-body_regular">
-									<lightning-formatted-phone value={phone}></lightning-formatted-phone>
-								</p>
-							</template>
-							<template lwc:else>
-								<p class="slds-text-body_regular">{emptyValue}</p>
-							</template>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">Email</p>
-							<template lwc:if={email}>
-								<p class="slds-text-body_regular">
-									<lightning-formatted-email value={email}></lightning-formatted-email>
-								</p>
-							</template>
-							<template lwc:else>
-								<p class="slds-text-body_regular">{emptyValue}</p>
-							</template>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">Status</p>
-							<template lwc:if={status}>
-								<span class={statusBadgeClass}>{status}</span>
-							</template>
-							<template lwc:else>
-								<p class="slds-text-body_regular">{emptyValue}</p>
-							</template>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">Address</p>
-							<template lwc:if={address}>
-								<p class="slds-text-body_regular">{address}</p>
-							</template>
-							<template lwc:else>
-								<p class="slds-text-body_regular">{emptyValue}</p>
-							</template>
-						</div>
-						<div class="fact">
-							<p class="slds-text-title_caps">Coverage</p>
-							<template lwc:if={coverageName}>
-								<p class="slds-text-body_regular">{coverageName}</p>
-							</template>
-							<template lwc:else>
-								<p class="slds-text-body_regular">{emptyValue}</p>
-							</template>
-						</div>
-					</div>
-					<template lwc:if={showDocumentActions}>
-						<div class="document-actions">
-							<c-emr-document-share
-								patient-id={patientId}
-								doc-type="ChartSummary"
-								show-print
-								show-email
-								print-label="Print chart"
-								email-label="Email chart"
-							></c-emr-document-share>
-						</div>
-					</template>
-				</div>
-				<template lwc:if={showVitals}>
-					<div class="vitals">
-						<div class="vitals-heading">
-							<p class="slds-text-title_caps">Latest vitals</p>
-							<template lwc:if={vitalsRecordedAt}>
-								<p class="slds-text-body_small slds-text-color_weak">
-									Recorded &nbsp;
-									<lightning-formatted-date-time value={vitalsRecordedAt} year="numeric" month="short" day="2-digit" hour="numeric" minute="2-digit"></lightning-formatted-date-time>
-								</p>
-							</template>
-						</div>
-						<template lwc:if={hasVitals}>
-							<div class="vital-list">
-								<template for:each={vitalItems} for:item="item">
-									<div key={item.key} class="vital">
-										<p class="slds-text-title_caps">{item.label}</p>
-										<p class="vital-value">{item.value}</p>
-									</div>
-								</template>
-							</div>
-						</template>
-						<template lwc:else>
-							<p class="slds-text-body_regular slds-text-color_weak">No vitals recorded</p>
-						</template>
-					</div>
-				</template>
-				<div class="alerts">
-					<c-emr-alert-bar record-id={recordId}></c-emr-alert-bar>
-				</div>
-			</template>
-		</div>
-	</lightning-card>
+  <lightning-card>
+    <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+      <template lwc:if={errorMessage}>
+        <div class="slds-text-color_error" role="alert">{errorMessage}</div>
+      </template>
+      <template lwc:elseif={hasPatient}>
+        <div class="banner">
+          <div class="identity">
+            <p class="slds-text-heading_medium">
+              <c-emr-record-link
+                record-id={patientId}
+                object-api-name={patientObjectApiName}
+                label={patientName}
+              ></c-emr-record-link>
+            </p>
+            <template lwc:if={ageLabel}>
+              <p class="slds-text-body_regular slds-text-color_weak">
+                {ageLabel}
+              </p>
+            </template>
+          </div>
+          <div class="facts">
+            <div class="fact">
+              <p class="slds-text-title_caps">MRN</p>
+              <p class="slds-text-body_regular">{mrn}</p>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">DOB</p>
+              <template lwc:if={dateOfBirth}>
+                <p class="slds-text-body_regular">
+                  <lightning-formatted-date-time
+                    value={dateOfBirth}
+                    year="numeric"
+                    month="short"
+                    day="2-digit"
+                    time-zone="UTC"
+                  ></lightning-formatted-date-time>
+                </p>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_regular">{emptyValue}</p>
+              </template>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">Sex</p>
+              <p class="slds-text-body_regular">{sexAtBirth}</p>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">Phone</p>
+              <template lwc:if={phone}>
+                <p class="slds-text-body_regular">
+                  <lightning-formatted-phone
+                    value={phone}
+                  ></lightning-formatted-phone>
+                </p>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_regular">{emptyValue}</p>
+              </template>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">Email</p>
+              <template lwc:if={email}>
+                <p class="slds-text-body_regular">
+                  <lightning-formatted-email
+                    value={email}
+                  ></lightning-formatted-email>
+                </p>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_regular">{emptyValue}</p>
+              </template>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">Status</p>
+              <template lwc:if={status}>
+                <span class={statusBadgeClass}>{status}</span>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_regular">{emptyValue}</p>
+              </template>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">Address</p>
+              <template lwc:if={address}>
+                <p class="slds-text-body_regular">{address}</p>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_regular">{emptyValue}</p>
+              </template>
+            </div>
+            <div class="fact">
+              <p class="slds-text-title_caps">Coverage</p>
+              <template lwc:if={coverageName}>
+                <p class="slds-text-body_regular">{coverageName}</p>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_regular">{emptyValue}</p>
+              </template>
+            </div>
+          </div>
+          <template lwc:if={showDocumentActions}>
+            <div class="document-actions">
+              <c-emr-document-share
+                patient-id={patientId}
+                doc-type="ChartSummary"
+                show-print
+                show-email
+                print-label="Print chart"
+                email-label="Email chart"
+              ></c-emr-document-share>
+            </div>
+          </template>
+        </div>
+        <template lwc:if={showVitals}>
+          <div class="vitals">
+            <div class="vitals-heading">
+              <p class="slds-text-title_caps">Latest vitals</p>
+              <template lwc:if={vitalsRecordedAt}>
+                <p class="slds-text-body_small slds-text-color_weak">
+                  Recorded &nbsp;
+                  <lightning-formatted-date-time
+                    value={vitalsRecordedAt}
+                    year="numeric"
+                    month="short"
+                    day="2-digit"
+                    hour="numeric"
+                    minute="2-digit"
+                  ></lightning-formatted-date-time>
+                </p>
+              </template>
+            </div>
+            <template lwc:if={hasVitals}>
+              <div class="vital-list">
+                <template for:each={vitalItems} for:item="item">
+                  <div key={item.key} class="vital">
+                    <p class="slds-text-title_caps">{item.label}</p>
+                    <p class="vital-value">{item.value}</p>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <template lwc:else>
+              <p class="slds-text-body_regular slds-text-color_weak">
+                No vitals recorded
+              </p>
+            </template>
+          </div>
+        </template>
+        <div class="alerts">
+          <c-emr-alert-bar record-id={recordId}></c-emr-alert-bar>
+        </div>
+      </template>
+    </div>
+  </lightning-card>
 </template>

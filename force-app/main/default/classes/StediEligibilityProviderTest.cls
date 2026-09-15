@@ -102,6 +102,17 @@ private class StediEligibilityProviderTest {
     }
 
     @IsTest
+    static void credentialExceptionsReturnActionableSetupGuidance() {
+        String message = StediEligibilityProvider.calloutExceptionMessage(
+            new CalloutException('We couldn\'t access the credential because the external credential principal is unavailable.')
+        );
+
+        System.assert(message.contains('Stedi Eligibility'), message);
+        System.assert(message.contains('Stedi_API'), message);
+        System.assert(!message.contains('couldn\'t access the credential'), message);
+    }
+
+    @IsTest
     static void checkMapsNonCompliantValuesWithoutThrowing() {
         Fixture data = insertFixture();
         EligibilityProviderFactory.settingsOverride = new List<Eligibility_Setting__mdt>{

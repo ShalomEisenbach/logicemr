@@ -18,6 +18,7 @@ import STREET_FIELD from '@salesforce/schema/Patient__c.Street__c';
 import CITY_FIELD from '@salesforce/schema/Patient__c.City__c';
 import STATE_FIELD from '@salesforce/schema/Patient__c.State__c';
 import POSTAL_CODE_FIELD from '@salesforce/schema/Patient__c.Postal_Code__c';
+import { calculateAgeLabel } from 'c/emrDateUtils';
 
 const PATIENT_FIELDS = [
     FIRST_NAME_FIELD,
@@ -136,27 +137,7 @@ export default class EmrPatientBanner extends LightningElement {
         if (!dob) {
             return '';
         }
-        const birth = new Date(dob);
-        if (Number.isNaN(birth.getTime())) {
-            return '';
-        }
-        const today = new Date();
-        let years = today.getFullYear() - birth.getFullYear();
-        let months = today.getMonth() - birth.getMonth();
-        if (today.getDate() < birth.getDate()) {
-            months -= 1;
-        }
-        if (months < 0) {
-            years -= 1;
-            months += 12;
-        }
-        if (years < 0) {
-            return '';
-        }
-        if (years === 0) {
-            return months === 1 ? '1 month' : `${months} months`;
-        }
-        return years === 1 ? '1 year' : `${years} years`;
+        return calculateAgeLabel(dob);
     }
 
     get mrn() {

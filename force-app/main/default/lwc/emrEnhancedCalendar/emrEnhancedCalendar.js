@@ -79,13 +79,30 @@ const PAINT_FREE = 'Free';
 const PAINT_BLOCKED = 'Blocked';
 
 export default class EmrEnhancedCalendar extends NavigationMixin(LightningElement) {
-    @api practitionerId;
+    _practitionerId;
+    _embedded = false;
+
+    @api
+    get practitionerId() {
+        return this._practitionerId;
+    }
+    set practitionerId(value) {
+        this._practitionerId = value;
+    }
+
+    @api
+    get embedded() {
+        return this._embedded;
+    }
+    set embedded(value) {
+        this._embedded = value === true;
+    }
     practitionerIds = [];
     locationKey = ANY_LOCATION;
     locationOptions = [{ label: 'Any location', value: ANY_LOCATION }];
     schedules = [];
     nextAvailability = [];
-    viewMode = VIEW_WEEK;
+    viewMode = VIEW_DAY;
     selectedDate;
     slotDurationMinutes = DEFAULT_DURATION;
     defaultScheduleId;
@@ -98,7 +115,6 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     hideFilters = false;
     hideManageAvailability = false;
     lockedPatientId;
-    @api embedded = false;
     state = emptyState();
     _gridRequestId = 0;
 
@@ -280,12 +296,12 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         if (!context) {
             return;
         }
-        this.embedded = true;
+        this._embedded = true;
         this.hideFilters = true;
         this.hideManageAvailability = true;
         this.manageAvailability = false;
         this.practitionerIds = (context.practitionerIds || []).filter(Boolean);
-        this.practitionerId = this.practitionerIds[0] || context.practitionerId;
+        this._practitionerId = this.practitionerIds[0] || context.practitionerId;
         if (this.practitionerId && !this.practitionerIds.includes(this.practitionerId)) {
             this.practitionerIds = [this.practitionerId, ...this.practitionerIds];
         }
@@ -394,7 +410,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             const context = slotContext(slot);
             return {
                 id: slot.id,
-                label: slot.status === SLOT_FREE ? slot.practitionerName || slot.locationName || '' : '',
+                label: slot.status === SLOT_FREE && !this.isWeek && this.practitionerId ? slot.locationName || '' : '',
                 title: `${slot.status} · ${formatClock(slot.startTime, TIME_ZONE)}–${formatClock(slot.endTime, TIME_ZONE)}${context}`,
                 className: slotClass(slot.status),
                 style: `${positionStyle(
@@ -479,7 +495,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     }
 
     async handlePractitionerChange(event) {
-        this.practitionerId = event.detail.recordId;
+        this._practitionerId = event.detail.recordId;
         this.practitionerIds = this.practitionerId ? [this.practitionerId] : [];
         if (!this.practitionerId) {
             this.manageAvailability = false;
@@ -533,7 +549,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     handleNextAvailabilityClick(event) {
         const practitionerId = event.currentTarget.dataset.practitionerId;
         const dayKey = event.currentTarget.dataset.dayKey;
-        this.practitionerId = practitionerId || undefined;
+        this._practitionerId = practitionerId || undefined;
         this.practitionerIds = this.practitionerId ? [this.practitionerId] : [];
         if (dayKey) {
             this.selectedDate = dayKey;
@@ -635,7 +651,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.drag = undefined;
         try {
             event.currentTarget.releasePointerCapture(event.pointerId);
-        } catch (e) {
+        } catch {
             // Capture may already be released.
         }
         if (!drag.moved) {
@@ -673,7 +689,11 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             this.slotDurationMinutes,
             ROW_HEIGHT
         );
-        this.paint = { dayKey, startMinutes: minutes, endMinutes: minutes + this.slotDurationMinutes };
+        this.paint = {
+            dayKey,
+            startMinutes: minutes,
+            endMinutes: minutes + this.slotDurationMinutes
+        };
         event.currentTarget.setPointerCapture(event.pointerId);
         this.closePopovers();
     }
@@ -704,7 +724,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         this.paint = undefined;
         try {
             event.currentTarget.releasePointerCapture(event.pointerId);
-        } catch (e) {
+        } catch {
             // Capture may already be released.
         }
         await this.commitPaint(paint);
@@ -820,10 +840,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 appointmentName: result.appointmentName || result.appointment?.Name,
                 appointmentStatus: result.appointmentStatus
             });
-            this.toast(
-                (result.appointmentName || 'Appointment booked.') + ' Confirmation queued.',
-                'success'
-            );
+            this.toast((result.appointmentName || 'Appointment booked.') + ' Confirmation queued.', 'success');
             this.loadNextAvailability();
             this.dispatchEvent(
                 new CustomEvent('booked', {
@@ -847,7 +864,11 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     async handleArrive() {
         await this.runBlockAction(
-            (block) => applyOptimisticStatus(this.state, { appointmentId: block.id, status: APPT_ARRIVED }),
+            (block) =>
+                applyOptimisticStatus(this.state, {
+                    appointmentId: block.id,
+                    status: APPT_ARRIVED
+                }),
             (block) => arriveAppointment({ appointmentId: block.id }),
             (block, result) =>
                 confirmStatus(this.state, {
@@ -880,7 +901,11 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
 
     async handleNoShow() {
         await this.runBlockAction(
-            (block) => applyOptimisticStatus(this.state, { appointmentId: block.id, status: APPT_NO_SHOW }),
+            (block) =>
+                applyOptimisticStatus(this.state, {
+                    appointmentId: block.id,
+                    status: APPT_NO_SHOW
+                }),
             (block) => markNoShow({ appointmentId: block.id }),
             (block, result) =>
                 confirmStatus(this.state, {
@@ -897,9 +922,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             return;
         }
         const recordId = block.encounterId || block.patientId;
-        const objectApiName = block.encounterId
-            ? ENCOUNTER_OBJECT.objectApiName
-            : PATIENT_OBJECT.objectApiName;
+        const objectApiName = block.encounterId ? ENCOUNTER_OBJECT.objectApiName : PATIENT_OBJECT.objectApiName;
         this.handleCloseActions();
         if (!recordId) {
             return;
@@ -917,7 +940,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
                 locationName: this.locationKey === ANY_LOCATION ? null : this.locationKey
             });
             this.nextAvailability = rows || [];
-        } catch (error) {
+        } catch {
             this.nextAvailability = [];
         }
     }
@@ -988,8 +1011,9 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
             this.schedules = schedules || [];
             this.defaultScheduleId = view?.defaultScheduleId || this.schedules[0]?.id;
             this.slotDurationMinutes =
-                (view?.slots && view.slots.length ? view.slotDurationMinutes : this.schedules[0]?.slotDurationMinutes) ||
-                DEFAULT_DURATION;
+                (view?.slots && view.slots.length
+                    ? view.slotDurationMinutes
+                    : this.schedules[0]?.slotDurationMinutes) || DEFAULT_DURATION;
         } catch (error) {
             if (requestId !== this._gridRequestId) {
                 return;
@@ -1037,11 +1061,12 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
     }
 
     async commitPaint(paint) {
-        const scheduleId = resolveScheduleId(
-            this.schedules,
-            this.state.slots,
-            this.locationKey === ANY_LOCATION ? null : this.locationKey
-        ) || this.defaultScheduleId;
+        const scheduleId =
+            resolveScheduleId(
+                this.schedules,
+                this.state.slots,
+                this.locationKey === ANY_LOCATION ? null : this.locationKey
+            ) || this.defaultScheduleId;
         if (!scheduleId) {
             this.toast('Create a schedule for this provider before painting availability.', 'error');
             return;
@@ -1105,38 +1130,36 @@ export default class EmrEnhancedCalendar extends NavigationMixin(LightningElemen
         const previousStatus = slot.status;
         const nextStatus = previousStatus === SLOT_BLOCKED ? SLOT_FREE : SLOT_BLOCKED;
         this.state = {
-            slots: this.state.slots.map((row) =>
-                row.id === slot.id
+            slots: this.state.slots.map((row) => {
+                return row.id === slot.id
                     ? {
                           ...row,
                           status: nextStatus,
                           blockReason: nextStatus === SLOT_BLOCKED ? row.blockReason || 'Blocked' : null
                       }
-                    : row
-            ),
+                    : row;
+            }),
             blocks: this.state.blocks
         };
         this.isWorking = true;
         try {
             const updated = await toggleSlotStatus({ slotId: slot.id });
             this.state = {
-                slots: this.state.slots.map((row) =>
-                    row.id === slot.id
+                slots: this.state.slots.map((row) => {
+                    return row.id === slot.id
                         ? {
                               ...row,
                               status: updated.status,
                               blockReason: updated.blockReason
                           }
-                        : row
-                ),
+                        : row;
+                }),
                 blocks: this.state.blocks
             };
             this.loadNextAvailability();
         } catch (error) {
             this.state = {
-                slots: this.state.slots.map((row) =>
-                    row.id === slot.id ? { ...row, status: previousStatus } : row
-                ),
+                slots: this.state.slots.map((row) => (row.id === slot.id ? { ...row, status: previousStatus } : row)),
                 blocks: this.state.blocks
             };
             this.toast(reduceError(error), 'error');

@@ -1,16 +1,24 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <content>LogicEMR_Billing_Home</content>
+        <formFactor>Large</formFactor>
+        <pageOrSobjectType>standard-home</pageOrSobjectType>
+        <type>Flexipage</type>
+    </actionOverrides>
     <brand>
         <headerColor>#9050E9</headerColor>
         <logo>LogicEMR_Billing_Logo</logo>
         <logoVersion>1</logoVersion>
         <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
     </brand>
-    <description>LogicEMR claim readiness, fee schedule, payer, and superbill workspace.</description>
+    <description
+  >LogicEMR claim readiness, fee schedule, payer, and superbill workspace.</description>
     <formFactors>Small</formFactors>
     <formFactors>Large</formFactors>
     <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
-    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavPersonalizationDisabled>true</isNavPersonalizationDisabled>
     <label>LogicEMR Billing</label>
     <navType>Standard</navType>
     <tabs>standard-home</tabs>

@@ -1,0 +1,50 @@
+<template>
+    <div class="slds-grid slds-gutters slds-wrap">
+        <section class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-m-bottom_medium">
+            <lightning-card title="Claim readiness work queue" icon-name="standard:orders">
+                <div class="slds-p-horizontal_medium">
+                    <template lwc:if={superbillError}>
+                        <p class="slds-text-color_error" role="alert">{superbillError}</p>
+                    </template>
+                    <template lwc:elseif={hasSuperbills}>
+                        <ul class="work-list">
+                            <template for:each={superbills} for:item="row">
+                                <li key={row.id} class="work-row">
+                                    <c-emr-record-link record-id={row.id} object-api-name={superbillObjectApiName} label={row.name}></c-emr-record-link>
+                                    <p class="slds-text-body_small slds-text-color_weak">{row.patient} · {row.status}</p>
+                                    <lightning-formatted-date-time value={row.dateOfService} year="numeric" month="short" day="2-digit" time-zone="UTC"></lightning-formatted-date-time>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template lwc:else>
+                        <p>No superbills need attention.</p>
+                    </template>
+                </div>
+            </lightning-card>
+        </section>
+        <section class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-m-bottom_medium">
+            <lightning-card title="Recent claim submissions" icon-name="standard:document">
+                <div class="slds-p-horizontal_medium">
+                    <template lwc:if={submissionError}>
+                        <p class="slds-text-color_error" role="alert">{submissionError}</p>
+                    </template>
+                    <template lwc:elseif={hasSubmissions}>
+                        <ul class="work-list">
+                            <template for:each={submissions} for:item="row">
+                                <li key={row.id} class="work-row">
+                                    <c-emr-record-link record-id={row.id} object-api-name={submissionObjectApiName} label={row.name}></c-emr-record-link>
+                                    <p class="slds-text-body_small slds-text-color_weak">{row.status} · {row.provider}</p>
+                                    <lightning-formatted-date-time value={row.submittedAt} year="numeric" month="short" day="2-digit" hour="numeric" minute="2-digit"></lightning-formatted-date-time>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template lwc:else>
+                        <p>No claim submissions yet.</p>
+                    </template>
+                </div>
+            </lightning-card>
+        </section>
+    </div>
+</template>

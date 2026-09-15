@@ -118,7 +118,9 @@ export default class EmrScheduleManagement extends LightningElement {
             key: day.value,
             label: day.label,
             value: day.value,
-            windows: (this.hoursByDay[day.value] || []).map((window) => ({ ...window }))
+            windows: (this.hoursByDay[day.value] || []).map((window) => ({
+                ...window
+            }))
         }));
     }
 
@@ -261,9 +263,9 @@ export default class EmrScheduleManagement extends LightningElement {
         const windowId = event.currentTarget.dataset.windowId;
         const field = event.currentTarget.dataset.field;
         const value = event.detail.value;
-        const windows = (this.hoursByDay[day] || []).map((row) =>
-            row.id === windowId ? { ...row, [field]: value } : row
-        );
+        const windows = (this.hoursByDay[day] || []).map((row) => {
+            return row.id === windowId ? { ...row, [field]: value } : row;
+        });
         this.hoursByDay = { ...this.hoursByDay, [day]: windows };
         this.schedulePreview();
     }
@@ -428,7 +430,9 @@ export default class EmrScheduleManagement extends LightningElement {
         try {
             this.schedules = (await getSchedules({ practitionerId: this.practitionerId })) || [];
             const keepId = selectId || this.selectedScheduleId;
-            const match = keepId ? this.schedules.find((row) => row.id === keepId) : undefined;
+            const match = keepId
+                ? this.schedules.find((row) => row.id === keepId)
+                : this.schedules.find((row) => row.active !== false) || this.schedules[0];
             if (match) {
                 this.applySchedule(match);
                 await this.loadSummary();
@@ -477,6 +481,7 @@ export default class EmrScheduleManagement extends LightningElement {
         if (this._previewTimer) {
             clearTimeout(this._previewTimer);
         }
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
         this._previewTimer = setTimeout(() => this.refreshPreview(), 350);
     }
 
@@ -603,13 +608,13 @@ export default class EmrScheduleManagement extends LightningElement {
 function defaultHoursByDay(idFactory) {
     const makeId = idFactory || (() => `seed-${Math.random().toString(36).slice(2, 8)}`);
     const result = {
-        '0': [],
-        '1': [],
-        '2': [],
-        '3': [],
-        '4': [],
-        '5': [],
-        '6': []
+        0: [],
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: []
     };
     ['1', '2', '3', '4', '5'].forEach((day) => {
         result[day] = [{ id: makeId(), startTime: '09:00', endTime: '17:00' }];

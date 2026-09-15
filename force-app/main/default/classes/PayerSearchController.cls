@@ -9,7 +9,7 @@ public with sharing class PayerSearchController {
     }
 
     @AuraEnabled
-    public static Payer__c getPayer(Id payerId) {
+    public static PayerSummary getPayer(Id payerId) {
         if (payerId == null) {
             throw auraError('Payer Id is required.');
         }
@@ -22,11 +22,11 @@ public with sharing class PayerSearchController {
         if (rows.isEmpty()) {
             throw auraError('Payer was not found.');
         }
-        return rows[0];
+        return new PayerSummary(rows[0]);
     }
 
     @AuraEnabled
-    public static Payer__c savePayerIdentifier(Id payerId, String stediPayerId) {
+    public static PayerSummary savePayerIdentifier(Id payerId, String stediPayerId) {
         if (payerId == null) {
             throw auraError('Payer Id is required.');
         }
@@ -45,7 +45,22 @@ public with sharing class PayerSearchController {
         Payer__c payer = rows[0];
         payer.Payer_Identifier__c = stediPayerId.trim();
         update payer;
-        return payer;
+        return new PayerSummary(payer);
+    }
+
+    public class PayerSummary {
+        @AuraEnabled
+        public Id payerId { get; private set; }
+        @AuraEnabled
+        public String name { get; private set; }
+        @AuraEnabled
+        public String payerIdentifier { get; private set; }
+
+        public PayerSummary(Payer__c payer) {
+            payerId = payer.Id;
+            name = payer.Name;
+            payerIdentifier = payer.Payer_Identifier__c;
+        }
     }
 
     private static AuraHandledException auraError(String message) {

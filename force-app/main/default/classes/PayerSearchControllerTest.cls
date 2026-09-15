@@ -40,12 +40,14 @@ private class PayerSearchControllerTest {
         insert payer;
 
         Test.startTest();
-        Payer__c loaded = PayerSearchController.getPayer(payer.Id);
-        Payer__c saved = PayerSearchController.savePayerIdentifier(payer.Id, '  KMQTZ  ');
+        PayerSearchController.PayerSummary loaded = PayerSearchController.getPayer(payer.Id);
+        PayerSearchController.PayerSummary saved = PayerSearchController.savePayerIdentifier(payer.Id, '  KMQTZ  ');
         Test.stopTest();
 
-        System.assertEquals(null, loaded.Payer_Identifier__c, 'New payer should have no Stedi id');
-        System.assertEquals('KMQTZ', saved.Payer_Identifier__c, 'Save should trim and store the Stedi id');
+        System.assertEquals(payer.Id, loaded.payerId, 'DTO should expose the payer id without namespace-sensitive keys');
+        System.assertEquals('Aetna', loaded.name, 'DTO should expose the payer name');
+        System.assertEquals(null, loaded.payerIdentifier, 'New payer should have no Stedi id');
+        System.assertEquals('KMQTZ', saved.payerIdentifier, 'Save should trim and expose the Stedi id');
         System.assertEquals(
             'KMQTZ',
             [SELECT Payer_Identifier__c FROM Payer__c WHERE Id = :payer.Id].Payer_Identifier__c,

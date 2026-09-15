@@ -30,6 +30,7 @@ import LOCATION_FIELD from '@salesforce/schema/Encounter__c.Location_Name__c';
 import ATTENDING_FIRST_NAME_FIELD from '@salesforce/schema/Encounter__c.Practitioner__r.First_Name__c';
 import ATTENDING_LAST_NAME_FIELD from '@salesforce/schema/Encounter__c.Practitioner__r.Last_Name__c';
 import { urlColumn, withRecordUrls } from 'c/emrNavigationUtils';
+import { calculateAgeLabel } from 'c/emrDateUtils';
 
 const DELETE = 'delete';
 const STATUS_PATH = ['Planned', 'Arrived', 'In Progress', 'Finished'];
@@ -134,15 +135,10 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
     }
 
     async applyDiagnoses(data) {
-        this.diagnoses = await withRecordUrls(
-            this,
-            data || [],
-            CONDITION_OBJECT.objectApiName,
-            {
-                idField: 'conditionId',
-                labelField: 'display'
-            }
-        );
+        this.diagnoses = await withRecordUrls(this, data || [], CONDITION_OBJECT.objectApiName, {
+            idField: 'conditionId',
+            labelField: 'display'
+        });
     }
 
     get hasDiagnoses() {
@@ -186,27 +182,7 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
         if (!dob) {
             return '';
         }
-        const birth = new Date(dob);
-        if (Number.isNaN(birth.getTime())) {
-            return '';
-        }
-        const today = new Date();
-        let years = today.getFullYear() - birth.getFullYear();
-        let months = today.getMonth() - birth.getMonth();
-        if (today.getDate() < birth.getDate()) {
-            months -= 1;
-        }
-        if (months < 0) {
-            years -= 1;
-            months += 12;
-        }
-        if (years < 0) {
-            return '';
-        }
-        if (years === 0) {
-            return months === 1 ? '1 month' : `${months} months`;
-        }
-        return years === 1 ? '1 year' : `${years} years`;
+        return calculateAgeLabel(dob);
     }
 
     get mrn() {
@@ -327,9 +303,7 @@ export default class EmrEncounterWorkspace extends NavigationMixin(LightningElem
         const currentStatus = this.status;
         const newStatus = this.nextStatus;
         if (!this.isClientTransitionValid(currentStatus, newStatus)) {
-            this.errorMessage = `Cannot change status from ${currentStatus || '(none)'} to ${
-                newStatus || '(none)'
-            }.`;
+            this.errorMessage = `Cannot change status from ${currentStatus || '(none)'} to ${newStatus || '(none)'}.`;
             return;
         }
 

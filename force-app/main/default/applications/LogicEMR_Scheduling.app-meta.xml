@@ -1,21 +1,28 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <content>LogicEMR_Scheduling_Home</content>
+        <formFactor>Large</formFactor>
+        <pageOrSobjectType>standard-home</pageOrSobjectType>
+        <type>Flexipage</type>
+    </actionOverrides>
     <brand>
         <headerColor>#2E844A</headerColor>
         <logo>LogicEMR_Scheduling_Logo</logo>
         <logoVersion>1</logoVersion>
         <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
     </brand>
-    <description>LogicEMR appointment, calendar, and provider schedule workspace.</description>
+    <description
+  >LogicEMR appointment, calendar, and provider schedule workspace.</description>
     <formFactors>Small</formFactors>
     <formFactors>Large</formFactors>
     <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
-    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavPersonalizationDisabled>true</isNavPersonalizationDisabled>
     <label>LogicEMR Scheduling</label>
     <navType>Standard</navType>
     <tabs>standard-home</tabs>
     <tabs>Scheduling</tabs>
-    <tabs>Schedule_Creator</tabs>
     <tabs>Appointment__c</tabs>
     <tabs>Patient_Search</tabs>
     <uiType>Lightning</uiType>

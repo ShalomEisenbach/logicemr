@@ -57,8 +57,8 @@ export default class EmrPayerSearch extends LightningElement {
         this.errorMessage = undefined;
         try {
             const payer = await getPayer({ payerId: this._recordId });
-            this.payerName = payer?.Name || '';
-            this.currentIdentifier = payer?.Payer_Identifier__c || '';
+            this.payerName = payer?.name || '';
+            this.currentIdentifier = payer?.payerIdentifier || '';
         } catch (error) {
             this.errorMessage = this.reduceError(error);
         } finally {
@@ -74,6 +74,7 @@ export default class EmrPayerSearch extends LightningElement {
         window.clearTimeout(this.debounceTimer);
         this.searchTerm = event.target.value;
         this.successMessage = undefined;
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
         this.debounceTimer = window.setTimeout(() => {
             this.runSearch(this.searchTerm);
         }, DEBOUNCE_MS);
@@ -120,7 +121,7 @@ export default class EmrPayerSearch extends LightningElement {
                 payerId: this._recordId,
                 stediPayerId
             });
-            this.currentIdentifier = saved?.Payer_Identifier__c || stediPayerId;
+            this.currentIdentifier = saved?.payerIdentifier || stediPayerId;
             this.successMessage = `Saved Stedi payer id ${this.currentIdentifier}.`;
             await notifyRecordUpdateAvailable([{ recordId: this._recordId }]);
         } catch (error) {
