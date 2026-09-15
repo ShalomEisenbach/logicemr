@@ -27,6 +27,9 @@ node_modules/
 # ApexPMD cache
 .pmdCache
 
+# Local deployment and conversion scratch files
+.tmp/
+
 # Eslint cache
 .eslintcache
 
