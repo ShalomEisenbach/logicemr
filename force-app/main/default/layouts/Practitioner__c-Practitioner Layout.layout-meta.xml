@@ -19,6 +19,7 @@
                 <behavior>Edit</behavior>
                 <field>NPI__c</field>
             </layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Taxonomy_Code__c</field></layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Active__c</field>

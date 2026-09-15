@@ -60,6 +60,10 @@
                 <behavior>Edit</behavior>
                 <field>Subscriber_Name__c</field>
             </layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_First_Name__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_Last_Name__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_Date_of_Birth__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_Sex__c</field></layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Effective_Start__c</field>
@@ -68,6 +72,22 @@
                 <behavior>Edit</behavior>
                 <field>Effective_End__c</field>
             </layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Subscriber Address</label>
+        <layoutColumns>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_Street__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_City__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_State__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_Postal_Code__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Subscriber_Country__c</field></layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>

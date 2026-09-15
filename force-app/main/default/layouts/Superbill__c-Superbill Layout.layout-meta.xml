@@ -22,6 +22,78 @@
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>
     <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>false</editHeading>
+        <label>Patient Snapshot</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_First_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Last_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Date_of_Birth__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Sex__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Street__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_City__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_State__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Postal_Code__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Patient_Country__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>false</editHeading>
+        <label>Subscriber Snapshot</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_First_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Last_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Date_of_Birth__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Sex__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Relationship__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Member_Id__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Group_Number__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Payer_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Payer_Identifier__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Coverage_Effective_Start__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Coverage_Effective_End__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Street__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_City__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_State__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Postal_Code__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Subscriber_Country__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>false</editHeading>
+        <label>Provider Snapshot</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_NPI__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Rendering_Provider_Taxonomy__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Snapshot_Refreshed_At__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Snapshot_Version__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_Name__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_NPI__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_EIN__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_Taxonomy__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_Street__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_City__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_State__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_Postal_Code__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Billing_Provider_Country__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>true</detailHeading>
         <editHeading>true</editHeading>

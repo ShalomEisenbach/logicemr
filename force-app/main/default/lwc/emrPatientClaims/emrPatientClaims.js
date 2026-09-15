@@ -86,6 +86,10 @@ export default class EmrPatientClaims extends NavigationMixin(LightningElement) 
         return this.claims && this.claims.length > 0;
     }
 
+    get claimCount() {
+        return Array.isArray(this.claims) ? this.claims.length : undefined;
+    }
+
     get showEmpty() {
         return this.claims && this.claims.length === 0 && !this.errorMessage;
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Professional_Code_System</fullName>
+    <active>true</active>
+    <errorConditionFormula>NOT(OR(ISPICKVAL(Procedure_Code_System__c, &quot;CPT&quot;), ISPICKVAL(Procedure_Code_System__c, &quot;HCPCS&quot;)))</errorConditionFormula>
+    <errorMessage>Fee schedule rates must use CPT or HCPCS.</errorMessage>
+</ValidationRule>

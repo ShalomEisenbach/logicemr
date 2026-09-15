@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>LogicEMR_Override_Charge_Rates</name>
+    </customPermissions>
+    <description>Supplemental permission for approved billing users who may override a calculated charge with a documented reason.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>LogicEMR Charge Rate Override</label>
+</PermissionSet>

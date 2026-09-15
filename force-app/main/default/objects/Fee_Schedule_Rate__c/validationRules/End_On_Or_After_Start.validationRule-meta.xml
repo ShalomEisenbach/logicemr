@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>End_On_Or_After_Start</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(NOT(ISBLANK(Effective_End__c)), Effective_End__c &lt; Effective_Start__c)</errorConditionFormula>
+    <errorMessage>Effective end must be on or after effective start.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rate_Source__c</fullName>
+    <description>Snapshot of the fee schedule and effective period used to calculate this charge.</description>
+    <label>Rate Source</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

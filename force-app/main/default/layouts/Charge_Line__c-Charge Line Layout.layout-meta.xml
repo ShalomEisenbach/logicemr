@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Layout xmlns="http://soap.sforce.com/2006/04/metadata">
+    <layoutSections>
+        <customLabel>false</customLabel><detailHeading>true</detailHeading><editHeading>true</editHeading>
+        <label>Charge Line Information</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Name</field></layoutItems>
+            <layoutItems><behavior>Required</behavior><field>Superbill__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Procedure__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Procedure_Ref__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Procedure_Code_System__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Procedure_Code__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Procedure_Display__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Edit</behavior><field>Service_Date__c</field></layoutItems>
+            <layoutItems><behavior>Required</behavior><field>Units__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Modifiers__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Diagnosis_Pointers__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Charge_Amount__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel><detailHeading>true</detailHeading><editHeading>true</editHeading>
+        <label>Rate Source</label>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Fee_Schedule_Rate__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Applied_Unit_Rate__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Rate_Source__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Readonly</behavior><field>Rate_Override__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Override_Reason__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <showEmailCheckbox>false</showEmailCheckbox><showHighlightsPanel>true</showHighlightsPanel>
+    <showInteractionLogPanel>false</showInteractionLogPanel><showRunAssignmentRulesCheckbox>false</showRunAssignmentRulesCheckbox>
+    <showSubmitAndAttachButton>false</showSubmitAndAttachButton>
+</Layout>

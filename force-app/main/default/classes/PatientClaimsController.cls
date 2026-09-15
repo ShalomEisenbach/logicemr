@@ -28,7 +28,7 @@ public with sharing class PatientClaimsController {
         List<ClaimSummary> summaries = new List<ClaimSummary>();
         for (Superbill__c superbill : [
             SELECT Id, Name, Encounter__c, Encounter__r.Name, Date_of_Service__c, Status__c,
-                   Rendering_Practitioner__r.Name, Coverage__r.Payer__r.Name, Ready_Date__c,
+                   Rendering_Provider_Name__c, Payer_Name__c, Ready_Date__c,
                    Validation_Messages__c,
                    (SELECT Charge_Amount__c FROM Charge_Lines__r)
             FROM Superbill__c
@@ -43,12 +43,8 @@ public with sharing class PatientClaimsController {
             summary.encounterName = superbill.Encounter__r == null ? null : superbill.Encounter__r.Name;
             summary.dateOfService = superbill.Date_of_Service__c;
             summary.status = superbill.Status__c;
-            summary.renderingPractitionerName = superbill.Rendering_Practitioner__r == null
-                ? null
-                : superbill.Rendering_Practitioner__r.Name;
-            summary.payerName = superbill.Coverage__r == null || superbill.Coverage__r.Payer__r == null
-                ? null
-                : superbill.Coverage__r.Payer__r.Name;
+            summary.renderingPractitionerName = superbill.Rendering_Provider_Name__c;
+            summary.payerName = superbill.Payer_Name__c;
             summary.totalCharges = 0;
             for (Charge_Line__c charge : superbill.Charge_Lines__r) {
                 if (charge.Charge_Amount__c != null) {

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Schedule_Type__c</fullName>
+    <label>Schedule Type</label>
+    <required>true</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Payer</fullName><default>true</default><label>Payer</label></value>
+            <value><fullName>Self-Pay</fullName><default>false</default><label>Self-Pay</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

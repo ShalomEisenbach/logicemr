@@ -6,7 +6,7 @@ public with sharing class ClaimReadinessController {
     private static final String STATUS_READY = 'Ready';
     private static final String STATUS_EXPORTED = 'Exported';
     private static final String STATUS_VOIDED = 'Voided';
-    private static final Set<String> LOCKED_STATUSES = new Set<String>{ STATUS_EXPORTED, STATUS_VOIDED };
+    private static final Set<String> LOCKED_STATUSES = new Set<String>{ STATUS_READY, STATUS_EXPORTED, STATUS_VOIDED };
     private static final Set<String> ALLOWED_CODE_SYSTEMS = new Set<String>{ 'CPT', 'HCPCS' };
 
     public class Workspace {
@@ -24,6 +24,8 @@ public with sharing class ClaimReadinessController {
         public Decimal totalCharges;
         @AuraEnabled
         public Boolean ready;
+        @AuraEnabled
+        public Boolean canOverrideRates;
 
         public Workspace() {
             diagnoses = new List<Superbill_Diagnosis__c>();
@@ -31,6 +33,7 @@ public with sharing class ClaimReadinessController {
             issues = new List<String>();
             totalCharges = 0;
             ready = false;
+            canOverrideRates = FeeScheduleService.canOverrideRates();
         }
     }
 
@@ -57,6 +60,10 @@ public with sharing class ClaimReadinessController {
         public String modifiers { get; set; }
         @AuraEnabled
         public String diagnosisPointers { get; set; }
+        @AuraEnabled
+        public String overrideReason { get; set; }
+        @AuraEnabled
+        public Boolean rateOverride { get; set; }
     }
 
     @AuraEnabled(cacheable=true)
@@ -77,6 +84,32 @@ public with sharing class ClaimReadinessController {
     public static Workspace initializeSuperbill(Id encounterId) {
         requireManageClaims();
         return initializeSuperbillInternal(encounterId);
+    }
+
+    @AuraEnabled
+    public static Workspace refreshClaimSnapshots(Id superbillId) {
+        requireManageClaims();
+        Superbill__c superbill = requireEditableSuperbill(superbillId);
+        ClaimSnapshotService.populate(superbill);
+        superbill.Status__c = STATUS_NEEDS_REVIEW;
+        superbill.Ready_Date__c = null;
+        update superbill;
+        Workspace workspace = buildWorkspaceForSuperbill(requerySuperbill(superbill.Id));
+        persistValidation(workspace);
+        return buildWorkspaceForSuperbill(requerySuperbill(superbill.Id));
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static FeeScheduleService.RateQuote quoteRate(
+        Id superbillId,
+        String codeSystem,
+        String code,
+        Date serviceDate,
+        Decimal units
+    ) {
+        requireManageClaims();
+        Superbill__c superbill = requerySuperbill(superbillId);
+        return FeeScheduleService.quoteOne(superbill, codeSystem, code, serviceDate, units);
     }
 
     private static Workspace initializeSuperbillInternal(Id encounterId) {
@@ -106,6 +139,7 @@ public with sharing class ClaimReadinessController {
         superbill.Date_of_Service__c = serviceDate;
         superbill.Coverage__c = findCoverage(encounter.Patient__c, serviceDate);
         superbill.Billing_Organization__c = findBillingOrganization();
+        ClaimSnapshotService.populate(superbill);
         if (superbill.Id == null) {
             superbill.Status__c = STATUS_NEEDS_REVIEW;
             insert superbill;
@@ -148,9 +182,22 @@ public with sharing class ClaimReadinessController {
         charge.Procedure_Display__c = input.display.trim();
         charge.Service_Date__c = input.serviceDate;
         charge.Units__c = input.units;
-        charge.Charge_Amount__c = input.chargeAmount;
         charge.Modifiers__c = trimToNull(input.modifiers);
         charge.Diagnosis_Pointers__c = trimToNull(input.diagnosisPointers);
+        FeeScheduleService.RateQuote rateQuote = FeeScheduleService.quoteOne(
+            requerySuperbill(input.superbillId),
+            charge.Procedure_Code_System__c,
+            charge.Procedure_Code__c,
+            charge.Service_Date__c,
+            charge.Units__c
+        );
+        FeeScheduleService.applyRequestedRate(
+            charge,
+            rateQuote,
+            input.chargeAmount,
+            input.rateOverride,
+            input.overrideReason
+        );
         upsert charge;
         return moveToReviewAndBuild(input.superbillId);
     }
@@ -190,7 +237,10 @@ public with sharing class ClaimReadinessController {
     @AuraEnabled
     public static Workspace reopen(Id superbillId) {
         requireManageClaims();
-        Superbill__c superbill = requireEditableSuperbill(superbillId);
+        Superbill__c superbill = requerySuperbill(superbillId);
+        if (superbill.Status__c == STATUS_EXPORTED || superbill.Status__c == STATUS_VOIDED) {
+            throw new AuraHandledException('Exported or voided superbills cannot be reopened.');
+        }
         superbill.Status__c = STATUS_NEEDS_REVIEW;
         superbill.Ready_Date__c = null;
         update superbill;
@@ -258,25 +308,46 @@ public with sharing class ClaimReadinessController {
     }
 
     private static void syncProcedureCharges(Id superbillId, Id encounterId, Date serviceDate) {
-        Set<Id> alreadyLinked = new Set<Id>();
+        Map<Id, Charge_Line__c> existingByProcedure = new Map<Id, Charge_Line__c>();
         for (Charge_Line__c charge : [
-            SELECT Procedure__c FROM Charge_Line__c WHERE Superbill__c = :superbillId AND Procedure__c != NULL
+            SELECT Id, Procedure__c, Procedure_Code_System__c, Procedure_Code__c, Service_Date__c,
+                   Units__c, Rate_Override__c
+            FROM Charge_Line__c
+            WHERE Superbill__c = :superbillId AND Procedure__c != NULL
         ]) {
-            alreadyLinked.add(charge.Procedure__c);
+            existingByProcedure.put(charge.Procedure__c, charge);
         }
-        List<Charge_Line__c> toInsert = new List<Charge_Line__c>();
-        for (Procedure__c source : [
+        List<Procedure__c> procedures = [
             SELECT Id, Procedure_Ref__c, Procedure_Code_System__c, Procedure_Code__c,
                    Procedure_Display__c, Performed_DateTime__c
             FROM Procedure__c
             WHERE Encounter__c = :encounterId AND Status__c = 'Completed'
             ORDER BY Performed_DateTime__c ASC NULLS LAST, CreatedDate ASC
-        ]) {
-            if (alreadyLinked.contains(source.Id)) {
-                continue;
-            }
-            toInsert.add(
-                new Charge_Line__c(
+        ];
+        List<FeeScheduleService.RateRequest> requests = new List<FeeScheduleService.RateRequest>();
+        for (Procedure__c source : procedures) {
+            Date lineDate = source.Performed_DateTime__c == null
+                ? serviceDate
+                : source.Performed_DateTime__c.date();
+            requests.add(
+                new FeeScheduleService.RateRequest(
+                    String.valueOf(source.Id),
+                    source.Procedure_Code_System__c,
+                    source.Procedure_Code__c,
+                    lineDate,
+                    1
+                )
+            );
+        }
+        Map<String, FeeScheduleService.RateQuote> quotes = FeeScheduleService.quote(
+            requerySuperbill(superbillId),
+            requests
+        );
+        List<Charge_Line__c> toSave = new List<Charge_Line__c>();
+        for (Procedure__c source : procedures) {
+            Charge_Line__c charge = existingByProcedure.get(source.Id);
+            if (charge == null) {
+                charge = new Charge_Line__c(
                     Superbill__c = superbillId,
                     Procedure__c = source.Id,
                     Procedure_Ref__c = source.Procedure_Ref__c,
@@ -288,11 +359,17 @@ public with sharing class ClaimReadinessController {
                         : source.Performed_DateTime__c.date(),
                     Units__c = 1,
                     Diagnosis_Pointers__c = '1'
-                )
-            );
+                );
+            }
+            if (charge.Rate_Override__c != true) {
+                FeeScheduleService.applyAutomaticRate(charge, quotes.get(String.valueOf(source.Id)));
+                toSave.add(charge);
+            } else if (charge.Id == null) {
+                toSave.add(charge);
+            }
         }
-        if (!toInsert.isEmpty()) {
-            insert toInsert;
+        if (!toSave.isEmpty()) {
+            upsert toSave;
         }
     }
 
@@ -318,12 +395,21 @@ public with sharing class ClaimReadinessController {
         workspace.charges = [
             SELECT Id, Name, Procedure__c, Procedure_Ref__c, Procedure_Code_System__c,
                    Procedure_Code__c, Procedure_Display__c, Service_Date__c, Units__c,
-                   Charge_Amount__c, Modifiers__c, Diagnosis_Pointers__c
+                   Charge_Amount__c, Modifiers__c, Diagnosis_Pointers__c,
+                   Fee_Schedule_Rate__c, Applied_Unit_Rate__c, Rate_Source__c,
+                   Rate_Override__c, Override_Reason__c
             FROM Charge_Line__c
             WHERE Superbill__c = :superbill.Id
             ORDER BY Service_Date__c ASC NULLS LAST, CreatedDate ASC
         ];
-        workspace.issues = validate(superbill, encounterStatus, workspace.diagnoses, workspace.charges);
+        Map<String, FeeScheduleService.RateQuote> rateQuotes = quoteCharges(superbill, workspace.charges);
+        workspace.issues = validate(
+            superbill,
+            encounterStatus,
+            workspace.diagnoses,
+            workspace.charges,
+            rateQuotes
+        );
         for (Charge_Line__c charge : workspace.charges) {
             if (charge.Charge_Amount__c != null) {
                 workspace.totalCharges += charge.Charge_Amount__c;
@@ -337,7 +423,8 @@ public with sharing class ClaimReadinessController {
         Superbill__c superbill,
         String encounterStatus,
         List<Superbill_Diagnosis__c> diagnoses,
-        List<Charge_Line__c> charges
+        List<Charge_Line__c> charges,
+        Map<String, FeeScheduleService.RateQuote> rateQuotes
     ) {
         List<String> issues = new List<String>();
         if (encounterStatus != 'Finished') {
@@ -346,53 +433,17 @@ public with sharing class ClaimReadinessController {
         if (superbill.Date_of_Service__c == null) {
             issues.add('Date of service is required.');
         }
-        if (superbill.Rendering_Practitioner__c == null) {
-            issues.add('Rendering practitioner is required.');
-        } else if (String.isBlank(superbill.Rendering_Practitioner__r.NPI__c)) {
-            issues.add('Rendering practitioner NPI is required.');
-        }
+        if (superbill.Rendering_Practitioner__c == null) issues.add('Rendering practitioner is required.');
         if (superbill.Billing_Organization__c == null) {
             issues.add('Default billing organization is required.');
-        } else if (String.isBlank(superbill.Billing_Organization__r.NPI__c)) {
-            issues.add('Billing organization NPI is required.');
-        } else {
-            if (String.isBlank(superbill.Billing_Organization__r.EIN__c)) {
-                issues.add('Billing organization EIN is required.');
-            }
-            if (String.isBlank(superbill.Billing_Organization__r.Street__c) ||
-                String.isBlank(superbill.Billing_Organization__r.City__c) ||
-                String.isBlank(superbill.Billing_Organization__r.State__c) ||
-                String.isBlank(superbill.Billing_Organization__r.Postal_Code__c)) {
-                issues.add('Billing organization mailing address is incomplete.');
-            }
         }
         if (superbill.Patient__c == null) {
             issues.add('Patient is required.');
-        } else {
-            if (String.isBlank(superbill.Patient__r.First_Name__c)) issues.add('Patient first name is required.');
-            if (String.isBlank(superbill.Patient__r.Last_Name__c)) issues.add('Patient last name is required.');
-            if (superbill.Patient__r.Date_of_Birth__c == null) issues.add('Patient date of birth is required.');
-            if (String.isBlank(superbill.Patient__r.Sex_at_Birth__c)) issues.add('Patient sex at birth is required.');
-            if (String.isBlank(superbill.Patient__r.Street__c) || String.isBlank(superbill.Patient__r.City__c) ||
-                String.isBlank(superbill.Patient__r.State__c) || String.isBlank(superbill.Patient__r.Postal_Code__c)) {
-                issues.add('Patient mailing address is incomplete.');
-            }
         }
         if (superbill.Coverage__c == null) {
             issues.add('Active primary coverage is required.');
-        } else {
-            if (String.isBlank(superbill.Coverage__r.Member_Id__c)) issues.add('Coverage member ID is required.');
-            if (String.isBlank(superbill.Coverage__r.Relationship_to_Subscriber__c)) {
-                issues.add('Relationship to subscriber is required.');
-            } else if (superbill.Coverage__r.Relationship_to_Subscriber__c != 'Self' &&
-                String.isBlank(superbill.Coverage__r.Subscriber_Name__c)) {
-                issues.add('Subscriber name is required when the patient is not the subscriber.');
-            }
-            if (superbill.Coverage__r.Payer__c == null ||
-                String.isBlank(superbill.Coverage__r.Payer__r.Payer_Identifier__c)) {
-                issues.add('Payer identifier is required.');
-            }
         }
+        issues.addAll(ClaimSnapshotService.validate(superbill));
         if ([SELECT COUNT() FROM ClinicalNote__c WHERE Encounter__c = :superbill.Encounter__c AND Status__c = 'Signed'] == 0) {
             issues.add('At least one signed clinical note is required.');
         }
@@ -433,6 +484,22 @@ public with sharing class ClaimReadinessController {
             if (charge.Charge_Amount__c == null || charge.Charge_Amount__c <= 0) {
                 issues.add(prefix + 'charge amount must be greater than zero.');
             }
+            if (charge.Rate_Override__c == true) {
+                if (String.isBlank(charge.Override_Reason__c)) {
+                    issues.add(prefix + 'override reason is required.');
+                }
+            } else {
+                FeeScheduleService.RateQuote quote = rateQuotes.get(String.valueOf(charge.Id));
+                if (quote == null || !quote.found) {
+                    issues.add(prefix + ((quote != null && quote.expired)
+                        ? 'fee schedule rate is expired for the service date.'
+                        : 'no applicable payer or self-pay fee schedule rate was found.'));
+                } else if (charge.Fee_Schedule_Rate__c != quote.rateId ||
+                    charge.Applied_Unit_Rate__c != quote.unitRate ||
+                    charge.Charge_Amount__c != quote.lineAmount) {
+                    issues.add(prefix + 'fee schedule pricing is stale; sync or resave the charge to reprice it.');
+                }
+            }
             if (!hasValidPointers(charge.Diagnosis_Pointers__c, validPointers)) {
                 issues.add(prefix + 'diagnosis pointers must reference listed diagnoses.');
             }
@@ -441,6 +508,25 @@ public with sharing class ClaimReadinessController {
             }
         }
         return issues;
+    }
+
+    private static Map<String, FeeScheduleService.RateQuote> quoteCharges(
+        Superbill__c superbill,
+        List<Charge_Line__c> charges
+    ) {
+        List<FeeScheduleService.RateRequest> requests = new List<FeeScheduleService.RateRequest>();
+        for (Charge_Line__c charge : charges) {
+            requests.add(
+                new FeeScheduleService.RateRequest(
+                    String.valueOf(charge.Id),
+                    charge.Procedure_Code_System__c,
+                    charge.Procedure_Code__c,
+                    charge.Service_Date__c,
+                    charge.Units__c
+                )
+            );
+        }
+        return FeeScheduleService.quote(superbill, requests);
     }
 
     private static Boolean hasValidPointers(String value, Set<Integer> validPointers) {
@@ -508,7 +594,7 @@ public with sharing class ClaimReadinessController {
                    Patient__r.Street__c, Patient__r.City__c, Patient__r.State__c,
                    Patient__r.Postal_Code__c, Coverage__c, Coverage__r.Member_Id__c,
                    Coverage__r.Relationship_to_Subscriber__c, Coverage__r.Subscriber_Name__c,
-                   Coverage__r.Payer__c, Coverage__r.Payer__r.Name,
+                   Coverage__r.Payer__c, Coverage__r.Payer__r.Name, Coverage__r.Payer__r.Type__c,
                    Coverage__r.Payer__r.Payer_Identifier__c, Billing_Organization__c,
                    Billing_Organization__r.Name, Billing_Organization__r.NPI__c,
                    Billing_Organization__r.EIN__c, Billing_Organization__r.Street__c,
@@ -516,7 +602,24 @@ public with sharing class ClaimReadinessController {
                    Billing_Organization__r.Postal_Code__c,
                    Rendering_Practitioner__c, Rendering_Practitioner__r.Name,
                    Rendering_Practitioner__r.NPI__c, Date_of_Service__c, Status__c,
-                   Ready_Date__c, Validation_Messages__c
+                   Ready_Date__c, Validation_Messages__c,
+                   Snapshot_Refreshed_At__c, Snapshot_Version__c,
+                   Patient_First_Name__c, Patient_Last_Name__c, Patient_Date_of_Birth__c,
+                   Patient_Sex__c, Patient_Street__c, Patient_City__c, Patient_State__c,
+                   Patient_Postal_Code__c, Patient_Country__c,
+                   Subscriber_First_Name__c, Subscriber_Last_Name__c,
+                   Subscriber_Date_of_Birth__c, Subscriber_Sex__c,
+                   Subscriber_Relationship__c, Subscriber_Member_Id__c,
+                   Subscriber_Group_Number__c, Subscriber_Street__c, Subscriber_City__c,
+                   Subscriber_State__c, Subscriber_Postal_Code__c, Subscriber_Country__c,
+                   Payer_Name__c, Payer_Identifier__c, Coverage_Effective_Start__c,
+                   Coverage_Effective_End__c, Rendering_Provider_Name__c,
+                   Rendering_Provider_NPI__c, Rendering_Provider_Taxonomy__c,
+                   Billing_Provider_Name__c, Billing_Provider_NPI__c,
+                   Billing_Provider_EIN__c, Billing_Provider_Taxonomy__c,
+                   Billing_Provider_Street__c, Billing_Provider_City__c,
+                   Billing_Provider_State__c, Billing_Provider_Postal_Code__c,
+                   Billing_Provider_Country__c
             FROM Superbill__c
             WHERE Encounter__c = :encounterId
             ORDER BY CreatedDate DESC
@@ -533,7 +636,7 @@ public with sharing class ClaimReadinessController {
         if (superbillId == null) throw new AuraHandledException('Superbill Id is required.');
         Superbill__c superbill = requerySuperbill(superbillId);
         if (LOCKED_STATUSES.contains(superbill.Status__c)) {
-            throw new AuraHandledException('Exported or voided superbills cannot be changed.');
+            throw new AuraHandledException('Ready, exported, or voided superbills cannot be changed. Reopen a Ready superbill first.');
         }
         return superbill;
     }

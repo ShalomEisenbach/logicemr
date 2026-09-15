@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Allows an approved billing user to replace a fee-schedule-derived charge when an override reason is recorded.</description>
+    <label>LogicEMR Override Charge Rates</label>
+</CustomPermission>

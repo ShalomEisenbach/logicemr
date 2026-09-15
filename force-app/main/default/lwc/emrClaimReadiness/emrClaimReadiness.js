@@ -4,10 +4,13 @@ import { RefreshEvent } from 'lightning/refresh';
 import LightningConfirm from 'lightning/confirm';
 import getWorkspace from '@salesforce/apex/ClaimReadinessController.getWorkspace';
 import initializeSuperbill from '@salesforce/apex/ClaimReadinessController.initializeSuperbill';
+import refreshClaimSnapshots from '@salesforce/apex/ClaimReadinessController.refreshClaimSnapshots';
 import saveCharge from '@salesforce/apex/ClaimReadinessController.saveCharge';
 import deleteCharge from '@salesforce/apex/ClaimReadinessController.deleteCharge';
 import markReady from '@salesforce/apex/ClaimReadinessController.markReady';
 import reopen from '@salesforce/apex/ClaimReadinessController.reopen';
+import quoteRate from '@salesforce/apex/ClaimReadinessController.quoteRate';
+import getCanonicalJson from '@salesforce/apex/ClaimExportController.getCanonicalJson';
 
 const EDIT = 'edit';
 const DELETE = 'delete';
@@ -20,8 +23,12 @@ export default class EmrClaimReadiness extends LightningElement {
     isLoading = true;
     isSaving = false;
     showChargeModal = false;
+    showExportModal = false;
+    exportJson = '';
     editingChargeId;
     codeSearchValue;
+    rateMessage;
+    quoteSequence = 0;
     codeSystems = ['CPT', 'HCPCS'];
     chargeDraft = this.emptyCharge();
 
@@ -40,6 +47,7 @@ export default class EmrClaimReadiness extends LightningElement {
         { label: 'Modifiers', fieldName: 'modifiers' },
         { label: 'Dx', fieldName: 'diagnosisPointers' },
         { label: 'Charge', fieldName: 'chargeAmount', type: 'currency' },
+        { label: 'Rate source', fieldName: 'rateSource', wrapText: true },
         {
             type: 'action',
             typeAttributes: {
@@ -84,7 +92,7 @@ export default class EmrClaimReadiness extends LightningElement {
     }
 
     get isLocked() {
-        return ['Exported', 'Voided'].includes(this.status);
+        return ['Ready', 'Exported', 'Voided'].includes(this.status);
     }
 
     get isLockedOrSaving() {
@@ -104,11 +112,95 @@ export default class EmrClaimReadiness extends LightningElement {
     }
 
     get coverageName() {
-        return this.workspace?.superbill?.Coverage__r?.Payer__r?.Name || 'Not selected';
+        return this.workspace?.superbill?.Payer_Name__c || 'Not selected';
     }
 
     get totalCharges() {
         return this.workspace?.totalCharges || 0;
+    }
+
+    get canOverrideRates() {
+        return Boolean(this.workspace?.canOverrideRates);
+    }
+
+    get snapshotVersion() {
+        return this.workspace?.superbill?.Snapshot_Version__c || 'Not captured';
+    }
+
+    get snapshotRefreshedAt() {
+        return this.workspace?.superbill?.Snapshot_Refreshed_At__c;
+    }
+
+    get subscriberName() {
+        const snapshot = this.workspace?.superbill;
+        return [snapshot?.Subscriber_First_Name__c, snapshot?.Subscriber_Last_Name__c]
+            .filter(Boolean)
+            .join(' ') || 'Missing';
+    }
+
+    get patientName() {
+        const snapshot = this.workspace?.superbill;
+        return [snapshot?.Patient_First_Name__c, snapshot?.Patient_Last_Name__c]
+            .filter(Boolean)
+            .join(' ') || 'Missing';
+    }
+
+    get patientDetails() {
+        const snapshot = this.workspace?.superbill;
+        return `${snapshot?.Patient_Date_of_Birth__c || 'DOB missing'} · ${snapshot?.Patient_Sex__c || 'sex missing'}`;
+    }
+
+    get subscriberDetails() {
+        const snapshot = this.workspace?.superbill;
+        const relationship = snapshot?.Subscriber_Relationship__c || 'relationship missing';
+        const memberId = snapshot?.Subscriber_Member_Id__c || 'member ID missing';
+        const group = snapshot?.Subscriber_Group_Number__c ? ` · Group ${snapshot.Subscriber_Group_Number__c}` : '';
+        return `${relationship} · Member ${memberId}${group}`;
+    }
+
+    get subscriberDateOfBirth() {
+        return this.workspace?.superbill?.Subscriber_Date_of_Birth__c;
+    }
+
+    get subscriberSex() {
+        return this.workspace?.superbill?.Subscriber_Sex__c || 'sex missing';
+    }
+
+    get payerSnapshot() {
+        const snapshot = this.workspace?.superbill;
+        return `${snapshot?.Payer_Name__c || 'Missing'} · ${snapshot?.Payer_Identifier__c || 'payer ID missing'}`;
+    }
+
+    get renderingProviderSnapshot() {
+        const snapshot = this.workspace?.superbill;
+        return `${snapshot?.Rendering_Provider_Name__c || 'Missing'} · NPI ${snapshot?.Rendering_Provider_NPI__c || 'missing'} · ${snapshot?.Rendering_Provider_Taxonomy__c || 'taxonomy missing'}`;
+    }
+
+    get billingProviderSnapshot() {
+        const snapshot = this.workspace?.superbill;
+        return `${snapshot?.Billing_Provider_Name__c || 'Missing'} · NPI ${snapshot?.Billing_Provider_NPI__c || 'missing'} · EIN ${snapshot?.Billing_Provider_EIN__c || 'missing'} · ${snapshot?.Billing_Provider_Taxonomy__c || 'taxonomy missing'}`;
+    }
+
+    get billingProviderAddress() {
+        const snapshot = this.workspace?.superbill;
+        return [
+            snapshot?.Billing_Provider_Street__c,
+            snapshot?.Billing_Provider_City__c,
+            snapshot?.Billing_Provider_State__c,
+            snapshot?.Billing_Provider_Postal_Code__c
+        ].filter(Boolean).join(', ') || 'Address missing';
+    }
+
+    get isChargeAmountDisabled() {
+        return !this.chargeDraft.rateOverride;
+    }
+
+    get isChargeAmountRequired() {
+        return this.chargeDraft.rateOverride;
+    }
+
+    get showOverrideReason() {
+        return this.canOverrideRates && this.chargeDraft.rateOverride;
     }
 
     get issues() {
@@ -144,7 +236,12 @@ export default class EmrClaimReadiness extends LightningElement {
             units: row.Units__c,
             chargeAmount: row.Charge_Amount__c,
             modifiers: row.Modifiers__c,
-            diagnosisPointers: row.Diagnosis_Pointers__c
+            diagnosisPointers: row.Diagnosis_Pointers__c,
+            rateOverride: Boolean(row.Rate_Override__c),
+            overrideReason: row.Override_Reason__c,
+            rateSource: row.Rate_Override__c
+                ? `${row.Rate_Source__c || 'Manual rate'} - override: ${row.Override_Reason__c || 'reason missing'}`
+                : row.Rate_Source__c || 'Missing'
         }));
     }
 
@@ -161,6 +258,8 @@ export default class EmrClaimReadiness extends LightningElement {
             serviceDate: this.dateOfService,
             units: 1,
             chargeAmount: null,
+            rateOverride: false,
+            overrideReason: '',
             modifiers: '',
             diagnosisPointers: '1',
             codeSystem: 'CPT',
@@ -177,22 +276,39 @@ export default class EmrClaimReadiness extends LightningElement {
         );
     }
 
+    async handleRefreshSnapshots() {
+        const confirmed = await LightningConfirm.open({
+            label: 'Refresh claim snapshots',
+            message: 'Replace the subscriber and provider snapshots with current source record values?',
+            variant: 'header'
+        });
+        if (!confirmed) return;
+        await this.runMutation(
+            () => refreshClaimSnapshots({ superbillId: this.workspace.superbill.Id }),
+            'Subscriber and provider snapshots refreshed.'
+        );
+    }
+
     handleAddCharge() {
+        this.quoteSequence += 1;
         this.editingChargeId = undefined;
         this.chargeDraft = this.emptyCharge();
         this.codeSearchValue = undefined;
+        this.rateMessage = undefined;
         this.showChargeModal = true;
         this.errorMessage = undefined;
     }
 
     handleCloseCharge() {
+        this.quoteSequence += 1;
         this.showChargeModal = false;
         this.editingChargeId = undefined;
         this.codeSearchValue = undefined;
+        this.rateMessage = undefined;
         this.chargeDraft = this.emptyCharge();
     }
 
-    handleCodeSelected(event) {
+    async handleCodeSelected(event) {
         this.chargeDraft = {
             ...this.chargeDraft,
             codeSystem: event.detail.system,
@@ -201,10 +317,56 @@ export default class EmrClaimReadiness extends LightningElement {
             codeReferenceId: event.detail.recordId
         };
         this.codeSearchValue = event.detail;
+        await this.refreshRateQuote();
     }
 
-    handleChargeField(event) {
-        this.chargeDraft = { ...this.chargeDraft, [event.target.name]: event.detail.value };
+    async handleChargeField(event) {
+        const { name, type, checked } = event.target;
+        const value = type === 'checkbox' ? checked : event.detail.value;
+        this.chargeDraft = { ...this.chargeDraft, [name]: value };
+        if (name === 'rateOverride') {
+            if (!value) {
+                this.chargeDraft = { ...this.chargeDraft, overrideReason: '' };
+                await this.refreshRateQuote();
+            }
+            return;
+        }
+        if (['serviceDate', 'units'].includes(name)) {
+            await this.refreshRateQuote();
+        }
+    }
+
+    async refreshRateQuote() {
+        if (
+            this.chargeDraft.rateOverride ||
+            !this.workspace?.superbill?.Id ||
+            !this.chargeDraft.codeSystem ||
+            !this.chargeDraft.code ||
+            !this.chargeDraft.serviceDate ||
+            !this.chargeDraft.units
+        ) {
+            return;
+        }
+        const sequence = ++this.quoteSequence;
+        try {
+            const quote = await quoteRate({
+                superbillId: this.workspace.superbill.Id,
+                codeSystem: this.chargeDraft.codeSystem,
+                code: this.chargeDraft.code,
+                serviceDate: this.chargeDraft.serviceDate,
+                units: this.chargeDraft.units
+            });
+            if (sequence !== this.quoteSequence || this.chargeDraft.rateOverride) return;
+            this.chargeDraft = {
+                ...this.chargeDraft,
+                chargeAmount: quote?.found ? quote.lineAmount : null
+            };
+            this.rateMessage = quote?.found ? `Calculated from ${quote.source}.` : quote?.message;
+        } catch (error) {
+            if (sequence === this.quoteSequence) {
+                this.rateMessage = this.reduceError(error);
+            }
+        }
     }
 
     async handleSaveCharge() {
@@ -231,6 +393,8 @@ export default class EmrClaimReadiness extends LightningElement {
                 serviceDate: row.serviceDate,
                 units: row.units,
                 chargeAmount: row.chargeAmount,
+                rateOverride: row.rateOverride,
+                overrideReason: row.overrideReason || '',
                 modifiers: row.modifiers || '',
                 diagnosisPointers: row.diagnosisPointers || '',
                 codeSystem: row.codeSystem,
@@ -244,6 +408,7 @@ export default class EmrClaimReadiness extends LightningElement {
                 display: row.display,
                 recordId: row.codeReferenceId
             };
+            this.rateMessage = row.rateSource;
             this.showChargeModal = true;
             return;
         }
@@ -273,6 +438,25 @@ export default class EmrClaimReadiness extends LightningElement {
         );
     }
 
+    async handlePreviewExport() {
+        if (this.isSaving) return;
+        this.isSaving = true;
+        this.errorMessage = undefined;
+        try {
+            this.exportJson = await getCanonicalJson({ superbillId: this.workspace.superbill.Id });
+            this.showExportModal = true;
+        } catch (error) {
+            this.errorMessage = this.reduceError(error);
+        } finally {
+            this.isSaving = false;
+        }
+    }
+
+    handleCloseExport() {
+        this.showExportModal = false;
+        this.exportJson = '';
+    }
+
     async runMutation(operation, successMessage) {
         if (this.isSaving) return false;
         this.isSaving = true;
@@ -280,7 +464,13 @@ export default class EmrClaimReadiness extends LightningElement {
         try {
             const data = await operation();
             this.applyWorkspace(data);
-            this.dispatchEvent(new ShowToastEvent({ title: 'Success', message: successMessage, variant: 'success' }));
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Success',
+                    message: successMessage,
+                    variant: 'success'
+                })
+            );
             this.dispatchEvent(new RefreshEvent());
             return true;
         } catch (error) {

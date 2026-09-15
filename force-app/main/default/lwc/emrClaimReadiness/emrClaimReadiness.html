@@ -10,6 +10,11 @@
                     onclick={handleInitialize}
                 ></lightning-button-icon>
                 <lightning-button
+                    label="Refresh snapshots"
+                    disabled={isLockedOrSaving}
+                    onclick={handleRefreshSnapshots}
+                ></lightning-button>
+                <lightning-button
                     label="Add charge"
                     disabled={isLockedOrSaving}
                     onclick={handleAddCharge}
@@ -77,6 +82,62 @@
                     </div>
                 </template>
 
+                <section class="snapshot-panel slds-m-top_medium" aria-label="Claim snapshots">
+                    <div class="snapshot-heading">
+                        <h3 class="slds-text-title_caps">Claim snapshots</h3>
+                        <span>Version {snapshotVersion}</span>
+                    </div>
+                    <template lwc:if={snapshotRefreshedAt}>
+                        <p class="snapshot-timestamp">
+                            Refreshed
+                            <lightning-formatted-date-time
+                                value={snapshotRefreshedAt}
+                                year="numeric"
+                                month="short"
+                                day="2-digit"
+                                hour="2-digit"
+                                minute="2-digit"
+                            ></lightning-formatted-date-time>
+                        </p>
+                    </template>
+                    <div class="snapshot-grid">
+                        <div>
+                            <p class="summary-label">Patient</p>
+                            <p>{patientName}</p>
+                            <p class="snapshot-detail">{patientDetails}</p>
+                        </div>
+                        <div>
+                            <p class="summary-label">Subscriber</p>
+                            <p>{subscriberName}</p>
+                            <p class="snapshot-detail">{subscriberDetails}</p>
+                            <p class="snapshot-detail">
+                                DOB
+                                <lightning-formatted-date-time
+                                    value={subscriberDateOfBirth}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    time-zone="UTC"
+                                ></lightning-formatted-date-time>
+                                · {subscriberSex}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="summary-label">Payer</p>
+                            <p>{payerSnapshot}</p>
+                        </div>
+                        <div>
+                            <p class="summary-label">Rendering provider</p>
+                            <p>{renderingProviderSnapshot}</p>
+                        </div>
+                        <div>
+                            <p class="summary-label">Billing provider</p>
+                            <p>{billingProviderSnapshot}</p>
+                            <p class="snapshot-detail">{billingProviderAddress}</p>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="slds-m-top_medium">
                     <h3 class="slds-text-title_caps slds-m-bottom_x-small">Diagnoses</h3>
                     <template lwc:if={hasDiagnoses}>
@@ -106,6 +167,12 @@
 
                 <div class="footer-actions">
                     <template lwc:if={isReady}>
+                        <lightning-button
+                            class="slds-m-right_small"
+                            label="Preview canonical export"
+                            disabled={isSaving}
+                            onclick={handlePreviewExport}
+                        ></lightning-button>
                         <lightning-button
                             label="Reopen review"
                             disabled={isSaving}
@@ -175,7 +242,8 @@
                         min="0.01"
                         step="0.01"
                         formatter="currency"
-                        required
+                        required={isChargeAmountRequired}
+                        disabled={isChargeAmountDisabled}
                         onchange={handleChargeField}
                     ></lightning-input>
                     <lightning-input
@@ -196,6 +264,29 @@
                         onchange={handleChargeField}
                     ></lightning-input>
                 </div>
+                <template lwc:if={rateMessage}>
+                    <p class="rate-message slds-m-top_small">{rateMessage}</p>
+                </template>
+                <template lwc:if={canOverrideRates}>
+                    <lightning-input
+                        class="slds-m-top_small"
+                        type="checkbox"
+                        name="rateOverride"
+                        label="Override fee schedule rate"
+                        checked={chargeDraft.rateOverride}
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                </template>
+                <template lwc:if={showOverrideReason}>
+                    <lightning-input
+                        name="overrideReason"
+                        label="Override reason"
+                        value={chargeDraft.overrideReason}
+                        maxlength="255"
+                        required
+                        onchange={handleChargeField}
+                    ></lightning-input>
+                </template>
                 <div slot="footer">
                     <lightning-button
                         label="Cancel"
@@ -208,6 +299,23 @@
                         disabled={isSaving}
                         onclick={handleSaveCharge}
                     ></lightning-button>
+                </div>
+            </c-emr-modal>
+        </template>
+
+        <template lwc:if={showExportModal}>
+            <c-emr-modal title="Canonical claim export" onclose={handleCloseExport}>
+                <p class="slds-m-bottom_small">
+                    Schema 1.0 vendor-neutral JSON. Clearinghouse adapters should transform this payload without reading live clinical records.
+                </p>
+                <lightning-textarea
+                    label="Canonical JSON"
+                    value={exportJson}
+                    read-only
+                    class="export-json"
+                ></lightning-textarea>
+                <div slot="footer">
+                    <lightning-button label="Close" onclick={handleCloseExport}></lightning-button>
                 </div>
             </c-emr-modal>
         </template>

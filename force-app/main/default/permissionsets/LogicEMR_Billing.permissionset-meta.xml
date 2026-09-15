@@ -9,6 +9,18 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>ClaimSnapshotService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>ClaimExportController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>FeeScheduleService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>CoveragePanelController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -71,6 +83,56 @@
     <description>Billing access to demographics, coverage, eligibility, superbills, charge lines, and claim-readiness review.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Billing</label>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_First_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_Last_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_Date_of_Birth__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_Sex__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_Street__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_City__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_State__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_Postal_Code__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Patient_Country__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Snapshot_Refreshed_At__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Snapshot_Version__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_First_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Last_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Date_of_Birth__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Sex__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Relationship__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Member_Id__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Group_Number__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Street__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_City__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_State__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Postal_Code__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Subscriber_Country__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Payer_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Payer_Identifier__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Coverage_Effective_Start__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Coverage_Effective_End__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Rendering_Provider_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Rendering_Provider_NPI__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Rendering_Provider_Taxonomy__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_NPI__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_EIN__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_Taxonomy__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_Street__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_City__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_State__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_Postal_Code__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Superbill__c.Billing_Provider_Country__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_First_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_Last_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_Date_of_Birth__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_Sex__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_Street__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_City__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_State__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_Postal_Code__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Coverage__c.Subscriber_Country__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Practitioner__c.Taxonomy_Code__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Organization__c.Taxonomy_Code__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Superbill__c.Billing_Organization__c</field>
@@ -157,8 +219,63 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>true</editable>
+        <editable>false</editable>
         <field>Charge_Line__c.Charge_Amount__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Applied_Unit_Rate__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Fee_Schedule_Rate__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Override_Reason__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Rate_Override__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Rate_Source__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Fee_Schedule__c.Active__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Fee_Schedule__c.Payer__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Fee_Schedule_Rate__c.Active__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Fee_Schedule_Rate__c.Effective_End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Fee_Schedule_Rate__c.Procedure_Display__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Fee_Schedule_Rate__c.Procedure_Ref__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -587,6 +704,24 @@
         <object>Organization__c</object>
         <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Fee_Schedule__c</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Fee_Schedule_Rate__c</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
     <tabSettings>
         <tab>Superbill__c</tab>
         <visibility>Visible</visibility>
@@ -601,6 +736,10 @@
     </tabSettings>
     <tabSettings>
         <tab>Organization__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Fee_Schedule__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
 </PermissionSet>

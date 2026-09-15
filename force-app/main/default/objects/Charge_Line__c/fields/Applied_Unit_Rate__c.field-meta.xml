@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Applied_Unit_Rate__c</fullName>
+    <description>Fee schedule unit rate applied before multiplying by units. For an override without a schedule, this is derived from the overridden line amount.</description>
+    <label>Applied Unit Rate</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <type>Currency</type>
+</CustomField>
