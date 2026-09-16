@@ -61,6 +61,101 @@ private class AdminConsoleControllerTest {
     }
 
     @IsTest
+    static void getIntegrationMonitorReturnsStediTraffic() {
+        AdminConsoleController.manageSettingsOverride = true;
+        Patient__c patient = new Patient__c(Name = 'Monitor Patient', MRN__c = 'MONITOR-001');
+        insert patient;
+        insert new Eligibility_Check__c(
+            Patient__c = patient.Id,
+            Status__c = 'Active',
+            Provider_Used__c = 'Stedi',
+            Checked_Date__c = Datetime.now(),
+            Request_Payload__c = '{"transaction":"270"}',
+            Raw_Response__c = '{"transaction":"271"}'
+        );
+
+        Encounter__c encounter = new Encounter__c(
+            Patient__c = patient.Id,
+            Status__c = 'Finished'
+        );
+        insert encounter;
+        Superbill__c superbill = new Superbill__c(
+            Encounter__c = encounter.Id,
+            Encounter_Key__c = String.valueOf(encounter.Id),
+            Patient__c = patient.Id,
+            Status__c = 'Exported'
+        );
+        insert superbill;
+        Claim_Submission__c submission = new Claim_Submission__c(
+            Superbill__c = superbill.Id,
+            Status__c = 'Submitted',
+            Acknowledgment_Status__c = 'Pending',
+            Attempt_Number__c = 1,
+            Idempotency_Key__c = 'ADMIN-MONITOR-IDEMP',
+            Patient_Control_Number__c = 'ADMIN-MONITOR-PCN',
+            Provider_Used__c = 'Stedi',
+            Http_Status_Code__c = 200,
+            Provider_Status__c = 'SUCCESS',
+            Correlation_Id__c = 'ADMIN-MONITOR-CORR',
+            Clearinghouse_Claim_Id__c = 'STEDI-CLAIM-001',
+            Request_Payload__c = '{"transaction":"837P"}',
+            Response_Payload__c = '{"status":"SUCCESS"}',
+            Submitted_At__c = Datetime.now()
+        );
+        insert submission;
+        insert new Claim_Acknowledgment__c(
+            Acknowledgment_Key__c = 'ADMIN-MONITOR-ACK',
+            Transaction_Id__c = '71716ec5-0e96-462f-bb77-869941bb27ab',
+            Claim_Submission__c = submission.Id,
+            Superbill__c = superbill.Id,
+            Match_Status__c = 'Matched',
+            Status__c = 'Accepted',
+            Sender_Type__c = 'Clearinghouse',
+            Sender_Name__c = 'Stedi',
+            Payer_Claim_Control_Number__c = 'PAYER-001',
+            Processed_At__c = Datetime.now(),
+            Raw_Payload__c = '{"transaction":"277CA"}',
+            Message__c = 'Claim accepted'
+        );
+
+        Test.startTest();
+        AdminConsoleController.IntegrationMonitorPayload payload =
+            AdminConsoleController.getIntegrationMonitor();
+        Test.stopTest();
+
+        System.assertEquals(1, payload.eligibilityCount, 'Eligibility activity should be counted');
+        System.assertEquals(1, payload.submissionCount, 'Claim submissions should be counted');
+        System.assertEquals(1, payload.acknowledgmentCount, 'Acknowledgments should be counted');
+        System.assertEquals(3, payload.rows.size(), 'All integration activity should be returned');
+
+        Map<String, AdminConsoleController.IntegrationMonitorRow> rowsByType =
+            new Map<String, AdminConsoleController.IntegrationMonitorRow>();
+        for (AdminConsoleController.IntegrationMonitorRow row : payload.rows) {
+            rowsByType.put(row.kind, row);
+        }
+        System.assertEquals(
+            200,
+            rowsByType.get('Professional claim 837P').httpStatus,
+            'HTTP response code should be exposed'
+        );
+        System.assertEquals(
+            'STEDI-CLAIM-001',
+            rowsByType.get('Professional claim 837P').clearinghouseId,
+            'Clearinghouse claim id should be exposed'
+        );
+        System.assertEquals(
+            'Clearinghouse - Stedi',
+            rowsByType.get('Claim acknowledgment 277CA').provider,
+            'Acknowledgment sender should be exposed'
+        );
+        System.assertEquals(
+            '{"transaction":"271"}',
+            rowsByType.get('Eligibility 270/271').responsePayload,
+            'Eligibility response should be exposed'
+        );
+    }
+
+    @IsTest
     static void requireManageSettingsDeniesWithoutPermission() {
         AdminConsoleController.manageSettingsOverride = false;
         Boolean denied = false;

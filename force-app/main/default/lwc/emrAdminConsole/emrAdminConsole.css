@@ -13,3 +13,25 @@
 .slds-nav-vertical__action.slds-is-active {
     font-weight: 700;
 }
+
+.monitor-summary {
+    min-height: 5rem;
+}
+
+.monitor-table {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.payload-view {
+    max-height: 20rem;
+    overflow: auto;
+    padding: 0.75rem;
+    border: 1px solid #c9c9c9;
+    border-radius: 0.25rem;
+    background: #f3f3f3;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.75rem;
+}

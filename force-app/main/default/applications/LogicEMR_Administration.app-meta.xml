@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <brand>
+        <headerColor>#0176D3</headerColor>
+        <logo>LogicEMR_Clinical_Logo</logo>
+        <logoVersion>1</logoVersion>
+        <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
+    </brand>
+    <description>LogicEMR administration and Stedi integration monitoring workspace.</description>
+    <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>true</isNavPersonalizationDisabled>
+    <label>LogicEMR Admin</label>
+    <navType>Standard</navType>
+    <tabs>LogicEMR_Admin</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

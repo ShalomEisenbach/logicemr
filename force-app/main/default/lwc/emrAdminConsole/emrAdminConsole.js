@@ -3,6 +3,7 @@ import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { refreshApex } from '@salesforce/apex';
 import getOverview from '@salesforce/apex/AdminConsoleController.getOverview';
+import getIntegrationMonitor from '@salesforce/apex/AdminConsoleController.getIntegrationMonitor';
 import getNoteTemplates from '@salesforce/apex/AdminConsoleController.getNoteTemplates';
 import getPractitioners from '@salesforce/apex/AdminConsoleController.getPractitioners';
 import savePractitionerUsers from '@salesforce/apex/AdminConsoleController.savePractitionerUsers';
@@ -27,6 +28,7 @@ import CODE_REFERENCE_OBJECT from '@salesforce/schema/Code_Reference__c';
 const SECTIONS = [
     { id: 'overview', label: 'Overview' },
     { id: 'credentials', label: 'Credentials' },
+    { id: 'integrations', label: 'Stedi monitor' },
     { id: 'eligibility', label: 'Eligibility' },
     { id: 'communications', label: 'Communications' },
     { id: 'noteTemplates', label: 'Note templates' },
@@ -43,6 +45,8 @@ const SECTIONS = [
 export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     @track activeSection = 'overview';
     @track overview;
+    @track integrationMonitor;
+    @track selectedIntegration;
     @track noteTemplates = [];
     @track practitioners = [];
     @track billingOrgDraft = {};
@@ -63,6 +67,7 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     @track loadError;
 
     wiredOverviewResult;
+    wiredIntegrationResult;
     wiredNotesResult;
     wiredPractitionersResult;
     wiredBillingOrgResult;
@@ -86,6 +91,9 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     }
     get isCredentials() {
         return this.activeSection === 'credentials';
+    }
+    get isIntegrations() {
+        return this.activeSection === 'integrations';
     }
     get isEligibility() {
         return this.activeSection === 'eligibility';
@@ -131,6 +139,10 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
 
     get stediStatusLabel() {
         return this.overview?.stediNamedCredentialPresent ? 'Present' : 'Missing';
+    }
+
+    get stediClaimsStatusLabel() {
+        return this.overview?.stediClaimsNamedCredentialPresent ? 'Present' : 'Missing';
     }
 
     get twilioStatusLabel() {
@@ -233,6 +245,60 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
         ];
     }
 
+    get integrationColumns() {
+        return [
+            { label: 'Transaction', fieldName: 'name', type: 'text' },
+            { label: 'Type', fieldName: 'kind', type: 'text' },
+            { label: 'Status', fieldName: 'status', type: 'text' },
+            { label: 'Provider / sender', fieldName: 'provider', type: 'text' },
+            { label: 'HTTP', fieldName: 'httpStatus', type: 'number' },
+            {
+                label: 'Provider status / match',
+                fieldName: 'providerStatus',
+                type: 'text'
+            },
+            {
+                label: 'Correlation / transaction',
+                fieldName: 'reference',
+                type: 'text'
+            },
+            { label: 'Clearinghouse ID', fieldName: 'clearinghouseId', type: 'text' },
+            {
+                label: 'Occurred',
+                fieldName: 'occurredAt',
+                type: 'date',
+                typeAttributes: {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }
+            },
+            {
+                type: 'action',
+                typeAttributes: {
+                    rowActions: [
+                        { label: 'Inspect payloads', name: 'inspect' },
+                        { label: 'Open record', name: 'open' }
+                    ]
+                }
+            }
+        ];
+    }
+
+    get integrationRows() {
+        return [...(this.integrationMonitor?.rows || [])].sort((left, right) => {
+            const leftTime = left.occurredAt ? Date.parse(left.occurredAt) : 0;
+            const rightTime = right.occurredAt ? Date.parse(right.occurredAt) : 0;
+            return rightTime - leftTime;
+        });
+    }
+
+    get hasIntegrationRows() {
+        return this.integrationRows.length > 0;
+    }
+
     @wire(getOverview)
     wiredOverview(result) {
         this.wiredOverviewResult = result;
@@ -248,6 +314,16 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
             this.loadError = undefined;
         } else if (error) {
             this.loadError = this.reduceError(error);
+        }
+    }
+
+    @wire(getIntegrationMonitor)
+    wiredIntegration(result) {
+        this.wiredIntegrationResult = result;
+        if (result.data) {
+            this.integrationMonitor = result.data;
+        } else if (result.error) {
+            this.loadError = this.reduceError(result.error);
         }
     }
 
@@ -307,10 +383,43 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
         this.refreshAll();
     }
 
+    async handleRefreshIntegrations() {
+        if (this.wiredIntegrationResult) {
+            await refreshApex(this.wiredIntegrationResult);
+        }
+    }
+
+    handleIntegrationRowAction(event) {
+        const { action, row } = event.detail;
+        if (action.name === 'open') {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__recordPage',
+                attributes: {
+                    recordId: row.id,
+                    actionName: 'view'
+                }
+            });
+            return;
+        }
+        this.selectedIntegration = {
+            ...row,
+            requestPayloadDisplay: row.requestPayload || 'No outbound payload was stored.',
+            responsePayloadDisplay: row.responsePayload || 'No inbound payload was stored.',
+            messageDisplay: row.message || 'No error or clearinghouse message was stored.'
+        };
+    }
+
+    handleCloseIntegrationDetails() {
+        this.selectedIntegration = undefined;
+    }
+
     async refreshAll() {
         const jobs = [];
         if (this.wiredOverviewResult) {
             jobs.push(refreshApex(this.wiredOverviewResult));
+        }
+        if (this.wiredIntegrationResult) {
+            jobs.push(refreshApex(this.wiredIntegrationResult));
         }
         if (this.wiredNotesResult) {
             jobs.push(refreshApex(this.wiredNotesResult));

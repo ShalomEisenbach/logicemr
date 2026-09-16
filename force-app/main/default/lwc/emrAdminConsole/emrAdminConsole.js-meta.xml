@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>LogicEMR Admin Console</masterLabel>
-    <description>Unified admin console for credentials status, settings, note templates, code sets, mapping, schedules, jobs, and data quality.</description>
+    <description>Unified admin console for Stedi integration monitoring, credentials status, settings, note templates, code sets, mapping, schedules, jobs, and data quality.</description>
     <targets>
         <target>lightning__AppPage</target>
     </targets>

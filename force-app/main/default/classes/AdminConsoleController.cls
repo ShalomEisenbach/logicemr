@@ -4,6 +4,7 @@ public with sharing class AdminConsoleController {
     public static final String ELIGIBILITY_JOB_NAME = 'Eligibility Re-verify';
     public static final String DEFAULT_ELIGIBILITY_CRON = '0 0 2 * * ?';
     public static final String STEDI_NAMED_CREDENTIAL = 'Stedi_Eligibility';
+    public static final String STEDI_CLAIMS_NAMED_CREDENTIAL = 'Stedi_Claims';
     public static final String DEFAULT_TWILIO_NAMED_CREDENTIAL = 'LogicEMR_Twilio';
 
     @TestVisible
@@ -18,6 +19,8 @@ public with sharing class AdminConsoleController {
     public class OverviewPayload {
         @AuraEnabled
         public Boolean stediNamedCredentialPresent;
+        @AuraEnabled
+        public Boolean stediClaimsNamedCredentialPresent;
         @AuraEnabled
         public Boolean twilioNamedCredentialPresent;
         @AuraEnabled
@@ -48,6 +51,53 @@ public with sharing class AdminConsoleController {
         public String stediSetupHint;
         @AuraEnabled
         public String twilioSetupHint;
+    }
+
+    public class IntegrationMonitorPayload {
+        @AuraEnabled
+        public List<IntegrationMonitorRow> rows;
+        @AuraEnabled
+        public Integer eligibilityCount;
+        @AuraEnabled
+        public Integer submissionCount;
+        @AuraEnabled
+        public Integer acknowledgmentCount;
+
+        public IntegrationMonitorPayload() {
+            rows = new List<IntegrationMonitorRow>();
+            eligibilityCount = 0;
+            submissionCount = 0;
+            acknowledgmentCount = 0;
+        }
+    }
+
+    public class IntegrationMonitorRow {
+        @AuraEnabled
+        public Id id;
+        @AuraEnabled
+        public String name;
+        @AuraEnabled
+        public String kind;
+        @AuraEnabled
+        public String status;
+        @AuraEnabled
+        public String provider;
+        @AuraEnabled
+        public Integer httpStatus;
+        @AuraEnabled
+        public String providerStatus;
+        @AuraEnabled
+        public String reference;
+        @AuraEnabled
+        public String clearinghouseId;
+        @AuraEnabled
+        public Datetime occurredAt;
+        @AuraEnabled
+        public String requestPayload;
+        @AuraEnabled
+        public String responsePayload;
+        @AuraEnabled
+        public String message;
     }
 
     public class JobStatus {
@@ -216,9 +266,16 @@ public with sharing class AdminConsoleController {
             ? comm.twilioNamedCredential
             : DEFAULT_TWILIO_NAMED_CREDENTIAL;
         Set<String> presentCredentials = queryNamedCredentialNames(
-            new Set<String>{ STEDI_NAMED_CREDENTIAL, payload.twilioNamedCredentialExpected }
+            new Set<String>{
+                STEDI_NAMED_CREDENTIAL,
+                STEDI_CLAIMS_NAMED_CREDENTIAL,
+                payload.twilioNamedCredentialExpected
+            }
         );
         payload.stediNamedCredentialPresent = presentCredentials.contains(STEDI_NAMED_CREDENTIAL);
+        payload.stediClaimsNamedCredentialPresent = presentCredentials.contains(
+            STEDI_CLAIMS_NAMED_CREDENTIAL
+        );
         payload.twilioNamedCredentialPresent = presentCredentials.contains(
             payload.twilioNamedCredentialExpected
         );
@@ -253,6 +310,133 @@ public with sharing class AdminConsoleController {
             ' (URL https://api.twilio.com, Password Authentication, Username = Account SID, ' +
             'Password = Auth Token, Generate Authorization Header enabled). ' +
             'Then set SMS Enabled, Account SID, and From Number on Communications.';
+        return payload;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static IntegrationMonitorPayload getIntegrationMonitor() {
+        requireManageSettings();
+        IntegrationMonitorPayload payload = new IntegrationMonitorPayload();
+
+        for (Eligibility_Check__c check : [
+            SELECT
+                Id,
+                Name,
+                Status__c,
+                Provider_Used__c,
+                Checked_Date__c,
+                Request_Payload__c,
+                Raw_Response__c,
+                Error_Message__c,
+                CreatedDate
+            FROM Eligibility_Check__c
+            ORDER BY Checked_Date__c DESC NULLS LAST, CreatedDate DESC
+            LIMIT 50
+        ]) {
+            IntegrationMonitorRow row = new IntegrationMonitorRow();
+            row.id = check.Id;
+            row.name = check.Name;
+            row.kind = 'Eligibility 270/271';
+            row.status = check.Status__c;
+            row.provider = check.Provider_Used__c;
+            row.occurredAt = check.Checked_Date__c != null
+                ? check.Checked_Date__c
+                : check.CreatedDate;
+            row.requestPayload = check.Request_Payload__c;
+            row.responsePayload = check.Raw_Response__c;
+            row.message = check.Error_Message__c;
+            payload.rows.add(row);
+            payload.eligibilityCount++;
+        }
+
+        for (Claim_Submission__c submission : [
+            SELECT
+                Id,
+                Name,
+                Status__c,
+                Provider_Used__c,
+                Http_Status_Code__c,
+                Provider_Status__c,
+                Correlation_Id__c,
+                Clearinghouse_Claim_Id__c,
+                Submitted_At__c,
+                Last_Attempt_At__c,
+                Queued_At__c,
+                Request_Payload__c,
+                Response_Payload__c,
+                Error_Message__c,
+                CreatedDate
+            FROM Claim_Submission__c
+            ORDER BY CreatedDate DESC
+            LIMIT 50
+        ]) {
+            IntegrationMonitorRow row = new IntegrationMonitorRow();
+            row.id = submission.Id;
+            row.name = submission.Name;
+            row.kind = 'Professional claim 837P';
+            row.status = submission.Status__c;
+            row.provider = submission.Provider_Used__c;
+            row.httpStatus = submission.Http_Status_Code__c == null
+                ? null
+                : submission.Http_Status_Code__c.intValue();
+            row.providerStatus = submission.Provider_Status__c;
+            row.reference = submission.Correlation_Id__c;
+            row.clearinghouseId = submission.Clearinghouse_Claim_Id__c;
+            row.occurredAt = submission.Submitted_At__c != null
+                ? submission.Submitted_At__c
+                : (submission.Last_Attempt_At__c != null
+                    ? submission.Last_Attempt_At__c
+                    : (submission.Queued_At__c != null
+                        ? submission.Queued_At__c
+                        : submission.CreatedDate));
+            row.requestPayload = submission.Request_Payload__c;
+            row.responsePayload = submission.Response_Payload__c;
+            row.message = submission.Error_Message__c;
+            payload.rows.add(row);
+            payload.submissionCount++;
+        }
+
+        for (Claim_Acknowledgment__c acknowledgment : [
+            SELECT
+                Id,
+                Name,
+                Status__c,
+                Match_Status__c,
+                Sender_Type__c,
+                Sender_Name__c,
+                Transaction_Id__c,
+                Payer_Claim_Control_Number__c,
+                Processed_At__c,
+                Raw_Payload__c,
+                Message__c,
+                CreatedDate
+            FROM Claim_Acknowledgment__c
+            ORDER BY Processed_At__c DESC NULLS LAST, CreatedDate DESC
+            LIMIT 50
+        ]) {
+            IntegrationMonitorRow row = new IntegrationMonitorRow();
+            row.id = acknowledgment.Id;
+            row.name = acknowledgment.Name;
+            row.kind = 'Claim acknowledgment 277CA';
+            row.status = acknowledgment.Status__c;
+            row.provider = String.isNotBlank(acknowledgment.Sender_Type__c) &&
+                String.isNotBlank(acknowledgment.Sender_Name__c)
+                ? acknowledgment.Sender_Type__c + ' - ' + acknowledgment.Sender_Name__c
+                : (String.isNotBlank(acknowledgment.Sender_Name__c)
+                    ? acknowledgment.Sender_Name__c
+                    : acknowledgment.Sender_Type__c);
+            row.providerStatus = acknowledgment.Match_Status__c;
+            row.reference = acknowledgment.Transaction_Id__c;
+            row.clearinghouseId = acknowledgment.Payer_Claim_Control_Number__c;
+            row.occurredAt = acknowledgment.Processed_At__c != null
+                ? acknowledgment.Processed_At__c
+                : acknowledgment.CreatedDate;
+            row.responsePayload = acknowledgment.Raw_Payload__c;
+            row.message = acknowledgment.Message__c;
+            payload.rows.add(row);
+            payload.acknowledgmentCount++;
+        }
+
         return payload;
     }
 

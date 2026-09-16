@@ -13,6 +13,10 @@
         <visible>true</visible>
     </applicationVisibilities>
     <applicationVisibilities>
+        <application>LogicEMR_Administration</application>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <applicationVisibilities>
         <application>LogicEMR_Scheduling</application>
         <visible>true</visible>
     </applicationVisibilities>

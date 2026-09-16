@@ -51,8 +51,12 @@
                         <template lwc:if={overview}>
                             <div class="slds-grid slds-wrap slds-gutters">
                                 <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
-                                    <p class="slds-text-title_caps">Stedi credential</p>
+                                    <p class="slds-text-title_caps">Stedi eligibility credential</p>
                                     <p class="slds-text-heading_small">{stediStatusLabel}</p>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
+                                    <p class="slds-text-title_caps">Stedi claims credential</p>
+                                    <p class="slds-text-heading_small">{stediClaimsStatusLabel}</p>
                                 </div>
                                 <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-m-bottom_small">
                                     <p class="slds-text-title_caps">Twilio credential</p>
@@ -98,8 +102,21 @@
                             </p>
                             <div class="slds-box slds-m-bottom_medium">
                                 <h3 class="slds-text-heading_small">Stedi Eligibility</h3>
-                                <p class="slds-m-top_x-small">Named Credential status: <strong>{stediStatusLabel}</strong></p>
+                                <p class="slds-m-top_x-small">
+                                    Named Credential status: <strong>{stediStatusLabel}</strong>
+                                </p>
                                 <p class="slds-m-top_small slds-text-body_regular">{overview.stediSetupHint}</p>
+                            </div>
+                            <div class="slds-box slds-m-bottom_medium">
+                                <h3 class="slds-text-heading_small">Stedi Claims Clearinghouse</h3>
+                                <p class="slds-m-top_x-small">
+                                    Named Credential: <strong>Stedi_Claims</strong> - status:
+                                    <strong>{stediClaimsStatusLabel}</strong>
+                                </p>
+                                <p class="slds-m-top_small slds-text-body_regular">
+                                    Uses the same Stedi external credential principal for 837P submissions and 277CA
+                                    processing.
+                                </p>
                             </div>
                             <div class="slds-box">
                                 <h3 class="slds-text-heading_small">Twilio SMS</h3>
@@ -112,6 +129,110 @@
                             </div>
                         </template>
                     </c-emr-chart-panel>
+                </template>
+
+                <template lwc:elseif={isIntegrations}>
+                    <c-emr-chart-panel title="Stedi integration monitor">
+                        <div class="slds-grid slds-wrap slds-grid_vertical-align-center slds-m-bottom_medium">
+                            <div class="slds-col slds-grow">
+                                <p>
+                                    Recent Stedi eligibility 270/271, professional claim 837P, and clearinghouse
+                                    acknowledgment 277CA activity.
+                                </p>
+                                <p class="slds-text-color_weak slds-text-body_small slds-m-top_x-small">
+                                    Payloads can contain protected health information. Admin access is required.
+                                </p>
+                            </div>
+                            <div class="slds-col slds-no-flex">
+                                <lightning-button
+                                    label="Refresh activity"
+                                    icon-name="utility:refresh"
+                                    onclick={handleRefreshIntegrations}
+                                ></lightning-button>
+                            </div>
+                        </div>
+
+                        <template lwc:if={integrationMonitor}>
+                            <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                    <div class="slds-box monitor-summary">
+                                        <p class="slds-text-title_caps">Eligibility 270/271</p>
+                                        <p class="slds-text-heading_medium">{integrationMonitor.eligibilityCount}</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                    <div class="slds-box monitor-summary">
+                                        <p class="slds-text-title_caps">Claims 837P</p>
+                                        <p class="slds-text-heading_medium">{integrationMonitor.submissionCount}</p>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                    <div class="slds-box monitor-summary">
+                                        <p class="slds-text-title_caps">Acknowledgments 277CA</p>
+                                        <p class="slds-text-heading_medium">{integrationMonitor.acknowledgmentCount}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <template lwc:if={hasIntegrationRows}>
+                                <div class="monitor-table">
+                                    <lightning-datatable
+                                        key-field="id"
+                                        data={integrationRows}
+                                        columns={integrationColumns}
+                                        onrowaction={handleIntegrationRowAction}
+                                        hide-checkbox-column
+                                        show-row-number-column
+                                    ></lightning-datatable>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <div class="slds-box slds-theme_shade">No Stedi transactions have been stored yet.</div>
+                            </template>
+                        </template>
+                        <template lwc:else>
+                            <lightning-spinner alternative-text="Loading Stedi activity"></lightning-spinner>
+                        </template>
+                    </c-emr-chart-panel>
+
+                    <template lwc:if={selectedIntegration}>
+                        <section class="slds-card slds-m-top_medium" aria-label="Transaction details">
+                            <div class="slds-card__header slds-grid">
+                                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                    <div class="slds-media__body">
+                                        <h2 class="slds-card__header-title">
+                                            {selectedIntegration.kind}: {selectedIntegration.name}
+                                        </h2>
+                                    </div>
+                                    <div class="slds-no-flex">
+                                        <lightning-button-icon
+                                            icon-name="utility:close"
+                                            alternative-text="Close transaction details"
+                                            title="Close"
+                                            onclick={handleCloseIntegrationDetails}
+                                        ></lightning-button-icon>
+                                    </div>
+                                </header>
+                            </div>
+                            <div class="slds-card__body slds-card__body_inner">
+                                <p class="slds-m-bottom_medium">
+                                    <strong>Status:</strong> {selectedIntegration.status} &nbsp;
+                                    <strong>Provider / sender:</strong>
+                                    {selectedIntegration.provider}
+                                </p>
+                                <h3 class="slds-text-heading_small slds-m-bottom_x-small">Message / error</h3>
+                                <pre class="payload-view">{selectedIntegration.messageDisplay}</pre>
+                                <h3 class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small">
+                                    Outbound request
+                                </h3>
+                                <pre class="payload-view">{selectedIntegration.requestPayloadDisplay}</pre>
+                                <h3 class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small">
+                                    Inbound response / acknowledgment
+                                </h3>
+                                <pre class="payload-view">{selectedIntegration.responsePayloadDisplay}</pre>
+                            </div>
+                        </section>
+                    </template>
                 </template>
 
                 <template lwc:elseif={isEligibility}>
