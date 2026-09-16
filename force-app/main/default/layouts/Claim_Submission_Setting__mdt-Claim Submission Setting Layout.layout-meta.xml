@@ -17,6 +17,7 @@
             <layoutItems><behavior>Required</behavior><field>Contact_Name__c</field></layoutItems>
             <layoutItems><behavior>Edit</behavior><field>Contact_Phone__c</field></layoutItems>
             <layoutItems><behavior>Edit</behavior><field>Active__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field>Webhook_Secret_Hash__c</field></layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>

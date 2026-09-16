@@ -25,6 +25,10 @@ public with sharing class ClaimSubmissionController {
         Queued_At__c,
         Last_Attempt_At__c,
         Submitted_At__c,
+        Acknowledgment_Status__c,
+        Last_Acknowledgment_At__c,
+        Acknowledgment_Message__c,
+        Payer_Claim_Control_Number__c,
         Error_Message__c
       FROM Claim_Submission__c
       WHERE Superbill__c = :superbillId
@@ -48,6 +52,44 @@ public with sharing class ClaimSubmissionController {
     requireManageClaims();
     try {
       return ClaimSubmissionService.retry(submissionId).Id;
+    } catch (Exception e) {
+      throw auraError(e.getMessage());
+    }
+  }
+
+  @AuraEnabled(cacheable=true)
+  public static List<Claim_Acknowledgment__c> getAcknowledgments(
+    Id superbillId
+  ) {
+    requireManageClaims();
+    if (superbillId == null)
+      throw auraError('Superbill Id is required.');
+    return [
+      SELECT
+        Id,
+        Name,
+        Claim_Submission__c,
+        Status__c,
+        Sender_Type__c,
+        Sender_Name__c,
+        Patient_Control_Number__c,
+        Payer_Claim_Control_Number__c,
+        Effective_Date__c,
+        Processed_At__c,
+        Status_Codes__c,
+        Message__c
+      FROM Claim_Acknowledgment__c
+      WHERE Superbill__c = :superbillId AND Match_Status__c = 'Matched'
+      ORDER BY Processed_At__c DESC, CreatedDate DESC
+      LIMIT 100
+    ];
+  }
+
+  @AuraEnabled
+  public static String reopenRejectedClaim(Id submissionId) {
+    requireManageClaims();
+    try {
+      return ClaimAcknowledgmentService.reopenRejectedClaim(submissionId);
     } catch (Exception e) {
       throw auraError(e.getMessage());
     }

@@ -1,53 +1,122 @@
 .submission-panel {
-    margin-top: 1rem;
-    padding: 1rem;
-    border: 1px solid #dddbda;
-    border-radius: 0.25rem;
-    background: #fafaf9;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #dddbda;
+  border-radius: 0.25rem;
+  background: #fafaf9;
 }
 
 .heading,
 .submission-row,
 .attempt {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .submission-row {
-    padding: 0.75rem 0;
-    border-top: 1px solid #dddbda;
+  padding: 0.75rem 0;
+  border-top: 1px solid #dddbda;
 }
 
 .detail {
-    color: #5c5c5c;
-    font-size: 0.75rem;
+  color: #5c5c5c;
+  font-size: 0.75rem;
 }
 
 .error-detail {
-    color: #ba0517;
-    font-size: 0.75rem;
-    max-width: 44rem;
+  color: #ba0517;
+  font-size: 0.75rem;
+  max-width: 44rem;
+}
+
+.acknowledgment-message {
+  color: #5c5c5c;
+  font-size: 0.8125rem;
+  margin-top: 0.25rem;
+  white-space: pre-line;
+}
+
+.acknowledgment-summary {
+  align-items: center;
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.acknowledgment-list {
+  border-left: 2px solid #dddbda;
+  list-style: none;
+  margin: 0.625rem 0 0 0.375rem;
+  padding-left: 0.75rem;
+}
+
+.acknowledgment-row {
+  color: #3e3e3c;
+  display: grid;
+  font-size: 0.75rem;
+  gap: 0.125rem 0.5rem;
+  grid-template-columns: auto auto auto 1fr;
+  margin-bottom: 0.5rem;
+}
+
+.acknowledgment-row p {
+  grid-column: 1 / -1;
+  white-space: pre-line;
+}
+
+.ack-status {
+  border-radius: 1rem;
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.0625rem 0.375rem;
+}
+
+.ack-pending,
+.ack-received,
+.ack-unknown {
+  background: #fff3cd;
+  color: #6f4e00;
+}
+
+.ack-accepted {
+  background: #d4edda;
+  color: #194e31;
+}
+
+.ack-rejected {
+  background: #fddde3;
+  color: #8e030f;
 }
 
 .status {
-    display: inline-block;
-    padding: 0.125rem 0.5rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 700;
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.status-queued { background: #fff3cd; color: #6f4e00; }
-.status-submitted { background: #d4edda; color: #194e31; }
+.status-queued {
+  background: #fff3cd;
+  color: #6f4e00;
+}
+.status-submitted {
+  background: #d4edda;
+  color: #194e31;
+}
 .status-rejected,
-.status-failed { background: #fddde3; color: #8e030f; }
+.status-failed {
+  background: #fddde3;
+  color: #8e030f;
+}
 
 @media (max-width: 48rem) {
-    .heading,
-    .submission-row {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+  .heading,
+  .submission-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

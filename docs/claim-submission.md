@@ -25,11 +25,11 @@ LogicEMR submits primary professional claims through a provider-neutral Apex bou
 | Status    | Meaning                                                         | Next action                                              |
 | --------- | --------------------------------------------------------------- | -------------------------------------------------------- |
 | Queued    | Salesforce accepted the request and scheduled the callout       | Wait for the panel to refresh                            |
-| Submitted | Stedi returned a successful synchronous handoff                 | Await 277CA in the next increment                        |
+| Submitted | Stedi returned a successful synchronous handoff                 | Await the asynchronous 277CA acknowledgment              |
 | Rejected  | Stedi returned a request/edit rejection                         | Reopen, correct, mark Ready, and create a new submission |
 | Failed    | Network, authentication, server, or internal processing failure | Retry the same attempt after resolving the cause         |
 
-Successful handoff does not mean the payer accepted or adjudicated the claim. It only confirms that the clearinghouse received and processed the outbound request synchronously. The later 277CA workflow determines payer acceptance.
+Successful handoff does not mean the payer accepted or adjudicated the claim. It only confirms that the clearinghouse received and processed the outbound request synchronously. The later 277CA workflow determines payer acceptance; see [claim-acknowledgments.md](claim-acknowledgments.md).
 
 HTTP 400 and 422 edit responses, plus a provider edit failure returned with a successful HTTP status, are classified as `Rejected`. Authentication, authorization, rate-limit, timeout, server, and malformed-response failures are classified as `Failed` so they remain retryable.
 
@@ -39,4 +39,4 @@ The panel polls while an attempt is `Queued`. After 15 minutes it offers **Recov
 
 ## Current scope
 
-The adapter sends primary, fee-for-service 837P claims. Billing organization details are also used as the service facility for this first increment. Secondary/tertiary coordination of benefits, attachments, replacement/void frequency codes, acknowledgment ingestion, and remittance posting are intentionally deferred.
+The adapter sends primary, fee-for-service 837P claims. Billing organization details are also used as the service facility for this first increment. Secondary/tertiary coordination of benefits, attachments, replacement/void frequency codes, and remittance posting are intentionally deferred.

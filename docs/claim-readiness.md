@@ -1,6 +1,6 @@
 # Claim readiness and superbills
 
-LogicEMR creates a claim-ready billing snapshot from a finished encounter and can queue a frozen professional claim for clearinghouse submission. Acknowledgment ingestion, 835 posting, and denial management remain later increments.
+LogicEMR creates a claim-ready billing snapshot from a finished encounter, queues a frozen professional claim for clearinghouse submission, and correlates asynchronous 277CA acknowledgments. 835 posting and broader denial management remain later increments.
 
 ## Workflow
 
@@ -80,11 +80,16 @@ Submission states are `Queued`, `Submitted`, `Rejected`, and `Failed`. A `Reject
 
 See [claim-submission.md](claim-submission.md) for Stedi setup and operational safeguards.
 
+## 277CA acknowledgments and rejected claims
+
+Stedi webhook events queue retrieval of the canonical 277CA report. Each claim acknowledgment is retained independently, correlated to its submission, and summarized on `Claim_Submission__c`. Billing can reopen an exported claim only when its latest submission is rejected, correct the claim, mark it Ready again, and create a new submission attempt without losing the prior audit history.
+
+See [claim-acknowledgments.md](claim-acknowledgments.md) for webhook security, correlation, status precedence, and billing operations.
+
 ## Access
 
 `LogicEMR_Manage_Claims` gates the panel and Apex entry points. It is assigned to **LogicEMR Billing** and **LogicEMR Admin**. Billing receives read access to encounters and broad patient visibility so the controlled-by-parent superbill work queue is usable across the practice.
 
 ## Next billing increments
 
-- Add 277CA acknowledgment ingestion and claim-level rejection workflows.
 - Add 835 remittance, payment posting, denial management, and secondary-claim support after acknowledgment correlation is stable.

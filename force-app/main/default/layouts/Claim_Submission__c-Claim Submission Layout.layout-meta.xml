@@ -9,6 +9,7 @@
             <layoutItems><behavior>Readonly</behavior><field>Status__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Provider_Used__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Attempt_Number__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Acknowledgment_Status__c</field></layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems><behavior>Readonly</behavior><field>Patient_Control_Number__c</field></layoutItems>
@@ -16,6 +17,7 @@
             <layoutItems><behavior>Readonly</behavior><field>Correlation_Id__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Clearinghouse_Claim_Id__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Control_Number__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Payer_Claim_Control_Number__c</field></layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>
@@ -26,6 +28,7 @@
             <layoutItems><behavior>Readonly</behavior><field>Queued_At__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Last_Attempt_At__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Submitted_At__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Last_Acknowledgment_At__c</field></layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems><behavior>Readonly</behavior><field>Async_Job_Id__c</field></layoutItems>
@@ -39,6 +42,7 @@
         <label>Payloads and Errors</label>
         <layoutColumns>
             <layoutItems><behavior>Readonly</behavior><field>Error_Message__c</field></layoutItems>
+            <layoutItems><behavior>Readonly</behavior><field>Acknowledgment_Message__c</field></layoutItems>
             <layoutItems><behavior>Readonly</behavior><field>Request_Payload__c</field></layoutItems>
         </layoutColumns>
         <layoutColumns>
@@ -46,6 +50,15 @@
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>
+    <relatedLists>
+        <fields>NAME</fields>
+        <fields>Status__c</fields>
+        <fields>Sender_Type__c</fields>
+        <fields>Sender_Name__c</fields>
+        <fields>Effective_Date__c</fields>
+        <fields>Processed_At__c</fields>
+        <relatedList>Claim_Acknowledgment__c.Claim_Submission__c</relatedList>
+    </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>
     <showHighlightsPanel>true</showHighlightsPanel>
     <showInteractionLogPanel>false</showInteractionLogPanel>

@@ -6,6 +6,7 @@ public class ClaimSubmissionConfig {
     public String submitterIdentifier { get; set; }
     public String contactName { get; set; }
     public String contactPhone { get; set; }
+    public String webhookSecretHash { get; set; }
 
     public void validate() {
         List<String> issues = new List<String>();

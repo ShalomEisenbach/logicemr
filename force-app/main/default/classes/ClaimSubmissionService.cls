@@ -40,6 +40,7 @@ public with sharing class ClaimSubmissionService {
     Claim_Submission__c submission = new Claim_Submission__c(
       Superbill__c = superbillId,
       Status__c = 'Queued',
+      Acknowledgment_Status__c = 'Pending',
       Attempt_Number__c = 0,
       Idempotency_Key__c = randomHex(32),
       Patient_Control_Number__c = randomHex(17),
@@ -196,6 +197,10 @@ public with sharing class ClaimSubmissionService {
         Queued_At__c,
         Last_Attempt_At__c,
         Submitted_At__c,
+        Acknowledgment_Status__c,
+        Last_Acknowledgment_At__c,
+        Acknowledgment_Message__c,
+        Payer_Claim_Control_Number__c,
         Error_Message__c,
         Request_Payload__c,
         Response_Payload__c

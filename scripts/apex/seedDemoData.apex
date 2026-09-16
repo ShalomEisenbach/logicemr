@@ -13,6 +13,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__First_Name__c = 'Jordan',
         lfemr__Last_Name__c = 'Lee',
         lfemr__NPI__c = '1000000001',
+        lfemr__Taxonomy_Code__c = '207Q00000X',
         lfemr__Active__c = true,
         lfemr__User__c = runningUserId,
         lfemr__Specialty__c = 'Primary Care'
@@ -23,6 +24,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__First_Name__c = 'Priya',
         lfemr__Last_Name__c = 'Patel',
         lfemr__NPI__c = '1000000002',
+        lfemr__Taxonomy_Code__c = '207RC0000X',
         lfemr__Active__c = true,
         lfemr__Specialty__c = 'Cardiology'
     ),
@@ -32,6 +34,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__First_Name__c = 'Marcus',
         lfemr__Last_Name__c = 'Chen',
         lfemr__NPI__c = '1000000003',
+        lfemr__Taxonomy_Code__c = '207P00000X',
         lfemr__Active__c = true,
         lfemr__Specialty__c = 'Emergency Medicine'
     ),
@@ -41,6 +44,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__First_Name__c = 'Elena',
         lfemr__Last_Name__c = 'Vasquez',
         lfemr__NPI__c = '1000000004',
+        lfemr__Taxonomy_Code__c = '163W00000X',
         lfemr__Active__c = true,
         lfemr__Specialty__c = 'Nursing'
     ),
@@ -50,6 +54,7 @@ List<lfemr__Practitioner__c> practitioners = new List<lfemr__Practitioner__c>{
         lfemr__First_Name__c = 'Robert',
         lfemr__Last_Name__c = 'Smith',
         lfemr__NPI__c = '1000000005',
+        lfemr__Taxonomy_Code__c = '208D00000X',
         lfemr__Active__c = false,
         lfemr__Specialty__c = 'Other'
     )

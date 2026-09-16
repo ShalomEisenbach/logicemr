@@ -24,6 +24,7 @@
     <tabs>standard-home</tabs>
     <tabs>Superbill__c</tabs>
     <tabs>Claim_Submission__c</tabs>
+    <tabs>Claim_Acknowledgment__c</tabs>
     <tabs>Payer__c</tabs>
     <tabs>Fee_Schedule__c</tabs>
     <uiType>Lightning</uiType>

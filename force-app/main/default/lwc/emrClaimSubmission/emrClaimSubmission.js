@@ -4,6 +4,8 @@ import LightningConfirm from "lightning/confirm";
 import getSubmissions from "@salesforce/apex/ClaimSubmissionController.getSubmissions";
 import queueSubmission from "@salesforce/apex/ClaimSubmissionController.queueSubmission";
 import retrySubmission from "@salesforce/apex/ClaimSubmissionController.retrySubmission";
+import getAcknowledgments from "@salesforce/apex/ClaimSubmissionController.getAcknowledgments";
+import reopenRejectedClaim from "@salesforce/apex/ClaimSubmissionController.reopenRejectedClaim";
 import { refreshApex } from "@salesforce/apex";
 
 export default class EmrClaimSubmission extends LightningElement {
@@ -13,6 +15,8 @@ export default class EmrClaimSubmission extends LightningElement {
   @api claimStatus;
 
   submissions = [];
+  rawSubmissions = [];
+  acknowledgments = [];
   errorMessage;
   isWorking = false;
   wiredResult;
@@ -22,16 +26,23 @@ export default class EmrClaimSubmission extends LightningElement {
   wiredSubmissions(result) {
     this.wiredResult = result;
     if (result.data) {
-      this.submissions = result.data.map((row) => ({
-        ...row,
-        statusClass: `status status-${(row.Status__c || "").toLowerCase()}`,
-        canRetry: this.canRetryRow(row),
-        retryLabel: row.Status__c === "Queued" ? "Recover" : "Retry"
-      }));
+      this.rawSubmissions = result.data;
+      this.rebuildSubmissions();
       this.errorMessage = undefined;
       this.schedulePoll();
     } else if (result.error) {
       this.submissions = [];
+      this.errorMessage = this.reduceError(result.error);
+    }
+  }
+
+  @wire(getAcknowledgments, { superbillId: "$superbillId" })
+  wiredAcknowledgments(result) {
+    this.wiredAcknowledgmentsResult = result;
+    if (result.data) {
+      this.acknowledgments = result.data;
+      this.rebuildSubmissions();
+    } else if (result.error) {
       this.errorMessage = this.reduceError(result.error);
     }
   }
@@ -48,14 +59,17 @@ export default class EmrClaimSubmission extends LightningElement {
     return this.submissions.some((row) => row.Status__c === "Queued");
   }
 
-  get hasSubmitted() {
-    return this.submissions.some((row) => row.Status__c === "Submitted");
+  get hasPendingAcknowledgment() {
+    const latest = this.submissions[0];
+    return (
+      latest?.Status__c === "Submitted" &&
+      (!latest.Acknowledgment_Status__c ||
+        latest.Acknowledgment_Status__c === "Pending")
+    );
   }
 
   get canSubmit() {
-    return (
-      this.claimStatus === "Ready" && !this.hasPending && !this.hasSubmitted
-    );
+    return this.claimStatus === "Ready" && !this.hasPending;
   }
 
   get submitDisabled() {
@@ -82,22 +96,33 @@ export default class EmrClaimSubmission extends LightningElement {
     );
   }
 
-  async handleRefresh() {
-    if (this.wiredResult) await refreshApex(this.wiredResult);
-  }
-
-  async run(operation, successMessage) {
+  async handleReopenRejected(event) {
     if (this.isWorking) return;
+    const submissionId = event.currentTarget.dataset.id;
+    const confirmed = await LightningConfirm.open({
+      label: "Reopen rejected claim",
+      message:
+        "Reopen this exported claim for correction? You must mark it Ready and submit a new 837P after making changes.",
+      variant: "header"
+    });
+    if (!confirmed) return;
     this.isWorking = true;
     this.errorMessage = undefined;
     try {
-      await operation();
-      await refreshApex(this.wiredResult);
+      await reopenRejectedClaim({
+        submissionId
+      });
+      await this.refreshData();
       this.dispatchEvent(
         new ShowToastEvent({
           title: "Success",
-          message: successMessage,
+          message: "Rejected claim reopened for correction.",
           variant: "success"
+        })
+      );
+      this.dispatchEvent(
+        new CustomEvent("claimreopened", {
+          detail: { status: "Needs Review" }
         })
       );
     } catch (error) {
@@ -107,14 +132,96 @@ export default class EmrClaimSubmission extends LightningElement {
     }
   }
 
+  async handleRefresh() {
+    await this.refreshData();
+  }
+
+  async run(operation, successMessage) {
+    if (this.isWorking) return false;
+    this.isWorking = true;
+    this.errorMessage = undefined;
+    try {
+      await operation();
+      await this.refreshData();
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Success",
+          message: successMessage,
+          variant: "success"
+        })
+      );
+      return true;
+    } catch (error) {
+      this.errorMessage = this.reduceError(error);
+      return false;
+    } finally {
+      this.isWorking = false;
+    }
+  }
+
   schedulePoll() {
     clearTimeout(this.pollTimer);
-    if (!this.hasPending || !this.wiredResult) return;
+    if (
+      (!this.hasPending && !this.hasPendingAcknowledgment) ||
+      !this.wiredResult
+    )
+      return;
     // Polling is intentional while the asynchronous Apex job owns the submission.
     // eslint-disable-next-line @lwc/lwc/no-async-operation
-    this.pollTimer = setTimeout(async () => {
-      await refreshApex(this.wiredResult);
-    }, 3000);
+    this.pollTimer = setTimeout(
+      async () => {
+        await this.refreshData();
+      },
+      this.hasPending ? 3000 : 30000
+    );
+  }
+
+  async refreshData() {
+    const refreshes = [];
+    if (this.wiredResult) refreshes.push(refreshApex(this.wiredResult));
+    if (this.wiredAcknowledgmentsResult)
+      refreshes.push(refreshApex(this.wiredAcknowledgmentsResult));
+    await Promise.all(refreshes);
+  }
+
+  rebuildSubmissions() {
+    const bySubmission = new Map();
+    (this.acknowledgments || []).forEach((acknowledgment) => {
+      const submissionId = acknowledgment.Claim_Submission__c;
+      if (!bySubmission.has(submissionId)) bySubmission.set(submissionId, []);
+      bySubmission.get(submissionId).push({
+        ...acknowledgment,
+        statusClass: `ack-status ack-${(
+          acknowledgment.Status__c || "unknown"
+        ).toLowerCase()}`,
+        senderLabel: [
+          acknowledgment.Sender_Type__c,
+          acknowledgment.Sender_Name__c
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      });
+    });
+    this.submissions = (this.rawSubmissions || []).map((row, index) => {
+      const acknowledgments = bySubmission.get(row.Id) || [];
+      const acknowledgmentStatus = row.Acknowledgment_Status__c || "Pending";
+      return {
+        ...row,
+        statusClass: `status status-${(row.Status__c || "").toLowerCase()}`,
+        acknowledgmentStatus,
+        acknowledgmentStatusClass: `ack-status ack-${acknowledgmentStatus.toLowerCase()}`,
+        acknowledgments,
+        hasAcknowledgments: acknowledgments.length > 0,
+        canRetry: this.canRetryRow(row),
+        retryLabel: row.Status__c === "Queued" ? "Recover" : "Retry",
+        canReopenRejected:
+          index === 0 &&
+          row.Status__c === "Submitted" &&
+          acknowledgmentStatus === "Rejected" &&
+          this.claimStatus === "Exported"
+      };
+    });
+    this.schedulePoll();
   }
 
   canRetryRow(row) {

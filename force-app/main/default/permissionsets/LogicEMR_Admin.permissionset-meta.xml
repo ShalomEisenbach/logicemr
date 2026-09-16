@@ -57,6 +57,18 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>ClaimAcknowledgmentService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>ClaimAcknowledgmentQueueable</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>StediClaimAcknowledgmentWebhook</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>Stedi837PMapper</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -2312,6 +2324,21 @@
         <field>Superbill__c.Rendering_Provider_Last_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Submission__c.Last_Acknowledgment_At__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Submission__c.Acknowledgment_Message__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Submission__c.Payer_Claim_Control_Number__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Claim_Submission__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Superbill__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Sender_Type__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Sender_Name__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Patient_Control_Number__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Claim_Transaction_Batch_Number__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Payer_Claim_Control_Number__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Effective_Date__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Processed_At__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Status_Codes__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Message__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Raw_Payload__c</field><readable>true</readable></fieldPermissions>
     <objectPermissions>
         <allowCreate>true</allowCreate>
         <allowDelete>true</allowDelete>
@@ -2329,6 +2356,15 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Claim_Submission__c</object>
         <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Claim_Acknowledgment__c</object>
+        <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>true</allowCreate>
@@ -2650,6 +2686,10 @@
     </tabSettings>
     <tabSettings>
         <tab>Claim_Submission__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Claim_Acknowledgment__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
     <tabSettings>

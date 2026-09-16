@@ -11,7 +11,7 @@ public with sharing class ClaimSubmissionProviderFactory {
             : [
                   SELECT Provider_Name__c, Named_Credential__c, Usage_Indicator__c,
                          Submitter_Name__c, Submitter_Identifier__c, Contact_Name__c,
-                         Contact_Phone__c, Active__c
+                         Contact_Phone__c, Webhook_Secret_Hash__c, Active__c
                   FROM Claim_Submission_Setting__mdt
                   WHERE Active__c = TRUE
                   ORDER BY Provider_Name__c
@@ -29,6 +29,7 @@ public with sharing class ClaimSubmissionProviderFactory {
         config.submitterIdentifier = row.Submitter_Identifier__c;
         config.contactName = row.Contact_Name__c;
         config.contactPhone = row.Contact_Phone__c;
+        config.webhookSecretHash = row.Webhook_Secret_Hash__c;
         config.validate();
         return config;
     }

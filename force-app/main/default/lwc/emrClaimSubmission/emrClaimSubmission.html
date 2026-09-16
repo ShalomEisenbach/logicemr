@@ -4,8 +4,9 @@
       <div>
         <h3 class="slds-text-title_caps">837P submissions</h3>
         <p class="slds-text-body_small">
-          The claim becomes Exported only after successful clearinghouse
-          handoff.
+          Submission confirms clearinghouse handoff. The 277CA timeline shows
+          whether the clearinghouse or payer received, accepted, or rejected the
+          claim.
         </p>
       </div>
       <div>
@@ -45,8 +46,58 @@
               <template lwc:if={submission.Correlation_Id__c}>
                 <p class="detail">Correlation {submission.Correlation_Id__c}</p>
               </template>
+              <template lwc:if={submission.Submitted_At__c}>
+                <p class="detail acknowledgment-summary">
+                  277CA
+                  <span class={submission.acknowledgmentStatusClass}
+                    >{submission.acknowledgmentStatus}</span
+                  >
+                </p>
+              </template>
+              <template lwc:if={submission.Payer_Claim_Control_Number__c}>
+                <p class="detail">
+                  Payer claim {submission.Payer_Claim_Control_Number__c}
+                </p>
+              </template>
+              <template lwc:if={submission.Acknowledgment_Message__c}>
+                <p class="acknowledgment-message">
+                  {submission.Acknowledgment_Message__c}
+                </p>
+              </template>
               <template lwc:if={submission.Error_Message__c}>
                 <p class="error-detail">{submission.Error_Message__c}</p>
+              </template>
+              <template lwc:if={submission.hasAcknowledgments}>
+                <ol class="acknowledgment-list" aria-label="277CA timeline">
+                  <template
+                    for:each={submission.acknowledgments}
+                    for:item="acknowledgment"
+                  >
+                    <li key={acknowledgment.Id} class="acknowledgment-row">
+                      <span class={acknowledgment.statusClass}
+                        >{acknowledgment.Status__c}</span
+                      >
+                      <span>{acknowledgment.senderLabel}</span>
+                      <template lwc:if={acknowledgment.Effective_Date__c}>
+                        <lightning-formatted-date-time
+                          value={acknowledgment.Effective_Date__c}
+                          year="numeric"
+                          month="short"
+                          day="2-digit"
+                          time-zone="UTC"
+                        ></lightning-formatted-date-time>
+                      </template>
+                      <template lwc:if={acknowledgment.Status_Codes__c}>
+                        <span class="detail"
+                          >{acknowledgment.Status_Codes__c}</span
+                        >
+                      </template>
+                      <template lwc:if={acknowledgment.Message__c}>
+                        <p>{acknowledgment.Message__c}</p>
+                      </template>
+                    </li>
+                  </template>
+                </ol>
               </template>
             </div>
             <div class="attempt">
@@ -58,6 +109,16 @@
                   data-id={submission.Id}
                   disabled={isWorking}
                   onclick={handleRetry}
+                ></lightning-button>
+              </template>
+              <template lwc:if={submission.canReopenRejected}>
+                <lightning-button
+                  class="slds-m-left_small"
+                  variant="destructive-text"
+                  label="Reopen rejected claim"
+                  data-id={submission.Id}
+                  disabled={isWorking}
+                  onclick={handleReopenRejected}
                 ></lightning-button>
               </template>
             </div>
