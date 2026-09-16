@@ -88,7 +88,7 @@ class FeeScheduleAndSuperbillSeed {
             Name = 'LogicEMR Demo Clinic',
             lfemr__Source_System_Id__c = 'seed-org-logicemr-demo-clinic',
             lfemr__FHIR_Id__c = 'seed-org-logicemr-demo-clinic',
-            lfemr__NPI__c = '1888888875',
+            lfemr__NPI__c = '1999999984',
             lfemr__EIN__c = '12-3456789',
             lfemr__Taxonomy_Code__c = '261QP2300X',
             lfemr__Street__c = '100 Health Way',
