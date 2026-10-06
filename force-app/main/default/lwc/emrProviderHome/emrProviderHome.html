@@ -22,13 +22,6 @@
         </template>
       </div>
 
-      <div class="actions">
-        <lightning-button
-          label="New Encounter"
-          onclick={handleNewEncounter}
-        ></lightning-button>
-      </div>
-
       <c-emr-patient-search></c-emr-patient-search>
 
       <div class="worklists">
@@ -89,6 +82,11 @@
         </lightning-card>
 
         <lightning-card title="Today's Encounters" icon-name="custom:custom71">
+          <lightning-button
+            slot="actions"
+            label="New Encounter"
+            onclick={handleNewEncounter}
+          ></lightning-button>
           <div class="slds-p-horizontal_medium slds-p-bottom_medium">
             <template lwc:if={hasTodaysEncounters}>
               <template for:each={todaysEncounters} for:item="row">
