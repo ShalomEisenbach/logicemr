@@ -52,7 +52,6 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
   errorMessage;
   isLoading = true;
   isSaving = false;
-  pendingSearchFocus = false;
   metrics = emptyMetrics();
   todaysEncounters = [];
   todaysAppointments = [];
@@ -74,17 +73,6 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
       this.applyPayload(null);
       this.errorMessage = this.reduceError(error);
       this.isLoading = false;
-    }
-  }
-
-  renderedCallback() {
-    if (!this.pendingSearchFocus) {
-      return;
-    }
-    this.pendingSearchFocus = false;
-    const search = this.template.querySelector("c-emr-patient-search");
-    if (search) {
-      search.focusSearch();
     }
   }
 
@@ -183,15 +171,6 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
         actionName: "new"
       }
     });
-  }
-
-  handleFindPatient() {
-    this.pendingSearchFocus = true;
-    const search = this.template.querySelector("c-emr-patient-search");
-    if (search) {
-      this.pendingSearchFocus = false;
-      search.focusSearch();
-    }
   }
 
   async handleArrive(event) {
