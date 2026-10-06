@@ -20,6 +20,7 @@ import PRACTITIONER_OBJECT from "@salesforce/schema/Practitioner__c";
 import ENCOUNTER_OBJECT from "@salesforce/schema/Encounter__c";
 import APPOINTMENT_OBJECT from "@salesforce/schema/Appointment__c";
 import SLOT_OBJECT from "@salesforce/schema/Slot__c";
+import SLOT_STATUS_FIELD from "@salesforce/schema/Slot__c.Status__c";
 import { recordViewPageRef } from "c/emrNavigationUtils";
 import TIME_ZONE from "@salesforce/i18n/timeZone";
 import {
@@ -192,7 +193,8 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
   get canEditSlots() {
     return (
       this.slotObjectInfo?.data?.updateable === true &&
-      this.slotObjectInfo.data.fields?.Status__c?.updateable === true
+      this.slotObjectInfo.data.fields?.[SLOT_STATUS_FIELD.fieldApiName]
+        ?.updateable === true
     );
   }
 

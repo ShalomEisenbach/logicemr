@@ -29,6 +29,12 @@
           title="Today's Appointments"
           icon-name="standard:service_appointment"
         >
+          <lightning-button
+            slot="actions"
+            label="New Appointment"
+            disabled={isNewAppointmentDisabled}
+            onclick={handleNewAppointment}
+          ></lightning-button>
           <div class="slds-p-horizontal_medium slds-p-bottom_medium">
             <template lwc:if={hasTodaysAppointments}>
               <template for:each={todaysAppointmentRows} for:item="row">
@@ -189,6 +195,23 @@
           </div>
         </lightning-card>
       </div>
+
+      <template lwc:if={showBookingModal}>
+        <c-emr-modal
+          title="New Appointment"
+          size="full"
+          onclose={handleCloseBooking}
+        >
+          <c-emr-appointment-booking
+            onbooked={handleAppointmentBooked}
+          ></c-emr-appointment-booking>
+          <lightning-button
+            slot="footer"
+            label="Close"
+            onclick={handleCloseBooking}
+          ></lightning-button>
+        </c-emr-modal>
+      </template>
     </template>
   </div>
 </template>

@@ -10,6 +10,8 @@ import markNoShow from "@salesforce/apex/AppointmentCalendarController.markNoSho
 import PATIENT_OBJECT from "@salesforce/schema/Patient__c";
 import ENCOUNTER_OBJECT from "@salesforce/schema/Encounter__c";
 import APPOINTMENT_OBJECT from "@salesforce/schema/Appointment__c";
+import SLOT_OBJECT from "@salesforce/schema/Slot__c";
+import SLOT_STATUS_FIELD from "@salesforce/schema/Slot__c.Status__c";
 import REPORT_OBJECT from "@salesforce/schema/DiagnosticReport__c";
 import NOTE_OBJECT from "@salesforce/schema/ClinicalNote__c";
 import PATIENT_FIELD from "@salesforce/schema/Encounter__c.Patient__c";
@@ -36,6 +38,20 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
   @wire(getObjectInfo, { objectApiName: APPOINTMENT_OBJECT })
   appointmentObjectInfo;
   @wire(getObjectInfo, { objectApiName: ENCOUNTER_OBJECT }) encounterObjectInfo;
+  @wire(getObjectInfo, { objectApiName: SLOT_OBJECT }) slotObjectInfo;
+
+  get canBookAppointments() {
+    return (
+      this.appointmentObjectInfo?.data?.createable === true &&
+      this.slotObjectInfo?.data?.updateable === true &&
+      this.slotObjectInfo.data.fields?.[SLOT_STATUS_FIELD.fieldApiName]
+        ?.updateable === true
+    );
+  }
+
+  get isNewAppointmentDisabled() {
+    return this.isSaving || !this.canBookAppointments;
+  }
 
   get todaysAppointmentRows() {
     const canUpdate = this.appointmentObjectInfo?.data?.updateable === true;
@@ -52,6 +68,7 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
   errorMessage;
   isLoading = true;
   isSaving = false;
+  showBookingModal = false;
   metrics = emptyMetrics();
   todaysEncounters = [];
   todaysAppointments = [];
@@ -171,6 +188,28 @@ export default class EmrProviderHome extends NavigationMixin(LightningElement) {
         actionName: "new"
       }
     });
+  }
+
+  handleNewAppointment() {
+    if (this.isNewAppointmentDisabled) {
+      return;
+    }
+    this.showBookingModal = true;
+  }
+
+  handleCloseBooking() {
+    this.showBookingModal = false;
+  }
+
+  async handleAppointmentBooked() {
+    this.handleCloseBooking();
+    if (this.wiredHomeResult) {
+      try {
+        await refreshApex(this.wiredHomeResult);
+      } catch (error) {
+        this.errorMessage = this.reduceError(error);
+      }
+    }
   }
 
   async handleArrive(event) {

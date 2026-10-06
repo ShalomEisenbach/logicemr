@@ -7,6 +7,22 @@ import getActiveSchedules from "@salesforce/apex/AppointmentCalendarController.g
 import getNextAvailability from "@salesforce/apex/AppointmentCalendarController.getNextAvailability";
 
 jest.mock(
+  "@salesforce/schema/Slot__c",
+  () => ({ default: { objectApiName: "lfemr__Slot__c" } }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/schema/Slot__c.Status__c",
+  () => ({
+    default: {
+      objectApiName: "lfemr__Slot__c",
+      fieldApiName: "lfemr__Status__c"
+    }
+  }),
+  { virtual: true }
+);
+
+jest.mock(
   "@salesforce/apex/AppointmentCalendarController.getGrid",
   () => ({ default: jest.fn() }),
   { virtual: true }
@@ -82,10 +98,10 @@ describe("calendar permissions", () => {
     document.body.appendChild(element);
     permission("Appointment__c", { createable: true, updateable: true });
     permission("Encounter__c", { createable: true });
-    permission("Slot__c", {
+    permission("lfemr__Slot__c", {
       createable: false,
       updateable: false,
-      fields: { Status__c: { updateable: false } }
+      fields: { lfemr__Status__c: { updateable: false } }
     });
     await flush();
     const free = element.shadowRoot.querySelector('[data-slot-id="free-slot"]');
@@ -105,10 +121,35 @@ describe("calendar permissions", () => {
     expect(
       element.shadowRoot.querySelector('lightning-input[type="toggle"]')
     ).toBeNull();
-    permission("Slot__c", {
+    permission("lfemr__Slot__c", {
       createable: true,
       updateable: true,
-      fields: { Status__c: { updateable: true } }
+      fields: {
+        lfemr__Status__c: { updateable: false },
+        Status__c: { updateable: true }
+      }
+    });
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-slot-id="free-slot"]').disabled
+    ).toBe(true);
+    expect(
+      [...element.shadowRoot.querySelectorAll("lightning-button")].map(
+        (item) => item.label
+      )
+    ).not.toContain("Cancel");
+    expect(
+      element.shadowRoot
+        .querySelector(".block")
+        .classList.contains("block_draggable")
+    ).toBe(false);
+    permission("lfemr__Slot__c", {
+      createable: true,
+      updateable: true,
+      fields: {
+        lfemr__Status__c: { updateable: true },
+        Status__c: { updateable: false }
+      }
     });
     await flush();
     labels = [...element.shadowRoot.querySelectorAll("lightning-button")].map(

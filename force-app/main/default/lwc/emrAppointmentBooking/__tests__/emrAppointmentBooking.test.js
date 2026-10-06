@@ -5,6 +5,22 @@ import bookAppointment from "@salesforce/apex/AppointmentBookingController.bookA
 import getLocations from "@salesforce/apex/AppointmentBookingController.getLocations";
 
 jest.mock(
+  "@salesforce/schema/Slot__c",
+  () => ({ default: { objectApiName: "lfemr__Slot__c" } }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/schema/Slot__c.Status__c",
+  () => ({
+    default: {
+      objectApiName: "lfemr__Slot__c",
+      fieldApiName: "lfemr__Status__c"
+    }
+  }),
+  { virtual: true }
+);
+
+jest.mock(
   "@salesforce/apex/AppointmentBookingController.bookAppointment",
   () => ({ default: jest.fn() }),
   { virtual: true }
@@ -50,9 +66,9 @@ describe("appointment booking permissions", () => {
       endTime: "2026-10-06T14:20:00Z"
     });
     permission("Appointment__c", { createable: true, updateable: true });
-    permission("Slot__c", {
+    permission("lfemr__Slot__c", {
       updateable: false,
-      fields: { Status__c: { updateable: false } }
+      fields: { lfemr__Status__c: { updateable: false } }
     });
     await flush();
     element.shadowRoot
@@ -75,9 +91,23 @@ describe("appointment booking permissions", () => {
     expect(
       element.shadowRoot.querySelector('[role="status"]').textContent
     ).toContain("requires scheduling access");
-    permission("Slot__c", {
+    permission("lfemr__Slot__c", {
       updateable: true,
-      fields: { Status__c: { updateable: true } }
+      fields: {
+        lfemr__Status__c: { updateable: false },
+        Status__c: { updateable: true }
+      }
+    });
+    await flush();
+    expect(button.disabled).toBe(true);
+    button.click();
+    expect(bookAppointment).not.toHaveBeenCalled();
+    permission("lfemr__Slot__c", {
+      updateable: true,
+      fields: {
+        lfemr__Status__c: { updateable: true },
+        Status__c: { updateable: false }
+      }
     });
     await flush();
     button = [...element.shadowRoot.querySelectorAll("lightning-button")].find(

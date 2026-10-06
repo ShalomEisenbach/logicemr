@@ -7,6 +7,7 @@ import bookAppointment from "@salesforce/apex/AppointmentBookingController.bookA
 import PATIENT_OBJECT from "@salesforce/schema/Patient__c";
 import APPOINTMENT_OBJECT from "@salesforce/schema/Appointment__c";
 import SLOT_OBJECT from "@salesforce/schema/Slot__c";
+import SLOT_STATUS_FIELD from "@salesforce/schema/Slot__c.Status__c";
 import TIME_ZONE from "@salesforce/i18n/timeZone";
 
 const STEP_PATIENT = "patient";
@@ -24,7 +25,8 @@ export default class EmrAppointmentBooking extends LightningElement {
   get canBookAppointments() {
     return (
       this.slotObjectInfo?.data?.updateable === true &&
-      this.slotObjectInfo.data.fields?.Status__c?.updateable === true &&
+      this.slotObjectInfo.data.fields?.[SLOT_STATUS_FIELD.fieldApiName]
+        ?.updateable === true &&
       this.appointmentObjectInfo?.data?.createable === true
     );
   }
