@@ -92,14 +92,15 @@ public with sharing class ClaimReadinessController {
     List<Superbill__c> superbills = querySuperbills(encounterId);
     return buildWorkspace(
       encounters[0].Status__c,
-      superbills.isEmpty() ? null : superbills[0]
+      superbills.isEmpty() ? null : superbills[0],
+      false
     );
   }
 
   @AuraEnabled
   public static Workspace initializeSuperbill(Id encounterId) {
     requireManageClaims();
-    return initializeSuperbillInternal(encounterId);
+    return initializeSuperbillInternal(encounterId, false);
   }
 
   @AuraEnabled
@@ -162,7 +163,10 @@ public with sharing class ClaimReadinessController {
     );
   }
 
-  private static Workspace initializeSuperbillInternal(Id encounterId) {
+  private static Workspace initializeSuperbillInternal(
+    Id encounterId,
+    Boolean automaticPricing
+  ) {
     encounterId = resolveEncounterId(encounterId);
     if (encounterId == null) {
       throw new AuraHandledException('Encounter Id is required.');
@@ -182,7 +186,7 @@ public with sharing class ClaimReadinessController {
       ? new Superbill__c()
       : existing[0];
     if (LOCKED_STATUSES.contains(superbill.Status__c)) {
-      return buildWorkspace(encounter.Status__c, superbill);
+      return buildWorkspace(encounter.Status__c, superbill, automaticPricing);
     }
 
     if (superbill.Id == null) {
@@ -210,10 +214,16 @@ public with sharing class ClaimReadinessController {
     }
 
     syncDiagnoses(superbill.Id, encounter.Id);
-    syncProcedureCharges(superbill.Id, encounter.Id, serviceDate);
+    syncProcedureCharges(
+      superbill.Id,
+      encounter.Id,
+      serviceDate,
+      automaticPricing
+    );
     Workspace workspace = buildWorkspace(
       encounter.Status__c,
-      querySuperbills(encounterId)[0]
+      querySuperbills(encounterId)[0],
+      automaticPricing
     );
     persistValidation(workspace);
     return workspace;
@@ -341,7 +351,7 @@ public with sharing class ClaimReadinessController {
   }
 
   public static void prepareForFinishedEncounter(Id encounterId) {
-    initializeSuperbillInternal(encounterId);
+    initializeSuperbillInternal(encounterId, true);
   }
 
   private static Workspace moveToReviewAndBuild(Id superbillId) {
@@ -406,7 +416,8 @@ public with sharing class ClaimReadinessController {
   private static void syncProcedureCharges(
     Id superbillId,
     Id encounterId,
-    Date serviceDate
+    Date serviceDate,
+    Boolean automaticPricing
   ) {
     Map<String, Charge_Line__c> existingByProcedure = new Map<String, Charge_Line__c>();
     for (Charge_Line__c charge : [
@@ -466,10 +477,10 @@ public with sharing class ClaimReadinessController {
         )
       );
     }
-    Map<String, FeeScheduleService.RateQuote> quotes = FeeScheduleService.quote(
-      requerySuperbill(superbillId),
-      requests
-    );
+    Superbill__c pricingContext = requerySuperbill(superbillId);
+    Map<String, FeeScheduleService.RateQuote> quotes = automaticPricing
+      ? FeeScheduleService.quoteForAutomaticBilling(pricingContext, requests)
+      : FeeScheduleService.quote(pricingContext, requests);
     List<Charge_Line__c> toSave = new List<Charge_Line__c>();
     for (Procedure__c source : procedures) {
       Charge_Line__c charge = existingByProcedure.remove(
@@ -514,12 +525,13 @@ public with sharing class ClaimReadinessController {
   }
 
   private static Workspace buildWorkspaceForSuperbill(Superbill__c superbill) {
-    return buildWorkspace(superbill.Encounter__r.Status__c, superbill);
+    return buildWorkspace(superbill.Encounter__r.Status__c, superbill, false);
   }
 
   private static Workspace buildWorkspace(
     String encounterStatus,
-    Superbill__c superbill
+    Superbill__c superbill,
+    Boolean automaticPricing
   ) {
     Workspace workspace = new Workspace();
     workspace.encounterStatus = encounterStatus;
@@ -568,7 +580,8 @@ public with sharing class ClaimReadinessController {
     ];
     Map<String, FeeScheduleService.RateQuote> rateQuotes = quoteCharges(
       superbill,
-      workspace.charges
+      workspace.charges,
+      automaticPricing
     );
     workspace.issues = validate(
       superbill,
@@ -715,7 +728,8 @@ public with sharing class ClaimReadinessController {
 
   private static Map<String, FeeScheduleService.RateQuote> quoteCharges(
     Superbill__c superbill,
-    List<Charge_Line__c> charges
+    List<Charge_Line__c> charges,
+    Boolean automaticPricing
   ) {
     List<FeeScheduleService.RateRequest> requests = new List<FeeScheduleService.RateRequest>();
     for (Charge_Line__c charge : charges) {
@@ -729,7 +743,9 @@ public with sharing class ClaimReadinessController {
         )
       );
     }
-    return FeeScheduleService.quote(superbill, requests);
+    return automaticPricing
+      ? FeeScheduleService.quoteForAutomaticBilling(superbill, requests)
+      : FeeScheduleService.quote(superbill, requests);
   }
 
   private static Boolean hasValidPointers(

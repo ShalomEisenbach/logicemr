@@ -702,6 +702,468 @@ private class NoteEditorControllerTest {
     System.assertEquals(true, rejected, 'Draft notes cannot receive addenda');
   }
 
+  @IsTest
+  static void billingRoleCannotCreateEditSignOrAddendClinicalNotes() {
+    User billing;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      billing = insertNoteRoleUser('notebill', 'LogicEMR_Billing');
+    }
+    Encounter__c encounter = insertEncounter();
+    ClinicalNote__c draft = insertDraft(encounter, 'Consult', 'Original draft');
+    NoteEditorController.NoteEditorState signed = NoteEditorController.signNote(
+      encounter.Id,
+      null,
+      'Consult',
+      'Original signed note'
+    );
+    System.runAs(billing) {
+      System.assert(
+        FeatureManagement.checkPermission('LogicEMR_Manage_Claims'),
+        'The caller has the actual Billing permission set'
+      );
+      System.assertEquals(
+        false,
+        ClinicalNote__c.SObjectType.getDescribe().isCreateable()
+      );
+      System.assertEquals(
+        false,
+        ClinicalNote__c.SObjectType.getDescribe().isUpdateable()
+      );
+      assertNoteWritesDenied(
+        encounter.Id,
+        draft.Id,
+        signed.noteId,
+        'Unauthorized replacement'
+      );
+    }
+    assertOriginalNotesRemain(encounter.Id, draft.Id, signed.noteId);
+  }
+
+  @IsTest
+  static void clinicianRoleCanDraftSignAndAddendWithDerivedSigner() {
+    User clinician;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      clinician = insertNoteRoleUser('notecln', 'LogicEMR_Clinician');
+    }
+    Practitioner__c practitioner = new Practitioner__c(
+      First_Name__c = 'Clinical',
+      Last_Name__c = 'Author',
+      User__c = clinician.Id,
+      Active__c = true
+    );
+    insert practitioner;
+    Encounter__c encounter = insertOwnedEncounter(
+      clinician.Id,
+      practitioner.Id
+    );
+    Test.startTest();
+    System.runAs(clinician) {
+      System.assert(ClinicalNote__c.SObjectType.getDescribe().isCreateable());
+      System.assert(ClinicalNote__c.SObjectType.getDescribe().isUpdateable());
+      System.assertEquals(
+        false,
+        ClinicalNote__c.Signed_By__c.getDescribe().isUpdateable(),
+        'Signer is system-derived and does not require user-editable signature fields'
+      );
+      NoteEditorController.NoteEditorState draft = NoteEditorController.saveDraft(
+        encounter.Id,
+        null,
+        'Progress Note',
+        'First draft'
+      );
+      NoteEditorController.saveDraft(
+        encounter.Id,
+        draft.noteId,
+        'Progress Note',
+        'Reviewed draft'
+      );
+      NoteEditorController.NoteEditorState signed = NoteEditorController.signNote(
+        encounter.Id,
+        draft.noteId,
+        'Progress Note',
+        'Reviewed clinical assessment'
+      );
+      ClinicalNote__c stored = [
+        SELECT Patient__c, Encounter__c, Author__c, Signed_By__c, Signed_Date__c
+        FROM ClinicalNote__c
+        WHERE Id = :signed.noteId
+      ];
+      System.assertEquals(encounter.Patient__c, stored.Patient__c);
+      System.assertEquals(encounter.Id, stored.Encounter__c);
+      System.assertEquals(practitioner.Id, stored.Author__c);
+      System.assertEquals(clinician.Id, stored.Signed_By__c);
+      System.assertNotEquals(null, stored.Signed_Date__c);
+      NoteEditorController.NoteEditorState addendum = NoteEditorController.createAddendum(
+        signed.noteId,
+        'Additional findings',
+        false
+      );
+      System.assertEquals('Draft', addendum.status);
+      NoteEditorController.NoteEditorState signedAddendum = NoteEditorController.signNote(
+        encounter.Id,
+        addendum.noteId,
+        'Progress Note',
+        'Additional findings confirmed'
+      );
+      System.assertEquals(signed.noteId, signedAddendum.addendumToId);
+      System.assertEquals('Signed', signedAddendum.status);
+      NoteEditorController.NoteEditorState immediate = NoteEditorController.createAddendum(
+        signed.noteId,
+        'Second signed addendum',
+        true
+      );
+      System.assertEquals('Signed', immediate.status);
+      System.assertEquals(signed.noteId, immediate.addendumToId);
+      System.assertEquals(
+        clinician.Id,
+        [SELECT Signed_By__c FROM ClinicalNote__c WHERE Id = :immediate.noteId]
+        .Signed_By__c
+      );
+      System.assertEquals(
+        'Reviewed clinical assessment',
+        [SELECT Body__c FROM ClinicalNote__c WHERE Id = :signed.noteId].Body__c,
+        'Addenda retain the original signed content'
+      );
+    }
+    Test.stopTest();
+  }
+
+  @IsTest
+  static void readOnlyPatientShareCannotWriteClinicalNotes() {
+    User clinician;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      clinician = insertNoteRoleUser('noteread', 'LogicEMR_Clinician');
+    }
+    Encounter__c encounter = insertEncounter();
+    ClinicalNote__c draft = insertDraft(encounter, 'Consult', 'Original draft');
+    NoteEditorController.NoteEditorState signed = NoteEditorController.signNote(
+      encounter.Id,
+      null,
+      'Consult',
+      'Original signed note'
+    );
+    insert new Patient__Share(
+      ParentId = encounter.Patient__c,
+      UserOrGroupId = clinician.Id,
+      AccessLevel = 'Read',
+      RowCause = Schema.Patient__Share.RowCause.Manual
+    );
+    Test.startTest();
+    System.runAs(clinician) {
+      System.assert(ClinicalNote__c.SObjectType.getDescribe().isCreateable());
+      System.assert(ClinicalNote__c.SObjectType.getDescribe().isUpdateable());
+      System.assert(ClinicalNote__c.Body__c.getDescribe().isUpdateable());
+      UserRecordAccess access = [
+        SELECT RecordId, HasReadAccess, HasEditAccess
+        FROM UserRecordAccess
+        WHERE UserId = :clinician.Id AND RecordId = :draft.Id
+        LIMIT 1
+      ];
+      System.assert(
+        access.HasReadAccess,
+        'The shared clinical note is readable'
+      );
+      System.assertEquals(
+        false,
+        access.HasEditAccess,
+        'The fixture has no record-level clinical edit access'
+      );
+      System.assertEquals(
+        2,
+        NoteEditorController.getNotes(encounter.Id).size()
+      );
+      for (Integer operation = 0; operation < 6; operation++) {
+        Boolean denied = false;
+        try {
+          if (operation == 0)
+            NoteEditorController.saveDraft(
+              encounter.Id,
+              null,
+              'Consult',
+              'Unauthorized'
+            );
+          else if (operation == 1)
+            NoteEditorController.signNote(
+              encounter.Id,
+              null,
+              'Consult',
+              'Unauthorized'
+            );
+          else if (operation == 2)
+            NoteEditorController.saveDraft(
+              encounter.Id,
+              draft.Id,
+              'Consult',
+              'Unauthorized'
+            );
+          else if (operation == 3)
+            NoteEditorController.signNote(
+              encounter.Id,
+              draft.Id,
+              'Consult',
+              'Unauthorized'
+            );
+          else
+            NoteEditorController.createAddendum(
+              signed.noteId,
+              'Unauthorized',
+              operation == 5
+            );
+        } catch (DmlException error) {
+          denied = true;
+          System.assert(
+            new Set<String>{
+                'INSUFFICIENT_ACCESS_OR_READONLY',
+                'INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY'
+              }
+              .contains(error.getDmlStatusCode(0)),
+            'The mutation must be denied by record access'
+          );
+        }
+        System.assert(
+          denied,
+          'Read-only clinical mutation ' + operation + ' must be denied'
+        );
+      }
+    }
+    Test.stopTest();
+    assertOriginalNotesRemain(encounter.Id, draft.Id, signed.noteId);
+  }
+
+  @IsTest
+  static void objectWriteAccessCannotBypassNoteBodyFieldPermissions() {
+    User writer;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      writer = noteUser('notefls');
+      insert writer;
+      PermissionSet access = new PermissionSet(
+        Name = 'Note_Body_Read_Only_Test',
+        Label = 'Note body read only test'
+      );
+      insert access;
+      String noteObject = qualifiedObjectName(ClinicalNote__c.SObjectType);
+      insert new List<ObjectPermissions>{
+        new ObjectPermissions(
+          ParentId = access.Id,
+          SobjectType = qualifiedObjectName(Patient__c.SObjectType),
+          PermissionsRead = true
+        ),
+        new ObjectPermissions(
+          ParentId = access.Id,
+          SobjectType = qualifiedObjectName(Encounter__c.SObjectType),
+          PermissionsRead = true
+        ),
+        new ObjectPermissions(
+          ParentId = access.Id,
+          SobjectType = noteObject,
+          PermissionsRead = true,
+          PermissionsCreate = true,
+          PermissionsEdit = true
+        )
+      };
+      String namespacePrefix = noteObject.substringBefore('ClinicalNote__c');
+      List<FieldPermissions> fields = new List<FieldPermissions>();
+      for (
+        Schema.SObjectField token : new List<Schema.SObjectField>{
+          ClinicalNote__c.Body__c,
+          ClinicalNote__c.Note_Type__c,
+          ClinicalNote__c.Status__c,
+          ClinicalNote__c.Encounter__c,
+          ClinicalNote__c.Author__c,
+          ClinicalNote__c.Addendum_To__c
+        }
+      ) {
+        String fieldName = token.getDescribe().getName();
+        if (
+          !String.isBlank(namespacePrefix) &&
+          !fieldName.startsWith(namespacePrefix)
+        )
+          fieldName = namespacePrefix + fieldName;
+        fields.add(
+          new FieldPermissions(
+            ParentId = access.Id,
+            SobjectType = noteObject,
+            Field = noteObject + '.' + fieldName,
+            PermissionsRead = true,
+            PermissionsEdit = token != ClinicalNote__c.Body__c
+          )
+        );
+      }
+      insert fields;
+      insert new PermissionSetAssignment(
+        AssigneeId = writer.Id,
+        PermissionSetId = access.Id
+      );
+    }
+    Encounter__c encounter = insertOwnedEncounter(writer.Id, null);
+    ClinicalNote__c draft = insertDraft(encounter, 'Consult', 'Original draft');
+    NoteEditorController.NoteEditorState signed = NoteEditorController.signNote(
+      encounter.Id,
+      null,
+      'Consult',
+      'Original signed note'
+    );
+    System.runAs(writer) {
+      System.assert(ClinicalNote__c.SObjectType.getDescribe().isCreateable());
+      System.assert(ClinicalNote__c.SObjectType.getDescribe().isUpdateable());
+      System.assertEquals(
+        false,
+        ClinicalNote__c.Body__c.getDescribe().isCreateable()
+      );
+      System.assertEquals(
+        false,
+        ClinicalNote__c.Body__c.getDescribe().isUpdateable()
+      );
+      assertNoteWritesDenied(
+        encounter.Id,
+        draft.Id,
+        signed.noteId,
+        'Forbidden body'
+      );
+      Boolean clearDenied = false;
+      try {
+        NoteEditorController.saveDraft(encounter.Id, draft.Id, 'Consult', null);
+      } catch (AuraHandledException e) {
+        clearDenied = true;
+      }
+      System.assert(
+        clearDenied,
+        'Clearing a protected body also requires field edit access'
+      );
+    }
+    assertOriginalNotesRemain(encounter.Id, draft.Id, signed.noteId);
+  }
+
+  private static void assertNoteWritesDenied(
+    Id encounterId,
+    Id draftId,
+    Id signedId,
+    String body
+  ) {
+    for (Integer operation = 0; operation < 6; operation++) {
+      Boolean denied = false;
+      try {
+        if (operation == 0)
+          NoteEditorController.saveDraft(encounterId, null, 'Consult', body);
+        else if (operation == 1)
+          NoteEditorController.signNote(encounterId, null, 'Consult', body);
+        else if (operation == 2)
+          NoteEditorController.saveDraft(encounterId, draftId, 'Consult', body);
+        else if (operation == 3)
+          NoteEditorController.signNote(encounterId, draftId, 'Consult', body);
+        else
+          NoteEditorController.createAddendum(signedId, body, operation == 5);
+      } catch (AuraHandledException e) {
+        denied = true;
+      }
+      System.assert(
+        denied,
+        'Clinical note mutation ' + operation + ' must enforce caller access'
+      );
+    }
+  }
+
+  private static void assertOriginalNotesRemain(
+    Id encounterId,
+    Id draftId,
+    Id signedId
+  ) {
+    System.assertEquals(
+      2,
+      [SELECT COUNT() FROM ClinicalNote__c WHERE Encounter__c = :encounterId]
+    );
+    ClinicalNote__c draft = [
+      SELECT Body__c, Status__c
+      FROM ClinicalNote__c
+      WHERE Id = :draftId
+    ];
+    System.assertEquals('Original draft', draft.Body__c);
+    System.assertEquals('Draft', draft.Status__c);
+    ClinicalNote__c signed = [
+      SELECT Body__c, Status__c
+      FROM ClinicalNote__c
+      WHERE Id = :signedId
+    ];
+    System.assertEquals('Original signed note', signed.Body__c);
+    System.assertEquals('Signed', signed.Status__c);
+  }
+
+  private static User insertNoteRoleUser(
+    String alias,
+    String permissionSetName
+  ) {
+    User user = noteUser(alias);
+    insert user;
+    PermissionSet permissions = [
+      SELECT Id
+      FROM PermissionSet
+      WHERE Name = :permissionSetName
+      LIMIT 1
+    ];
+    insert new PermissionSetAssignment(
+      AssigneeId = user.Id,
+      PermissionSetId = permissions.Id
+    );
+    return user;
+  }
+
+  private static User noteUser(String alias) {
+    Profile profile = [
+      SELECT Id
+      FROM Profile
+      WHERE Name IN ('Minimum Access - Salesforce', 'Standard User')
+      ORDER BY Name
+      LIMIT 1
+    ];
+    return new User(
+      Alias = alias,
+      LastName = alias,
+      Email = alias + '@logicemr.test',
+      Username = alias +
+        '.' +
+        String.valueOf(Crypto.getRandomInteger()) +
+        '@logicemr.test',
+      ProfileId = profile.Id,
+      TimeZoneSidKey = 'America/New_York',
+      LocaleSidKey = 'en_US',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US'
+    );
+  }
+
+  private static String qualifiedObjectName(Schema.SObjectType token) {
+    String keyPrefix = token.getDescribe().getKeyPrefix();
+    return [
+      SELECT QualifiedApiName
+      FROM EntityDefinition
+      WHERE KeyPrefix = :keyPrefix
+      LIMIT 1
+    ]
+    .QualifiedApiName;
+  }
+
+  private static Encounter__c insertOwnedEncounter(
+    Id ownerId,
+    Id practitionerId
+  ) {
+    Patient__c patient = new Patient__c(
+      MRN__c = 'MRN-NOTE-' +
+        String.valueOf(Math.abs(Crypto.getRandomInteger())),
+      Last_Name__c = 'Notes',
+      OwnerId = ownerId
+    );
+    insert patient;
+    Encounter__c encounter = new Encounter__c(
+      Patient__c = patient.Id,
+      Practitioner__c = practitionerId,
+      Status__c = 'In Progress',
+      Class__c = 'Outpatient',
+      Start__c = Datetime.now().addHours(-1)
+    );
+    insert encounter;
+    return encounter;
+  }
+
   private static ClinicalNote__c insertDraft(
     Encounter__c encounter,
     String noteType,

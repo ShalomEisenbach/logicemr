@@ -128,6 +128,17 @@ public with sharing class NoteEditorController {
     String body,
     Boolean sign
   ) {
+    requireNoteAccess(
+      true,
+      new List<Schema.SObjectField>{
+        ClinicalNote__c.Patient__c,
+        ClinicalNote__c.Encounter__c,
+        ClinicalNote__c.Note_Type__c,
+        ClinicalNote__c.Body__c,
+        ClinicalNote__c.Status__c,
+        ClinicalNote__c.Addendum_To__c
+      }
+    );
     if (signedNoteId == null) {
       throw new AuraHandledException('A signed note is required.');
     }
@@ -146,11 +157,11 @@ public with sharing class NoteEditorController {
       Encounter__c = parent.Encounter__c,
       Note_Type__c = parent.Note_Type__c,
       Body__c = body,
-      Author__c = currentPractitionerId(),
       Addendum_To__c = parent.Id,
       Status__c = sign == true ? STATUS_SIGNED : STATUS_DRAFT
     );
-    insert addendum;
+    assignCurrentAuthor(addendum, true);
+    insert as user addendum;
     return toState(
       [
         SELECT
@@ -176,30 +187,43 @@ public with sharing class NoteEditorController {
     String body,
     Boolean sign
   ) {
+    Boolean creating = noteId == null;
+    List<Schema.SObjectField> writtenFields = new List<Schema.SObjectField>{
+      ClinicalNote__c.Note_Type__c,
+      ClinicalNote__c.Body__c,
+      ClinicalNote__c.Status__c
+    };
+    if (creating) {
+      writtenFields.add(ClinicalNote__c.Patient__c);
+      writtenFields.add(ClinicalNote__c.Encounter__c);
+    }
+    requireNoteAccess(creating, writtenFields);
     Encounter__c encounter = requireEncounter(encounterId);
     String resolvedType = resolveNoteType(noteType);
     ClinicalNote__c note;
-    if (noteId == null) {
+    if (creating) {
       note = new ClinicalNote__c(
         Patient__c = encounter.Patient__c,
-        Encounter__c = encounter.Id,
-        Status__c = STATUS_DRAFT
+        Encounter__c = encounter.Id
       );
+      assignCurrentAuthor(note, true);
     } else {
-      note = requireEditableNote(noteId, encounter.Id);
+      ClinicalNote__c existing = requireEditableNote(noteId, encounter.Id);
+      // Only write the fields this endpoint changes; ownership and signatures are retained.
+      note = new ClinicalNote__c(Id = existing.Id);
+      if (existing.Author__c == null) {
+        assignCurrentAuthor(note, false);
+      }
     }
     note.Note_Type__c = resolvedType;
     note.Body__c = body;
-    if (note.Author__c == null) {
-      note.Author__c = currentPractitionerId();
-    }
-    if (sign) {
-      note.Status__c = STATUS_SIGNED;
-      note.Signed_Date__c = Datetime.now();
+    note.Status__c = sign ? STATUS_SIGNED : STATUS_DRAFT;
+    // User-mode DML enforces record access; the trigger stamps signature provenance.
+    if (creating) {
+      insert as user note;
     } else {
-      note.Status__c = STATUS_DRAFT;
+      update as user note;
     }
-    upsert note;
     return toState(
       [
         SELECT
@@ -217,6 +241,40 @@ public with sharing class NoteEditorController {
         LIMIT 1
       ]
     );
+  }
+
+  private static void assignCurrentAuthor(
+    ClinicalNote__c note,
+    Boolean creating
+  ) {
+    Id authorId = currentPractitionerId();
+    if (authorId == null)
+      return;
+    requireNoteAccess(
+      creating,
+      new List<Schema.SObjectField>{ ClinicalNote__c.Author__c }
+    );
+    note.Author__c = authorId;
+  }
+
+  private static void requireNoteAccess(
+    Boolean creating,
+    List<Schema.SObjectField> writtenFields
+  ) {
+    Schema.DescribeSObjectResult description = ClinicalNote__c.SObjectType.getDescribe();
+    if (creating ? !description.isCreateable() : !description.isUpdateable()) {
+      throw new AuraHandledException(
+        'You do not have permission to save clinical notes.'
+      );
+    }
+    for (Schema.SObjectField token : writtenFields) {
+      Schema.DescribeFieldResult field = token.getDescribe();
+      if (creating ? !field.isCreateable() : !field.isUpdateable()) {
+        throw new AuraHandledException(
+          'You do not have permission to save clinical note details.'
+        );
+      }
+    }
   }
 
   private static ClinicalNote__c requireEditableNote(

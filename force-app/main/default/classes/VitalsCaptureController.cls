@@ -84,6 +84,7 @@ public with sharing class VitalsCaptureController {
     if (encounterId == null) {
       throw new AuraHandledException('Encounter Id is required.');
     }
+    requireVitalsReadAccess();
 
     List<Encounter__c> encounters = [
       SELECT Id, Patient__c
@@ -151,6 +152,7 @@ public with sharing class VitalsCaptureController {
     Id patientId = encounters[0].Patient__c;
     List<Observation__c> toInsert = new List<Observation__c>();
     List<Observation__c> toUpdate = new List<Observation__c>();
+    List<Observation__c> observations = new List<Observation__c>();
     for (VitalInput row : filled) {
       VitalDef def = VITAL_DEFS.get(row.key);
       String inputUnit = String.isBlank(row.unit) ? def.unit : row.unit.trim();
@@ -175,7 +177,15 @@ public with sharing class VitalsCaptureController {
         existing.Value_Quantity__c = storedValue;
         // Keep supported source units; convert the entered quantity instead of relabeling it.
         existing.Effective_DateTime__c = effective;
-        toUpdate.add(existing);
+        // Only submit changed fields to DML, rather than read-only source metadata.
+        toUpdate.add(
+          new Observation__c(
+            Id = existing.Id,
+            Value_Quantity__c = storedValue,
+            Effective_DateTime__c = effective
+          )
+        );
+        observations.add(existing);
       } else {
         toInsert.add(
           new Observation__c(
@@ -193,17 +203,95 @@ public with sharing class VitalsCaptureController {
         );
       }
     }
+    // Check the complete request before DML so a denied insertion cannot leave an update behind.
     if (!toUpdate.isEmpty()) {
-      update toUpdate;
+      requireObservationWriteAccess(
+        false,
+        new List<Schema.SObjectField>{
+          Observation__c.Value_Quantity__c,
+          Observation__c.Effective_DateTime__c
+        }
+      );
     }
     if (!toInsert.isEmpty()) {
-      insert toInsert;
+      requireObservationWriteAccess(
+        true,
+        new List<Schema.SObjectField>{
+          Observation__c.Patient__c,
+          Observation__c.Encounter__c,
+          Observation__c.Category__c,
+          Observation__c.Status__c,
+          Observation__c.Observation_Code_System__c,
+          Observation__c.Observation_Code__c,
+          Observation__c.Observation_Display__c,
+          Observation__c.Value_Quantity__c,
+          Observation__c.Value_Unit__c,
+          Observation__c.Effective_DateTime__c
+        }
+      );
+    }
+    if (!toUpdate.isEmpty()) {
+      Database.update(toUpdate, AccessLevel.USER_MODE);
+    }
+    if (!toInsert.isEmpty()) {
+      Database.insert(toInsert, AccessLevel.USER_MODE);
     }
 
-    List<Observation__c> observations = new List<Observation__c>();
-    observations.addAll(toUpdate);
     observations.addAll(toInsert);
     return observations;
+  }
+
+  private static void requireVitalsReadAccess() {
+    if (
+      !Encounter__c.SObjectType.getDescribe().isAccessible() ||
+      !Encounter__c.Patient__c.getDescribe().isAccessible() ||
+      !Observation__c.SObjectType.getDescribe().isAccessible()
+    ) {
+      throw accessError('You do not have permission to read encounter vitals.');
+    }
+    for (
+      Schema.SObjectField field : new List<Schema.SObjectField>{
+        Observation__c.Encounter__c,
+        Observation__c.Category__c,
+        Observation__c.Status__c,
+        Observation__c.Observation_Code__c,
+        Observation__c.Value_Quantity__c,
+        Observation__c.Value_Unit__c,
+        Observation__c.Effective_DateTime__c
+      }
+    ) {
+      if (!field.getDescribe().isAccessible()) {
+        throw accessError('You do not have permission to read vital details.');
+      }
+    }
+  }
+
+  private static void requireObservationWriteAccess(
+    Boolean creating,
+    List<Schema.SObjectField> fields
+  ) {
+    Schema.DescribeSObjectResult objectAccess = Observation__c.SObjectType.getDescribe();
+    if (
+      creating ? !objectAccess.isCreateable() : !objectAccess.isUpdateable()
+    ) {
+      throw accessError(
+        'You do not have permission to save vital measurements.'
+      );
+    }
+    for (Schema.SObjectField field : fields) {
+      Schema.DescribeFieldResult fieldAccess = field.getDescribe();
+      if (
+        creating ? !fieldAccess.isCreateable() : !fieldAccess.isUpdateable()
+      ) {
+        throw accessError('You do not have permission to save vital details.');
+      }
+    }
+  }
+
+  private static AuraHandledException accessError(String message) {
+    AuraHandledException error = new AuraHandledException(message);
+    error.setMessage(message);
+    return error;
   }
 
   @AuraEnabled

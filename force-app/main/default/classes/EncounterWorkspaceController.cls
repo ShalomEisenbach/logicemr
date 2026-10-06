@@ -51,6 +51,12 @@ public with sharing class EncounterWorkspaceController {
     if (String.isBlank(newStatus)) {
       throw new AuraHandledException('New status is required.');
     }
+    if (
+      !Encounter__c.SObjectType.getDescribe().isUpdateable() ||
+      !Encounter__c.Status__c.getDescribe().isUpdateable()
+    ) {
+      throw permissionDenied();
+    }
 
     List<Encounter__c> rows = [
       SELECT Id, Status__c
@@ -75,7 +81,7 @@ public with sharing class EncounterWorkspaceController {
     }
 
     encounter.Status__c = newStatus;
-    update encounter;
+    update as user encounter;
     return encounter;
   }
 
@@ -168,15 +174,25 @@ public with sharing class EncounterWorkspaceController {
       Diagnosis_Code__c = code,
       Diagnosis_Display__c = display
     );
-    insert condition;
-
     EncounterDiagnosis__c link = new EncounterDiagnosis__c(
       Encounter__c = encounterId,
-      Condition__c = condition.Id,
       Type__c = diagnosisType,
       Rank__c = rank
     );
-    insert link;
+    requireCreateAccess(condition);
+    requireCreateAccess(link);
+    if (!EncounterDiagnosis__c.Condition__c.getDescribe().isCreateable()) {
+      throw permissionDenied();
+    }
+    Savepoint diagnosisSavepoint = Database.setSavepoint();
+    try {
+      insert as user condition;
+      link.Condition__c = condition.Id;
+      insert as user link;
+    } catch (Exception error) {
+      Database.rollback(diagnosisSavepoint);
+      throw error;
+    }
     return link;
   }
 
@@ -184,6 +200,12 @@ public with sharing class EncounterWorkspaceController {
   public static void deleteDiagnoses(List<Id> encounterDiagnosisIds) {
     if (encounterDiagnosisIds == null || encounterDiagnosisIds.isEmpty()) {
       return;
+    }
+    if (
+      !EncounterDiagnosis__c.SObjectType.getDescribe().isDeletable() ||
+      !Condition__c.SObjectType.getDescribe().isDeletable()
+    ) {
+      throw permissionDenied();
     }
 
     List<EncounterDiagnosis__c> links = [
@@ -197,13 +219,41 @@ public with sharing class EncounterWorkspaceController {
         conditionIds.add(link.Condition__c);
       }
     }
-    delete links;
-    if (!conditionIds.isEmpty()) {
-      delete [
-        SELECT Id
-        FROM Condition__c
-        WHERE Id IN :conditionIds AND Category__c = :CATEGORY_ENCOUNTER_DX
-      ];
+    Savepoint diagnosisSavepoint = Database.setSavepoint();
+    try {
+      delete as user links;
+      if (!conditionIds.isEmpty()) {
+        List<Condition__c> conditions = [
+          SELECT Id
+          FROM Condition__c
+          WHERE Id IN :conditionIds AND Category__c = :CATEGORY_ENCOUNTER_DX
+        ];
+        delete as user conditions;
+      }
+    } catch (Exception error) {
+      Database.rollback(diagnosisSavepoint);
+      throw error;
     }
+  }
+
+  private static void requireCreateAccess(SObject record) {
+    Schema.DescribeSObjectResult description = record.getSObjectType()
+      .getDescribe();
+    if (!description.isCreateable()) {
+      throw permissionDenied();
+    }
+    Map<String, Schema.SObjectField> fields = description.fields.getMap();
+    for (String fieldName : record.getPopulatedFieldsAsMap().keySet()) {
+      if (!fields.get(fieldName).getDescribe().isCreateable()) {
+        throw permissionDenied();
+      }
+    }
+  }
+
+  private static AuraHandledException permissionDenied() {
+    String message = 'Clinical encounter changes require permission to edit the affected records and fields.';
+    AuraHandledException error = new AuraHandledException(message);
+    error.setMessage(message);
+    return error;
   }
 }

@@ -2,10 +2,12 @@ import { createElement } from "lwc";
 import EmrEncounterWorkspace from "c/emrEncounterWorkspace";
 import { getRecord } from "lightning/uiRecordApi";
 import { refreshApex } from "@salesforce/apex";
+import { getObjectInfo } from "lightning/uiObjectInfoApi";
 import getChecklist from "@salesforce/apex/EncounterCompletionService.getChecklist";
 import retryHandoff from "@salesforce/apex/EncounterCompletionService.retryHandoff";
 import transitionStatus from "@salesforce/apex/EncounterWorkspaceController.transitionStatus";
 import getDiagnoses from "@salesforce/apex/EncounterWorkspaceController.getDiagnoses";
+import deleteDiagnoses from "@salesforce/apex/EncounterWorkspaceController.deleteDiagnoses";
 
 jest.mock(
   "@salesforce/apex/EncounterCompletionService.getChecklist",
@@ -98,6 +100,17 @@ async function mount(status = "Finished") {
   });
   getDiagnoses.emit([]);
   getChecklist.emit(checklist);
+  getObjectInfo.emit(
+    { updateable: true, fields: { Status__c: { updateable: true } } },
+    (config) =>
+      (config.objectApiName?.objectApiName || config.objectApiName) ===
+      "Encounter__c"
+  );
+  getObjectInfo.emit({ createable: true, deletable: true }, (config) =>
+    ["Condition__c", "EncounterDiagnosis__c"].includes(
+      config.objectApiName?.objectApiName || config.objectApiName
+    )
+  );
   await flush();
   return element;
 }
@@ -161,5 +174,38 @@ describe("encounter completion checklist and handoff", () => {
       newStatus: "Finished"
     });
     expect(refreshApex).toHaveBeenCalled();
+  });
+
+  it("keeps clinical actions unavailable without object and status-field access", async () => {
+    const element = await mount("In Progress");
+    getObjectInfo.emit(
+      { updateable: true, fields: { Status__c: { updateable: false } } },
+      (config) =>
+        (config.objectApiName?.objectApiName || config.objectApiName) ===
+        "Encounter__c"
+    );
+    getObjectInfo.emit({ createable: false, deletable: false }, (config) =>
+      ["Condition__c", "EncounterDiagnosis__c"].includes(
+        config.objectApiName?.objectApiName || config.objectApiName
+      )
+    );
+    getDiagnoses.emit([
+      { id: "dx-one", conditionId: "condition-one", display: "Test diagnosis" }
+    ]);
+    await flush();
+    expect(button(element, "Mark Finished")).toBeUndefined();
+    expect(button(element, "Add").disabled).toBe(true);
+    const table = element.shadowRoot.querySelector("lightning-datatable");
+    expect(table.columns.some((column) => column.type === "action")).toBe(
+      false
+    );
+    table.dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "delete" }, row: { id: "dx-one" } }
+      })
+    );
+    await flush();
+    expect(deleteDiagnoses).not.toHaveBeenCalled();
+    expect(transitionStatus).not.toHaveBeenCalled();
   });
 });

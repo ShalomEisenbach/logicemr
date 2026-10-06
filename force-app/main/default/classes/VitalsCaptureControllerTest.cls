@@ -638,6 +638,354 @@ private class VitalsCaptureControllerTest {
     );
   }
 
+  @IsTest
+  static void readOnlyUserCannotInsertOrUpdateVitals() {
+    User reader = vitalsAccessUser('vitread', false, false, null);
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-READ-ONLY');
+      insertMetricVitals(encounter);
+    }
+    Observation__c before = [
+      SELECT Id, Value_Quantity__c, Effective_DateTime__c
+      FROM Observation__c
+      WHERE Encounter__c = :encounter.Id AND Observation_Code__c = '8310-5'
+    ];
+    System.runAs(reader) {
+      System.assert(Observation__c.SObjectType.getDescribe().isAccessible());
+      System.assert(!Observation__c.SObjectType.getDescribe().isCreateable());
+      System.assert(!Observation__c.SObjectType.getDescribe().isUpdateable());
+      System.assertEquals(
+        0,
+        VitalsCaptureController.saveVitals(
+            encounter.Id,
+            new List<VitalsCaptureController.VitalInput>{ vital('temp', 98.24) }
+          )
+          .size(),
+        'An equivalent value remains a read-only no-op'
+      );
+      assertVitalSaveDenied(encounter.Id, vital('hr', 72));
+      assertVitalSaveDenied(encounter.Id, vitalWithUnit('temp', 37, 'Cel'));
+    }
+    assertMeasurementUnchanged(before);
+    System.assertEquals(
+      3,
+      [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id],
+      'Denied creation must not add a measurement'
+    );
+  }
+
+  @IsTest
+  static void objectWriteAccessCannotBypassVitalFieldPermissions() {
+    User writer = vitalsAccessUser(
+      'vitfls',
+      true,
+      true,
+      Observation__c.Value_Quantity__c
+    );
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-FIELD-PERMISSION');
+      insertMetricVitals(encounter);
+    }
+    Observation__c before = [
+      SELECT Id, Value_Quantity__c, Effective_DateTime__c
+      FROM Observation__c
+      WHERE Encounter__c = :encounter.Id AND Observation_Code__c = '8310-5'
+    ];
+    System.runAs(writer) {
+      System.assert(Observation__c.SObjectType.getDescribe().isCreateable());
+      System.assert(Observation__c.SObjectType.getDescribe().isUpdateable());
+      System.assert(
+        Observation__c.Value_Quantity__c.getDescribe().isAccessible()
+      );
+      System.assert(
+        !Observation__c.Value_Quantity__c.getDescribe().isCreateable()
+      );
+      System.assert(
+        !Observation__c.Value_Quantity__c.getDescribe().isUpdateable()
+      );
+      assertVitalSaveDenied(encounter.Id, vital('hr', 72));
+      assertVitalSaveDenied(encounter.Id, vitalWithUnit('temp', 37, 'Cel'));
+    }
+    assertMeasurementUnchanged(before);
+    System.assertEquals(
+      3,
+      [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id]
+    );
+  }
+
+  @IsTest
+  static void mixedSaveChecksInsertFieldsBeforeUpdatingExistingVitals() {
+    User writer = vitalsAccessUser(
+      'vitmix',
+      true,
+      true,
+      Observation__c.Observation_Display__c
+    );
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-MIXED-PERMISSIONS');
+      insertMetricVitals(encounter);
+    }
+    Observation__c before = [
+      SELECT Id, Value_Quantity__c, Effective_DateTime__c
+      FROM Observation__c
+      WHERE Encounter__c = :encounter.Id AND Observation_Code__c = '8310-5'
+    ];
+    System.runAs(writer) {
+      System.assert(
+        Observation__c.Value_Quantity__c.getDescribe().isUpdateable()
+      );
+      System.assert(
+        !Observation__c.Observation_Display__c.getDescribe().isCreateable()
+      );
+      Boolean denied = false;
+      try {
+        VitalsCaptureController.saveVitals(
+          encounter.Id,
+          new List<VitalsCaptureController.VitalInput>{
+            vitalWithUnit('temp', 37, 'Cel'),
+            vital('hr', 72)
+          }
+        );
+      } catch (AuraHandledException error) {
+        denied = error.getMessage().contains('permission');
+      }
+      System.assert(denied, 'Every insertion field must be authorized');
+    }
+    assertMeasurementUnchanged(before);
+    System.assertEquals(
+      3,
+      [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id],
+      'A denied mixed save must leave both operation groups untouched'
+    );
+    System.runAs(writer) {
+      List<Observation__c> saved = VitalsCaptureController.saveVitals(
+        encounter.Id,
+        new List<VitalsCaptureController.VitalInput>{
+          vitalWithUnit('temp', 37, 'Cel')
+        }
+      );
+      System.assertEquals(1, saved.size());
+      System.assertEquals(37, saved[0].Value_Quantity__c);
+      System.assertEquals('Cel', saved[0].Value_Unit__c);
+      System.assertEquals('8310-5', saved[0].Observation_Code__c);
+    }
+    System.assertEquals(
+      37,
+      [SELECT Value_Quantity__c FROM Observation__c WHERE Id = :before.Id]
+      .Value_Quantity__c,
+      'Editing an existing value does not require writing its source metadata'
+    );
+  }
+
+  @IsTest
+  static void createOnlyUserCannotChangeRecordedVitals() {
+    User creator = vitalsAccessUser('vitnew', true, false, null);
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-CREATE-ONLY');
+    }
+    Observation__c before;
+    System.runAs(creator) {
+      System.assert(Observation__c.SObjectType.getDescribe().isCreateable());
+      System.assert(!Observation__c.SObjectType.getDescribe().isUpdateable());
+      before = VitalsCaptureController.saveVitals(
+        encounter.Id,
+        new List<VitalsCaptureController.VitalInput>{ vital('hr', 72) }
+      )[0];
+      System.assertNotEquals(null, before.Id);
+      assertVitalSaveDenied(encounter.Id, vital('hr', 74));
+    }
+    assertMeasurementUnchanged(before);
+    System.assertEquals(
+      1,
+      [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id]
+    );
+  }
+
+  @IsTest
+  static void packagedBillingRoleCannotMutateVitals() {
+    User billing = accessUser('vitbill');
+    insert billing;
+    insert new PermissionSetAssignment(
+      AssigneeId = billing.Id,
+      PermissionSetId = [
+        SELECT Id
+        FROM PermissionSet
+        WHERE Name = 'LogicEMR_Billing'
+        LIMIT 1
+      ]
+      .Id
+    );
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-BILLING');
+    }
+    System.runAs(billing) {
+      System.assert(!Observation__c.SObjectType.getDescribe().isCreateable());
+      System.assert(!Observation__c.SObjectType.getDescribe().isUpdateable());
+      assertVitalSaveDenied(encounter.Id, vital('hr', 72));
+    }
+    System.assertEquals(
+      0,
+      [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id]
+    );
+  }
+
+  private static void assertMeasurementUnchanged(Observation__c before) {
+    Observation__c after = [
+      SELECT Value_Quantity__c, Effective_DateTime__c
+      FROM Observation__c
+      WHERE Id = :before.Id
+    ];
+    System.assertEquals(before.Value_Quantity__c, after.Value_Quantity__c);
+    System.assertEquals(
+      before.Effective_DateTime__c,
+      after.Effective_DateTime__c,
+      'Denied or unchanged saves must preserve the measurement time'
+    );
+  }
+
+  private static void assertVitalSaveDenied(
+    Id encounterId,
+    VitalsCaptureController.VitalInput input
+  ) {
+    Boolean denied = false;
+    try {
+      VitalsCaptureController.saveVitals(
+        encounterId,
+        new List<VitalsCaptureController.VitalInput>{ input }
+      );
+    } catch (AuraHandledException error) {
+      denied = error.getMessage().contains('permission');
+    }
+    System.assert(
+      denied,
+      'Vitals mutation must enforce the caller permissions'
+    );
+  }
+
+  private static User accessUser(String alias) {
+    Profile profile = [
+      SELECT Id
+      FROM Profile
+      WHERE Name IN ('Minimum Access - Salesforce', 'Standard User')
+      ORDER BY Name
+      LIMIT 1
+    ];
+    return new User(
+      Alias = alias,
+      LastName = alias,
+      Email = alias + '@logicemr.test',
+      Username = alias +
+        '.' +
+        String.valueOf(Crypto.getRandomInteger()) +
+        '@logicemr.test',
+      ProfileId = profile.Id,
+      TimeZoneSidKey = 'America/New_York',
+      LocaleSidKey = 'en_US',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US'
+    );
+  }
+
+  private static User vitalsAccessUser(
+    String alias,
+    Boolean creating,
+    Boolean editing,
+    Schema.SObjectField readOnlyField
+  ) {
+    User user = accessUser(alias);
+    insert user;
+    PermissionSet access = new PermissionSet(
+      Name = 'Vitals_' + alias + '_Test',
+      Label = 'Vitals ' + alias + ' Test'
+    );
+    insert access;
+    String patientObject = qualifiedObjectName(Patient__c.SObjectType);
+    String encounterObject = qualifiedObjectName(Encounter__c.SObjectType);
+    String observationObject = qualifiedObjectName(Observation__c.SObjectType);
+    insert new List<ObjectPermissions>{
+      new ObjectPermissions(
+        ParentId = access.Id,
+        SobjectType = patientObject,
+        PermissionsRead = true,
+        PermissionsCreate = true,
+        PermissionsEdit = true,
+        PermissionsDelete = true,
+        PermissionsViewAllRecords = true,
+        PermissionsModifyAllRecords = true
+      ),
+      new ObjectPermissions(
+        ParentId = access.Id,
+        SobjectType = encounterObject,
+        PermissionsRead = true
+      ),
+      new ObjectPermissions(
+        ParentId = access.Id,
+        SobjectType = observationObject,
+        PermissionsRead = true,
+        PermissionsCreate = creating,
+        PermissionsEdit = editing
+      )
+    };
+    Map<String, List<Schema.SObjectField>> fieldsByObject = new Map<String, List<Schema.SObjectField>>{
+      encounterObject => new List<Schema.SObjectField>{
+        Encounter__c.Patient__c
+      },
+      observationObject => new List<Schema.SObjectField>{
+        Observation__c.Patient__c,
+        Observation__c.Encounter__c,
+        Observation__c.Category__c,
+        Observation__c.Status__c,
+        Observation__c.Observation_Code_System__c,
+        Observation__c.Observation_Code__c,
+        Observation__c.Observation_Display__c,
+        Observation__c.Value_Quantity__c,
+        Observation__c.Value_Unit__c,
+        Observation__c.Effective_DateTime__c
+      }
+    };
+    List<FieldPermissions> fieldAccess = new List<FieldPermissions>();
+    for (String objectApiName : fieldsByObject.keySet()) {
+      for (Schema.SObjectField field : fieldsByObject.get(objectApiName)) {
+        Schema.DescribeFieldResult description = field.getDescribe();
+        if (description.isPermissionable()) {
+          fieldAccess.add(
+            new FieldPermissions(
+              ParentId = access.Id,
+              SobjectType = objectApiName,
+              Field = objectApiName + '.' + description.getName(),
+              PermissionsRead = true,
+              PermissionsEdit = objectApiName == observationObject &&
+                (creating || editing) &&
+                field != readOnlyField
+            )
+          );
+        }
+      }
+    }
+    insert fieldAccess;
+    insert new PermissionSetAssignment(
+      AssigneeId = user.Id,
+      PermissionSetId = access.Id
+    );
+    return user;
+  }
+
+  private static String qualifiedObjectName(Schema.SObjectType objectType) {
+    String keyPrefix = objectType.getDescribe().getKeyPrefix();
+    return [
+      SELECT QualifiedApiName
+      FROM EntityDefinition
+      WHERE KeyPrefix = :keyPrefix
+      LIMIT 1
+    ]
+    .QualifiedApiName;
+  }
+
   private static void insertMetricVitals(Encounter__c encounter) {
     insert new List<Observation__c>{
       recordedVital(encounter, '8310-5', 36.8, 'Cel'),

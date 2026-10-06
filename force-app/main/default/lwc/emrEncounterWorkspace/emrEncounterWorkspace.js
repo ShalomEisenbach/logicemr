@@ -13,6 +13,7 @@ import {
   unregisterRefreshHandler
 } from "lightning/refresh";
 import LightningConfirm from "lightning/confirm";
+import { getObjectInfo } from "lightning/uiObjectInfoApi";
 import transitionStatus from "@salesforce/apex/EncounterWorkspaceController.transitionStatus";
 import getDiagnoses from "@salesforce/apex/EncounterWorkspaceController.getDiagnoses";
 import addDiagnosis from "@salesforce/apex/EncounterWorkspaceController.addDiagnosis";
@@ -23,6 +24,7 @@ import ENCOUNTER_OBJECT from "@salesforce/schema/Encounter__c";
 import PATIENT_OBJECT from "@salesforce/schema/Patient__c";
 import PRACTITIONER_OBJECT from "@salesforce/schema/Practitioner__c";
 import CONDITION_OBJECT from "@salesforce/schema/Condition__c";
+import DIAGNOSIS_OBJECT from "@salesforce/schema/EncounterDiagnosis__c";
 import PATIENT_FIELD from "@salesforce/schema/Encounter__c.Patient__c";
 import PRACTITIONER_FIELD from "@salesforce/schema/Encounter__c.Practitioner__c";
 import PATIENT_FIRST_NAME_FIELD from "@salesforce/schema/Encounter__c.Patient__r.First_Name__c";
@@ -73,6 +75,35 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
   LightningElement
 ) {
   @api recordId;
+  @wire(getObjectInfo, { objectApiName: ENCOUNTER_OBJECT }) encounterObjectInfo;
+  @wire(getObjectInfo, { objectApiName: CONDITION_OBJECT }) conditionObjectInfo;
+  @wire(getObjectInfo, { objectApiName: DIAGNOSIS_OBJECT }) diagnosisObjectInfo;
+
+  get canEditStatus() {
+    return (
+      this.encounterObjectInfo?.data?.updateable === true &&
+      this.encounterObjectInfo.data.fields?.[STATUS_FIELD.fieldApiName]
+        ?.updateable === true
+    );
+  }
+
+  get canAddDiagnosis() {
+    return (
+      this.conditionObjectInfo?.data?.createable === true &&
+      this.diagnosisObjectInfo?.data?.createable === true
+    );
+  }
+
+  get isAddDiagnosisDisabled() {
+    return this.isSavingDiagnosis || !this.canAddDiagnosis;
+  }
+
+  get canDeleteDiagnosis() {
+    return (
+      this.conditionObjectInfo?.data?.deletable === true &&
+      this.diagnosisObjectInfo?.data?.deletable === true
+    );
+  }
 
   encounter;
   errorMessage;
@@ -166,20 +197,23 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
   ];
 
   get diagnosisColumns() {
-    return [
+    const columns = [
       urlColumn("Diagnosis", "recordUrl", "recordLabel"),
       { label: "Code", fieldName: "code" },
       { label: "System", fieldName: "codeSystem" },
       { label: "Type", fieldName: "diagnosisType" },
       { label: "Rank", fieldName: "rank", type: "number" },
-      { label: "Status", fieldName: "status" },
-      {
+      { label: "Status", fieldName: "status" }
+    ];
+    if (this.canDeleteDiagnosis) {
+      columns.push({
         type: "action",
         typeAttributes: {
           rowActions: [{ label: "Delete", name: DELETE }]
         }
-      }
-    ];
+      });
+    }
+    return columns;
   }
 
   get patientObjectApiName() {
@@ -356,6 +390,7 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
 
   get canAdvance() {
     return (
+      this.canEditStatus &&
       !!this.nextStatus &&
       this.isClientTransitionValid(this.status, this.nextStatus)
     );
@@ -394,6 +429,9 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
   }
 
   async handleAdvance() {
+    if (this.isSaving || !this.canEditStatus) {
+      return;
+    }
     const currentStatus = this.status;
     const newStatus = this.nextStatus;
     if (!this.isClientTransitionValid(currentStatus, newStatus)) {
@@ -437,6 +475,9 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
   }
 
   handleToggleAddDiagnosis() {
+    if (!this.canAddDiagnosis) {
+      return;
+    }
     this.showAddDiagnosisForm = true;
     this.diagnosisError = undefined;
   }
@@ -474,7 +515,11 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
   }
 
   async handleDiagnosisRowAction(event) {
-    if (event.detail.action.name !== DELETE || this.isSavingDiagnosis) {
+    if (
+      event.detail.action.name !== DELETE ||
+      this.isSavingDiagnosis ||
+      !this.canDeleteDiagnosis
+    ) {
       return;
     }
     const confirmed = await LightningConfirm.open({
@@ -499,7 +544,7 @@ export default class EmrEncounterWorkspace extends NavigationMixin(
   }
 
   async handleSaveDiagnosis() {
-    if (this.isSavingDiagnosis) {
+    if (this.isAddDiagnosisDisabled) {
       return;
     }
     this.isSavingDiagnosis = true;

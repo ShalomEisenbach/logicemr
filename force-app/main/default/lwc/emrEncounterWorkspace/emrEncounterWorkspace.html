@@ -234,6 +234,7 @@
             slot="actions"
             label="Add"
             variant="neutral"
+            disabled={isAddDiagnosisDisabled}
             onclick={handleToggleAddDiagnosis}
           ></lightning-button>
           <template lwc:if={diagnosisError}>
@@ -288,7 +289,7 @@
                 <lightning-button
                   label="Save diagnosis"
                   variant="brand"
-                  disabled={isSavingDiagnosis}
+                  disabled={isAddDiagnosisDisabled}
                   onclick={handleSaveDiagnosis}
                 ></lightning-button>
               </div>
