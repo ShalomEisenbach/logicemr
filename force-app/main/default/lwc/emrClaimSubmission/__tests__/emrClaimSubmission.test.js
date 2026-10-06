@@ -8,6 +8,17 @@ import reopenRejectedClaim from "@salesforce/apex/ClaimSubmissionController.reop
 import LightningConfirm from "lightning/confirm";
 
 jest.mock(
+  "@salesforce/schema/Claim_Submission__c",
+  () => ({ default: { objectApiName: "lfemr__Claim_Submission__c" } }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/schema/Claim_Acknowledgment__c",
+  () => ({ default: { objectApiName: "lfemr__Claim_Acknowledgment__c" } }),
+  { virtual: true }
+);
+
+jest.mock(
   "@salesforce/apex/ClaimSubmissionController.getSubmissions",
   () => {
     const { createApexTestWireAdapter } = require("@salesforce/sfdx-lwc-jest");
@@ -169,6 +180,48 @@ describe("c-emr-claim-submission", () => {
     expect(findButton(element, "Recover")).not.toBeUndefined();
   });
 
+  it("only retries the latest attempt while its claim remains Ready", async () => {
+    const element = createComponent();
+    getSubmissions.emit([
+      { Id: "latest", Name: "Latest", Status__c: "Failed" },
+      { Id: "older", Name: "Older", Status__c: "Failed" }
+    ]);
+    await flushPromises();
+
+    const retries = [
+      ...element.shadowRoot.querySelectorAll("lightning-button")
+    ].filter((button) => button.label === "Retry");
+    expect(retries).toHaveLength(1);
+    expect(retries[0].dataset.id).toBe("latest");
+
+    element.claimStatus = "Exported";
+    await flushPromises();
+    expect(findButton(element, "Retry")).toBeUndefined();
+
+    element.claimStatus = "Ready";
+    getSubmissions.emit([
+      { Id: "latest", Name: "Latest", Status__c: "Failed" },
+      { Id: "competing", Name: "Queued", Status__c: "Queued" }
+    ]);
+    await flushPromises();
+    expect(findButton(element, "Retry")).toBeUndefined();
+    expect(findButton(element, "Submit 837P").disabled).toBe(true);
+  });
+
+  it("requests the current claim status after transport succeeds", async () => {
+    const element = createComponent();
+    const statusChanged = jest.fn();
+    element.addEventListener("claimstatuschanged", statusChanged);
+    getSubmissions.emit([{ Id: "latest", Status__c: "Queued" }]);
+    await flushPromises();
+    expect(statusChanged).not.toHaveBeenCalled();
+
+    getSubmissions.emit([{ Id: "latest", Status__c: "Submitted" }]);
+    getAcknowledgments.emit([]);
+    await flushPromises();
+    expect(statusChanged).toHaveBeenCalledTimes(1);
+  });
+
   it("renders wire and operation errors", async () => {
     const element = createComponent();
     getAcknowledgments.emit([]);
@@ -188,6 +241,33 @@ describe("c-emr-claim-submission", () => {
     await flushPromises();
     await flushPromises();
     expect(element.shadowRoot.textContent).toContain("Submission failed");
+  });
+
+  it("correlates namespaced submission and acknowledgment records", async () => {
+    const element = createComponent("Exported");
+    getSubmissions.emit([
+      {
+        Id: "submission",
+        Name: "CLMSUB-1",
+        lfemr__Status__c: "Submitted",
+        lfemr__Acknowledgment_Status__c: "Rejected",
+        lfemr__Correlation_Id__c: "CORR-1"
+      }
+    ]);
+    getAcknowledgments.emit([
+      {
+        Id: "ack",
+        lfemr__Claim_Submission__c: "submission",
+        lfemr__Status__c: "Rejected",
+        lfemr__Sender_Name__c: "Example payer",
+        lfemr__Message__c: "Review member ID"
+      }
+    ]);
+    await flushPromises();
+    expect(element.shadowRoot.textContent).toContain("CORR-1");
+    expect(element.shadowRoot.textContent).toContain("Example payer");
+    expect(element.shadowRoot.textContent).toContain("Review member ID");
+    expect(findButton(element, "Reopen rejected claim").disabled).toBe(false);
   });
 
   it("renders 277CA rejection details and reopens the latest rejected claim", async () => {

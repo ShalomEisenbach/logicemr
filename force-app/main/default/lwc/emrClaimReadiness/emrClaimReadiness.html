@@ -180,6 +180,12 @@
 
         <section class="slds-m-top_medium">
           <h3 class="slds-text-title_caps slds-m-bottom_x-small">Charges</h3>
+          <template lwc:if={hasUnlinkedChargesToReview}>
+            <p class="slds-text-color_weak slds-m-bottom_small" role="status">
+              Review Manual / unlinked charges before approving. They may be
+              manually added services or older charges whose source was removed.
+            </p>
+          </template>
           <template lwc:if={hasCharges}>
             <lightning-datatable
               key-field="id"
@@ -222,6 +228,7 @@
             superbill-id={superbillId}
             claim-status={status}
             onclaimreopened={handleClaimReopened}
+            onclaimstatuschanged={handleClaimStatusChanged}
           ></c-emr-claim-submission>
         </template>
       </template>

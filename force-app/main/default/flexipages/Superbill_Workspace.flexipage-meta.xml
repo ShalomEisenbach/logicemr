@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<FlexiPage xmlns="http://soap.sforce.com/2006/04/metadata">
+    <flexiPageRegions><itemInstances><componentInstance><componentName
+        >force:highlightsPanel</componentName><identifier
+        >superbillHighlights</identifier></componentInstance></itemInstances><name
+    >header</name><type>Region</type></flexiPageRegions>
+    <flexiPageRegions>
+        <itemInstances><componentInstance><componentName
+        >emrClaimReadiness</componentName><identifier
+        >superbillClaimReadiness</identifier>
+            <visibilityRule><criteria><leftValue
+            >{!$Permission.CustomPermission.LogicEMR_Manage_Claims}</leftValue><operator
+            >EQUAL</operator><rightValue
+            >true</rightValue></criteria></visibilityRule>
+        </componentInstance></itemInstances>
+        <itemInstances><componentInstance><componentName
+        >force:detailPanel</componentName><identifier
+        >superbillDetails</identifier></componentInstance></itemInstances>
+        <name>main</name><type>Region</type>
+    </flexiPageRegions>
+    <flexiPageRegions><itemInstances><componentInstance
+      ><componentInstanceProperties><name
+          >relatedListComponentOverride</name><value
+          >NONE</value></componentInstanceProperties><componentInstanceProperties
+        ><name>rowsToDisplay</name><value
+          >10</value></componentInstanceProperties><componentInstanceProperties
+        ><name>showActionBar</name><value
+          >false</value></componentInstanceProperties><componentName
+        >force:relatedListContainer</componentName><identifier
+        >superbillRelatedLists</identifier></componentInstance></itemInstances><name
+    >sidebar</name><type>Region</type></flexiPageRegions>
+    <masterLabel>Superbill Workspace</masterLabel><sobjectType
+  >Superbill__c</sobjectType><template><name
+    >flexipage:recordHomeTemplateDesktop</name></template><type
+  >RecordPage</type>
+</FlexiPage>

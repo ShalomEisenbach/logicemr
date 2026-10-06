@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Application_Mode__c</fullName>
+    <description
+  >Application mode reported by Stedi for this attempt. Blank when no mode was returned.</description>
+    <label>Application Mode</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

@@ -1,0 +1,133 @@
+<template>
+  <c-emr-chart-panel title="Eligibility work queue">
+    <lightning-button
+      slot="actions"
+      label="Refresh"
+      onclick={handleRefresh}
+      disabled={busy}
+    ></lightning-button>
+    <p>
+      Review recent checks and retry failures using current patient, coverage,
+      and eligibility settings. Success includes active and inactive coverage.
+    </p>
+    <div class="filters slds-m-vertical_medium">
+      <lightning-combobox
+        label="Outcome"
+        data-field="outcome"
+        value={filters.outcome}
+        options={outcomeOptions}
+        onchange={handleFilter}
+      ></lightning-combobox>
+      <lightning-input
+        type="search"
+        label="Payer name or identifier"
+        data-field="payer"
+        value={filters.payer}
+        onchange={handleFilter}
+      ></lightning-input>
+      <lightning-input
+        type="search"
+        label="Patient name or MRN"
+        data-field="patient"
+        value={filters.patient}
+        onchange={handleFilter}
+      ></lightning-input>
+      <lightning-input
+        type="date"
+        label="From date"
+        data-field="startDate"
+        value={filters.startDate}
+        onchange={handleFilter}
+      ></lightning-input>
+      <lightning-input
+        type="date"
+        label="Through date"
+        data-field="endDate"
+        value={filters.endDate}
+        onchange={handleFilter}
+      ></lightning-input>
+      <lightning-button
+        label="Apply filters"
+        variant="brand"
+        onclick={handleApply}
+        disabled={busy}
+      ></lightning-button>
+    </div>
+    <div class="slds-grid slds-wrap slds-grid_align-spread slds-m-bottom_small">
+      <lightning-input
+        type="toggle"
+        label="Auto-refresh every 30 seconds"
+        checked={autoRefresh}
+        onchange={handleAutoRefresh}
+      ></lightning-input>
+      <template lwc:if={lastRefreshed}>
+        <p>
+          Last refreshed:
+          <lightning-formatted-date-time
+            value={lastRefreshed}
+            hour="2-digit"
+            minute="2-digit"
+            second="2-digit"
+          ></lightning-formatted-date-time>
+        </p>
+      </template>
+    </div>
+    <template lwc:if={error}
+      ><p role="alert" class="slds-text-color_error slds-m-bottom_small">
+        {error} Previously loaded results may be out of date.
+      </p></template
+    >
+    <div class="queue-content">
+      <template lwc:if={busy}
+        ><lightning-spinner
+          alternative-text="Updating eligibility queue"
+          size="small"
+        ></lightning-spinner
+      ></template>
+      <p class="slds-m-bottom_small" role="status">{summary}</p>
+      <template lwc:if={hasMore}
+        ><p class="slds-m-bottom_small">
+          Showing the newest 100 matching checks. Narrow the filters to review
+          older attempts.
+        </p></template
+      >
+      <template lwc:if={hasRows}>
+        <lightning-datatable
+          key-field="id"
+          data={displayRows}
+          columns={columns}
+          hide-checkbox-column
+          onrowaction={handleRowAction}
+        ></lightning-datatable>
+      </template>
+      <template lwc:else
+        ><p class="slds-p-vertical_medium">
+          No eligibility checks match these filters.
+        </p></template
+      >
+    </div>
+    <h3 class="slds-text-heading_small slds-m-top_medium">
+      Common rejection reasons
+    </h3>
+    <p class="slds-text-color_weak">
+      Top five reasons among the checks shown. Each count is the number of
+      failed attempts reporting that reason.
+    </p>
+    <template lwc:if={hasRejections}>
+      <ul class="slds-list_dotted slds-m-top_small">
+        <template for:each={rejectionReasons} for:item="item"
+          ><li key={item.reason}>{item.reason} — {item.count}</li></template
+        >
+      </ul>
+    </template>
+    <template lwc:else
+      ><p class="slds-m-top_small">
+        No rejection reasons in these results.
+      </p></template
+    >
+    <p class="slds-text-color_weak slds-m-top_medium">
+      Mode is reported by Stedi for each attempt. Unknown means the response did
+      not include a mode or the check predates mode tracking.
+    </p>
+  </c-emr-chart-panel>
+</template>

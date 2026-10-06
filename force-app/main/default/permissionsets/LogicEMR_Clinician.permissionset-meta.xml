@@ -2,12 +2,17 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <externalCredentialPrincipalAccesses>
         <enabled>true</enabled>
-        <externalCredentialPrincipal>lfemr__Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
+        <externalCredentialPrincipal
+    >lfemr__Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
     </externalCredentialPrincipalAccesses>
     <applicationVisibilities>
         <application>LogicEMR</application>
         <visible>true</visible>
     </applicationVisibilities>
+    <classAccesses>
+        <apexClass>EncounterCompletionService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <classAccesses>
         <apexClass>AlertBarController</apexClass>
         <enabled>true</enabled>
@@ -188,6 +193,93 @@
   >Clinician access to LogicEMR clinical data. Practitioner, Schedule, and Slot are read-only. Appointments can be created and edited. Eligibility checks can be created and read; LogicEMR_Run_Eligibility gates the check action.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Clinician</label>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Member_ID_Identifies_Patient__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Eligibility_Check__c.Service_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Patient__c.Allergy_Review_Status__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Patient__c.Allergy_Reviewed_At__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Patient__c.Allergy_Reviewed_By__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >ClinicalNote__c.Addendum_To__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >ClinicalNote__c.Signed_By__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Encounter__c.Completion_Handoff_Status__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Encounter__c.Completion_Handoff_Error__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_First_Name__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_Last_Name__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_Date_of_Birth__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_Sex__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_Street__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_City__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_State__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_Postal_Code__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Subscriber_Country__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >MedicationRequest__c.Dispense_Quantity__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >MedicationRequest__c.Refills__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >MedicationRequest__c.Pharmacy__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >MedicationRequest__c.Start_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >MedicationRequest__c.End_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Encounter__c.Completion_Handoff_Queued_At__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Source_Procedure_Key__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Eligibility_Check__c.Application_Mode__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Eligibility_Check__c.Stedi_Trace_Id__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>CareTeamMember__c.Access_Level__c</field>

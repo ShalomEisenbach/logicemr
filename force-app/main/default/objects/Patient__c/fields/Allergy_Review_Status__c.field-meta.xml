@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Allergy_Review_Status__c</fullName><label
+  >Allergy Review Status</label><type>Picklist</type>
+    <valueSet><restricted>true</restricted><valueSetDefinition><sorted
+      >false</sorted>
+        <value><fullName>Unknown</fullName><default>true</default><label
+        >Unknown</label></value>
+        <value><fullName>No known allergies</fullName><default
+        >false</default><label>No known allergies</label></value>
+        <value><fullName>Allergies recorded</fullName><default
+        >false</default><label>Allergies recorded</label></value>
+    </valueSetDefinition></valueSet>
+</CustomField>

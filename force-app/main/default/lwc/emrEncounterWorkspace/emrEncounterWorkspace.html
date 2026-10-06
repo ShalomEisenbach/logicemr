@@ -163,6 +163,54 @@
               layout="grid"
             ></c-emr-alert-bar>
           </div>
+          <template lwc:if={showCompletionChecklist}>
+            <section
+              class="slds-box slds-m-top_medium"
+              aria-label="Encounter completion checklist"
+            >
+              <h3 class="slds-text-title_caps">Visit completion checklist</h3>
+              <p class="slds-text-body_small slds-m-vertical_x-small">
+                Finish records the end of this visit. Chart items can be
+                completed afterward; a signed note is required before the claim
+                is ready.
+              </p>
+              <template lwc:if={checklistError}
+                ><p class="slds-text-color_error" role="alert">
+                  {checklistError}
+                </p></template
+              >
+              <ul>
+                <template for:each={completionItems} for:item="item">
+                  <li key={item.label}>{item.label}: {item.statusLabel}</li>
+                </template>
+              </ul>
+              <template lwc:if={handoffStatus}
+                ><p class="slds-m-top_small">
+                  Appointment and billing handoff: {handoffStatus}
+                </p></template
+              >
+              <template lwc:if={handoffError}
+                ><p class="slds-text-color_error" role="alert">
+                  {handoffError}
+                </p></template
+              >
+              <div class="slds-m-top_small">
+                <lightning-button
+                  label="Refresh checklist"
+                  onclick={handleRefresh}
+                  disabled={isSaving}
+                ></lightning-button>
+                <template lwc:if={canRetryHandoff}
+                  ><lightning-button
+                    label="Retry completion handoff"
+                    onclick={handleRetryHandoff}
+                    disabled={isSaving}
+                    class="slds-m-left_small"
+                  ></lightning-button
+                ></template>
+              </div>
+            </section>
+          </template>
         </template>
       </div>
     </lightning-card>

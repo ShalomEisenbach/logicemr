@@ -40,3 +40,17 @@ export function parseCivilDate(value) {
   }
   return { year, month, day };
 }
+
+// Date-only Salesforce fields represent a calendar day, not a UTC instant.
+export function formatCivilDate(value, options = {}, locales) {
+  if (typeof value !== "string" || !value) {
+    return "";
+  }
+  const civil = parseCivilDate(value);
+  if (!civil) {
+    return value;
+  }
+  const date = new Date(0);
+  date.setUTCFullYear(civil.year, civil.month - 1, civil.day);
+  return date.toLocaleDateString(locales, { ...options, timeZone: "UTC" });
+}

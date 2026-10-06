@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Stedi_Trace_Id__c</fullName>
+    <description
+  >Stedi response meta.traceId, falling back to meta.outboundTraceId when absent.</description>
+    <label>Stedi Trace ID</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

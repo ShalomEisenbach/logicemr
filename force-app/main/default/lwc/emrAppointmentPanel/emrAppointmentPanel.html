@@ -1,121 +1,141 @@
 <template>
-    <c-emr-chart-panel
-        title="Appointments"
-        count={appointmentCount}
-        view-all-label="View All Appointments"
-        has-records={hasAppointments}
-        collapsible
-        expanded
-        onviewall={handleViewAll}
-    >
-        <div slot="actions" class="appointment-actions">
-            <lightning-input
-                class="upcoming-toggle"
-                type="toggle"
-                label="Upcoming only"
-                title="Show appointments starting today or later that have not arrived"
-                checked={upcomingOnly}
-                message-toggle-active=""
-                message-toggle-inactive=""
-                onchange={handleUpcomingToggle}
-            ></lightning-input>
-            <lightning-button
-                label="Schedule"
-                variant="neutral"
-                onclick={handleSchedule}
-            ></lightning-button>
+  <c-emr-chart-panel
+    title="Appointments"
+    count={appointmentCount}
+    view-all-label="View All Appointments"
+    has-records={hasAppointments}
+    collapsible
+    expanded
+    onviewall={handleViewAll}
+  >
+    <div slot="actions" class="appointment-actions">
+      <lightning-input
+        class="upcoming-toggle"
+        type="toggle"
+        label="Upcoming only"
+        title="Show appointments starting today or later that have not arrived"
+        checked={upcomingOnly}
+        message-toggle-active=""
+        message-toggle-inactive=""
+        onchange={handleUpcomingToggle}
+      ></lightning-input>
+      <lightning-button
+        label="Schedule"
+        disabled={isScheduleDisabled}
+        variant="neutral"
+        onclick={handleSchedule}
+      ></lightning-button>
+    </div>
+    <template lwc:if={errorMessage}>
+      <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+        {errorMessage}
+      </div>
+    </template>
+    <template lwc:if={showScheduleForm}>
+      <c-emr-modal
+        title="Schedule appointment"
+        size="full"
+        onclose={handleCloseSchedule}
+      >
+        <c-emr-appointment-booking
+          onbooked={handleBooked}
+        ></c-emr-appointment-booking>
+        <div slot="footer">
+          <lightning-button
+            label="Close"
+            variant="neutral"
+            onclick={handleCloseSchedule}
+          ></lightning-button>
         </div>
-        <template lwc:if={errorMessage}>
-            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
-        </template>
-        <template lwc:if={showScheduleForm}>
-            <c-emr-modal title="Schedule appointment" size="full" onclose={handleCloseSchedule}>
-                <c-emr-appointment-booking onbooked={handleBooked}></c-emr-appointment-booking>
-                <div slot="footer">
-                    <lightning-button
-                        label="Close"
-                        variant="neutral"
-                        onclick={handleCloseSchedule}
-                    ></lightning-button>
-                </div>
-            </c-emr-modal>
-        </template>
-        <template lwc:if={hasAppointments}>
-            <div class="table-wide">
-                <lightning-datatable
-                    key-field="Id"
-                    data={appointments}
-                    columns={columns}
-                    hide-checkbox-column
-                    onrowaction={handleRowAction}
-                ></lightning-datatable>
+      </c-emr-modal>
+    </template>
+    <template lwc:if={hasAppointments}>
+      <div class="table-wide">
+        <lightning-datatable
+          key-field="Id"
+          data={appointments}
+          columns={columns}
+          hide-checkbox-column
+          onrowaction={handleRowAction}
+        ></lightning-datatable>
+      </div>
+      <div class="stack-narrow">
+        <template for:each={appointmentCards} for:item="row">
+          <article key={row.id} class="stack-card">
+            <p class="stack-title">
+              <c-emr-record-link
+                record-id={row.id}
+                object-api-name={row.objectApiName}
+                label={row.title}
+              ></c-emr-record-link>
+            </p>
+            <p class="stack-meta">{row.meta}</p>
+            <div class="stack-actions">
+              <lightning-button
+                label="Open"
+                variant="neutral"
+                data-id={row.id}
+                onclick={handleOpenCard}
+              ></lightning-button>
+              <lightning-button
+                label="Confirm"
+                variant="neutral"
+                data-id={row.id}
+                data-type="Confirmation"
+                onclick={handleNotifyCard}
+              ></lightning-button>
+              <lightning-button
+                label="Remind"
+                variant="neutral"
+                data-id={row.id}
+                data-type="Reminder"
+                onclick={handleNotifyCard}
+              ></lightning-button>
+              <lightning-button
+                label="Print"
+                variant="neutral"
+                data-id={row.id}
+                onclick={handlePrintCard}
+              ></lightning-button>
             </div>
-            <div class="stack-narrow">
-                <template for:each={appointmentCards} for:item="row">
-                    <article key={row.id} class="stack-card">
-                        <p class="stack-title">
-                            <c-emr-record-link
-                                record-id={row.id}
-                                object-api-name={row.objectApiName}
-                                label={row.title}
-                            ></c-emr-record-link>
-                        </p>
-                        <p class="stack-meta">{row.meta}</p>
-                        <div class="stack-actions">
-                            <lightning-button
-                                label="Open"
-                                variant="neutral"
-                                data-id={row.id}
-                                onclick={handleOpenCard}
-                            ></lightning-button>
-                            <lightning-button
-                                label="Confirm"
-                                variant="neutral"
-                                data-id={row.id}
-                                data-type="Confirmation"
-                                onclick={handleNotifyCard}
-                            ></lightning-button>
-                            <lightning-button
-                                label="Remind"
-                                variant="neutral"
-                                data-id={row.id}
-                                data-type="Reminder"
-                                onclick={handleNotifyCard}
-                            ></lightning-button>
-                            <lightning-button
-                                label="Print"
-                                variant="neutral"
-                                data-id={row.id}
-                                onclick={handlePrintCard}
-                            ></lightning-button>
-                        </div>
-                    </article>
-                </template>
-            </div>
+          </article>
         </template>
-        <template lwc:elseif={showEmpty}>
-            <p class="slds-text-body_regular">No appointments.</p>
-        </template>
-        <template lwc:if={showNotifyModal}>
-            <c-emr-modal title={notifyModalTitle} size="small" onclose={handleCloseNotify}>
-                <c-emr-appointment-notify
-                    appointment-id={notifyAppointmentId}
-                    message-type={notifyMessageType}
-                    onsent={handleNotifySent}
-                    oncancel={handleCloseNotify}
-                ></c-emr-appointment-notify>
-            </c-emr-modal>
-        </template>
-        <template lwc:if={showPrintModal}>
-            <c-emr-modal title="Print appointment" size="medium" onclose={handleClosePrint}>
-                <c-emr-appointment-print
-                    appointment-id={printAppointmentId}
-                    onprinted={handleClosePrint}
-                ></c-emr-appointment-print>
-                <div slot="footer">
-                    <lightning-button label="Close" onclick={handleClosePrint}></lightning-button>
-                </div>
-            </c-emr-modal>
-        </template>
-    </c-emr-chart-panel>
+      </div>
+    </template>
+    <template lwc:elseif={showEmpty}>
+      <p class="slds-text-body_regular">No appointments.</p>
+    </template>
+    <template lwc:if={showNotifyModal}>
+      <c-emr-modal
+        title={notifyModalTitle}
+        size="small"
+        onclose={handleCloseNotify}
+      >
+        <c-emr-appointment-notify
+          appointment-id={notifyAppointmentId}
+          message-type={notifyMessageType}
+          onsent={handleNotifySent}
+          oncancel={handleCloseNotify}
+        ></c-emr-appointment-notify>
+      </c-emr-modal>
+    </template>
+    <template lwc:if={showPrintModal}>
+      <c-emr-modal
+        title="Print appointment"
+        size="medium"
+        onclose={handleClosePrint}
+      >
+        <c-emr-appointment-print
+          appointment-id={printAppointmentId}
+          onprinted={handleClosePrint}
+        ></c-emr-appointment-print>
+        <div slot="footer">
+          <lightning-button
+            label="Close"
+            onclick={handleClosePrint}
+          ></lightning-button>
+        </div>
+      </c-emr-modal>
+    </template>
+  </c-emr-chart-panel>
 </template>

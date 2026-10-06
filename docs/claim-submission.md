@@ -9,7 +9,7 @@ LogicEMR submits primary professional claims through a provider-neutral Apex bou
 - API keys stay in the existing `Stedi_Eligibility` External Credential. `Stedi_Claims` is a separate Named Credential that reuses that secret and endpoint host.
 - The packaged setting intentionally leaves `Contact_Phone__c` blank. Submission is blocked until an admin supplies a real ten-digit billing contact number.
 - Every attempt gets a unique 17-character patient control number. Transport retries reuse the original patient control number and idempotency key.
-- Raw request and response payloads contain PHI. They inherit the superbill's record sharing, are granted only to billing and admin permission sets, and are not returned to the submission panel. Each organization must apply its approved Salesforce retention policy to these audit fields.
+- Raw request, response, and frozen canonical payloads contain PHI. They inherit the superbill's record sharing, are granted only to billing and admin permission sets, and are not returned to the submission panel. Each organization must apply its approved Salesforce retention policy to these audit fields.
 
 ## Setup
 
@@ -36,6 +36,12 @@ HTTP 400 and 422 edit responses, plus a provider edit failure returned with a su
 ## Recovery and idempotency
 
 The panel polls while an attempt is `Queued`. After 15 minutes it offers **Recover**, but the server requeues the attempt only when the original Apex job is terminal or no longer exists. An active queued or processing job cannot be duplicated. Recovery and ordinary failure retries preserve the original patient control number and idempotency key so a repeated transport cannot create a second clearinghouse claim.
+
+Queueing captures the canonical claim in `Canonical_Payload__c` and the outbound submitter configuration in `Submission_Config__c`. The worker and retries use those immutable captures, including the original test or production usage indicator. Credentials remain in the Named Credential; no API key or webhook secret is captured.
+
+Only the latest failed or recoverable queued attempt can be retried. Its parent must still be Ready, no other attempt may be Queued, and the current approval must match the captured claim. A later correction or approval requires a new submission with new identifiers. A queued attempt also blocks reopening its superbill.
+
+Historical attempts created before frozen inputs were recorded cannot be safely retried. Investigate their clearinghouse status before approving a new transmission.
 
 ## Current scope
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Submission_Config__c</fullName>
+    <description
+  >Immutable nonsecret adapter configuration captured for deterministic transport retries. Credentials remain in Named Credentials.</description>
+    <label>Frozen Submission Configuration</label><length>32768</length><type
+  >LongTextArea</type><visibleLines>5</visibleLines>
+</CustomField>

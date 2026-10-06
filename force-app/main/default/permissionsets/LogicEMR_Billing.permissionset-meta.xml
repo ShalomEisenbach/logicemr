@@ -2,12 +2,17 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <externalCredentialPrincipalAccesses>
         <enabled>true</enabled>
-        <externalCredentialPrincipal>lfemr__Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
+        <externalCredentialPrincipal
+    >lfemr__Stedi_Eligibility-Stedi_API</externalCredentialPrincipal>
     </externalCredentialPrincipalAccesses>
     <applicationVisibilities>
         <application>LogicEMR_Billing</application>
         <visible>true</visible>
     </applicationVisibilities>
+    <classAccesses>
+        <apexClass>EncounterCompletionService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <classAccesses>
         <apexClass>ClaimReadinessController</apexClass>
         <enabled>true</enabled>
@@ -136,6 +141,72 @@
   >Billing access to demographics, coverage, eligibility, superbills, charge lines, and claim-readiness review.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>LogicEMR Billing</label>
+    <fieldPermissions><editable>true</editable><field
+    >Coverage__c.Member_ID_Identifies_Patient__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >Eligibility_Check__c.Service_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Patient__c.Allergy_Review_Status__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Patient__c.Allergy_Reviewed_At__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Patient__c.Allergy_Reviewed_By__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field
+    >ClinicalNote__c.Addendum_To__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >ClinicalNote__c.Signed_By__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Encounter__c.Completion_Handoff_Status__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Encounter__c.Completion_Handoff_Error__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >MedicationRequest__c.Dispense_Quantity__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >MedicationRequest__c.Refills__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >MedicationRequest__c.Pharmacy__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >MedicationRequest__c.Start_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >MedicationRequest__c.End_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Submission__c.Canonical_Payload__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Submission__c.Submission_Config__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Encounter__c.Completion_Handoff_Queued_At__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Charge_Line__c.Source_Procedure_Key__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Eligibility_Check__c.Application_Mode__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Eligibility_Check__c.Stedi_Trace_Id__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <fieldPermissions><editable>false</editable><field
     >Superbill__c.Patient_First_Name__c</field><readable
     >true</readable></fieldPermissions>
@@ -866,21 +937,51 @@
         <field>Superbill__c.Rendering_Provider_Last_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Submission__c.Last_Acknowledgment_At__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Submission__c.Acknowledgment_Message__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Submission__c.Payer_Claim_Control_Number__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Claim_Submission__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Superbill__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Sender_Type__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Sender_Name__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Patient_Control_Number__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Claim_Transaction_Batch_Number__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Payer_Claim_Control_Number__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Effective_Date__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Processed_At__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Status_Codes__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Message__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions><editable>false</editable><field>Claim_Acknowledgment__c.Raw_Payload__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Submission__c.Last_Acknowledgment_At__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Submission__c.Acknowledgment_Message__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Submission__c.Payer_Claim_Control_Number__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Claim_Submission__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Superbill__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Sender_Type__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Sender_Name__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Patient_Control_Number__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Claim_Transaction_Batch_Number__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Payer_Claim_Control_Number__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Effective_Date__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Processed_At__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Status_Codes__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Message__c</field><readable
+    >true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field
+    >Claim_Acknowledgment__c.Raw_Payload__c</field><readable
+    >true</readable></fieldPermissions>
     <objectPermissions>
         <allowCreate>true</allowCreate>
         <allowDelete>true</allowDelete>

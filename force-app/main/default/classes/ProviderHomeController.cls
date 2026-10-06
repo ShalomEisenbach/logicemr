@@ -1,401 +1,441 @@
 public with sharing class ProviderHomeController {
-    private static final Integer LIST_LIMIT = 10;
-    private static final Set<String> CLOSED_ENCOUNTER_STATUSES = new Set<String>{
-        'Finished',
-        'Cancelled'
-    };
-    private static final Set<String> REVIEWABLE_REPORT_STATUSES = new Set<String>{
-        'Preliminary',
-        'Final'
-    };
-    private static final String NOTE_STATUS_DRAFT = 'Draft';
-    private static final Set<String> TODAY_APPOINTMENT_STATUSES = new Set<String>{
-        'Booked',
-        'Arrived'
-    };
+  private static final Integer LIST_LIMIT = 10;
+  private static final Set<String> CLOSED_ENCOUNTER_STATUSES = new Set<String>{
+    'Finished',
+    'Cancelled'
+  };
+  private static final Set<String> REVIEWABLE_REPORT_STATUSES = new Set<String>{
+    'Preliminary',
+    'Final',
+    'Amended'
+  };
+  private static final String NOTE_STATUS_DRAFT = 'Draft';
+  private static final Set<String> TODAY_APPOINTMENT_STATUSES = new Set<String>{
+    'Booked',
+    'Arrived'
+  };
 
-    public class HomePayload {
-        @AuraEnabled
-        public HomeMetrics metrics;
-        @AuraEnabled
-        public HomeLists lists;
-        @AuraEnabled
-        public List<Patient__c> recentPatients;
-        @AuraEnabled
-        public Map<Id, String> latestEligibilityByPatientId;
+  public class HomePayload {
+    @AuraEnabled
+    public HomeMetrics metrics;
+    @AuraEnabled
+    public HomeLists lists;
+    @AuraEnabled
+    public List<Patient__c> recentPatients;
+    @AuraEnabled
+    public Map<Id, String> latestEligibilityByPatientId;
+  }
+
+  public class HomeMetrics {
+    @AuraEnabled
+    public Integer myActivePatients;
+    @AuraEnabled
+    public Integer openEncounters;
+    @AuraEnabled
+    public Integer resultsToReview;
+    @AuraEnabled
+    public Integer unsignedNotes;
+    @AuraEnabled
+    public Integer todaysAppointments;
+  }
+
+  public class HomeLists {
+    @AuraEnabled
+    public List<Encounter__c> todaysEncounters;
+    @AuraEnabled
+    public List<DiagnosticReport__c> resultsToReview;
+    @AuraEnabled
+    public List<ClinicalNote__c> unsignedNotes;
+    @AuraEnabled
+    public List<Appointment__c> todaysAppointments;
+  }
+
+  @AuraEnabled(cacheable=true)
+  public static HomePayload getHome() {
+    Id userId = UserInfo.getUserId();
+    Id practitionerId = resolvePractitionerId(userId);
+    Set<Id> patientIds = resolveCareTeamPatientIds(userId);
+
+    HomePayload payload = emptyPayload();
+    payload.metrics.myActivePatients = patientIds.size();
+    payload.metrics.openEncounters = countOpenEncounters(
+      patientIds,
+      practitionerId
+    );
+    payload.metrics.resultsToReview = countResultsToReview(patientIds);
+    payload.metrics.unsignedNotes = countUnsignedNotes(practitionerId);
+    payload.metrics.todaysAppointments = countTodaysAppointments(
+      practitionerId
+    );
+    payload.lists.todaysEncounters = queryTodaysEncounters(
+      patientIds,
+      practitionerId
+    );
+    payload.lists.todaysAppointments = queryTodaysAppointments(practitionerId);
+    payload.lists.resultsToReview = queryResultsToReview(patientIds);
+    payload.lists.unsignedNotes = queryUnsignedNotes(practitionerId);
+    payload.recentPatients = queryRecentPatients();
+    payload.latestEligibilityByPatientId = queryLatestEligibilityByPatient(
+      collectPatientIds(payload.lists.todaysAppointments)
+    );
+    return payload;
+  }
+
+  private static HomePayload emptyPayload() {
+    HomePayload payload = new HomePayload();
+    payload.metrics = new HomeMetrics();
+    payload.metrics.myActivePatients = 0;
+    payload.metrics.openEncounters = 0;
+    payload.metrics.resultsToReview = 0;
+    payload.metrics.unsignedNotes = 0;
+    payload.metrics.todaysAppointments = 0;
+    payload.lists = new HomeLists();
+    payload.lists.todaysEncounters = new List<Encounter__c>();
+    payload.lists.todaysAppointments = new List<Appointment__c>();
+    payload.lists.resultsToReview = new List<DiagnosticReport__c>();
+    payload.lists.unsignedNotes = new List<ClinicalNote__c>();
+    payload.recentPatients = new List<Patient__c>();
+    payload.latestEligibilityByPatientId = new Map<Id, String>();
+    return payload;
+  }
+
+  private static Id resolvePractitionerId(Id userId) {
+    List<Practitioner__c> rows = [
+      SELECT Id
+      FROM Practitioner__c
+      WHERE User__c = :userId
+      LIMIT 1
+    ];
+    return rows.isEmpty() ? null : rows[0].Id;
+  }
+
+  private static Set<Id> resolveCareTeamPatientIds(Id userId) {
+    Set<Id> patientIds = new Set<Id>();
+    Id practitionerId = resolvePractitionerId(userId);
+    List<CareTeamMember__c> members;
+    if (practitionerId == null) {
+      members = [
+        SELECT Care_Team__r.Patient__c
+        FROM CareTeamMember__c
+        WHERE User__c = :userId AND Active__c = TRUE
+      ];
+    } else {
+      members = [
+        SELECT Care_Team__r.Patient__c
+        FROM CareTeamMember__c
+        WHERE
+          Active__c = TRUE
+          AND (User__c = :userId
+          OR Practitioner__c = :practitionerId)
+      ];
     }
-
-    public class HomeMetrics {
-        @AuraEnabled
-        public Integer myActivePatients;
-        @AuraEnabled
-        public Integer openEncounters;
-        @AuraEnabled
-        public Integer resultsToReview;
-        @AuraEnabled
-        public Integer unsignedNotes;
-        @AuraEnabled
-        public Integer todaysAppointments;
+    for (CareTeamMember__c member : members) {
+      if (
+        member.Care_Team__r != null &&
+        member.Care_Team__r.Patient__c != null
+      ) {
+        patientIds.add(member.Care_Team__r.Patient__c);
+      }
     }
+    return patientIds;
+  }
 
-    public class HomeLists {
-        @AuraEnabled
-        public List<Encounter__c> todaysEncounters;
-        @AuraEnabled
-        public List<DiagnosticReport__c> resultsToReview;
-        @AuraEnabled
-        public List<ClinicalNote__c> unsignedNotes;
-        @AuraEnabled
-        public List<Appointment__c> todaysAppointments;
+  private static Integer countOpenEncounters(
+    Set<Id> patientIds,
+    Id practitionerId
+  ) {
+    if (patientIds.isEmpty() && practitionerId == null) {
+      return 0;
     }
-
-    @AuraEnabled(cacheable=true)
-    public static HomePayload getHome() {
-        Id userId = UserInfo.getUserId();
-        Id practitionerId = resolvePractitionerId(userId);
-        Set<Id> patientIds = resolveCareTeamPatientIds(userId);
-
-        HomePayload payload = emptyPayload();
-        payload.metrics.myActivePatients = patientIds.size();
-        payload.metrics.openEncounters = countOpenEncounters(patientIds, practitionerId);
-        payload.metrics.resultsToReview = countResultsToReview(patientIds);
-        payload.metrics.unsignedNotes = countUnsignedNotes(practitionerId);
-        payload.metrics.todaysAppointments = countTodaysAppointments(practitionerId);
-        payload.lists.todaysEncounters = queryTodaysEncounters(patientIds, practitionerId);
-        payload.lists.todaysAppointments = queryTodaysAppointments(practitionerId);
-        payload.lists.resultsToReview = queryResultsToReview(patientIds);
-        payload.lists.unsignedNotes = queryUnsignedNotes(practitionerId);
-        payload.recentPatients = queryRecentPatients();
-        payload.latestEligibilityByPatientId = queryLatestEligibilityByPatient(
-            collectPatientIds(payload.lists.todaysAppointments)
-        );
-        return payload;
+    if (patientIds.isEmpty()) {
+      return [
+        SELECT COUNT()
+        FROM Encounter__c
+        WHERE
+          Practitioner__c = :practitionerId
+          AND Status__c NOT IN :CLOSED_ENCOUNTER_STATUSES
+      ];
     }
-
-    private static HomePayload emptyPayload() {
-        HomePayload payload = new HomePayload();
-        payload.metrics = new HomeMetrics();
-        payload.metrics.myActivePatients = 0;
-        payload.metrics.openEncounters = 0;
-        payload.metrics.resultsToReview = 0;
-        payload.metrics.unsignedNotes = 0;
-        payload.metrics.todaysAppointments = 0;
-        payload.lists = new HomeLists();
-        payload.lists.todaysEncounters = new List<Encounter__c>();
-        payload.lists.todaysAppointments = new List<Appointment__c>();
-        payload.lists.resultsToReview = new List<DiagnosticReport__c>();
-        payload.lists.unsignedNotes = new List<ClinicalNote__c>();
-        payload.recentPatients = new List<Patient__c>();
-        payload.latestEligibilityByPatientId = new Map<Id, String>();
-        return payload;
+    if (practitionerId == null) {
+      return [
+        SELECT COUNT()
+        FROM Encounter__c
+        WHERE
+          Patient__c IN :patientIds
+          AND Status__c NOT IN :CLOSED_ENCOUNTER_STATUSES
+      ];
     }
+    return [
+      SELECT COUNT()
+      FROM Encounter__c
+      WHERE
+        Status__c NOT IN :CLOSED_ENCOUNTER_STATUSES
+        AND (Patient__c IN :patientIds
+        OR Practitioner__c = :practitionerId)
+    ];
+  }
 
-    private static Id resolvePractitionerId(Id userId) {
-        List<Practitioner__c> rows = [
-            SELECT Id
-            FROM Practitioner__c
-            WHERE User__c = :userId
-            LIMIT 1
-        ];
-        return rows.isEmpty() ? null : rows[0].Id;
+  private static List<Encounter__c> queryTodaysEncounters(
+    Set<Id> patientIds,
+    Id practitionerId
+  ) {
+    if (patientIds.isEmpty() && practitionerId == null) {
+      return new List<Encounter__c>();
     }
+    Datetime startOfDay = Datetime.newInstance(
+      Date.today(),
+      Time.newInstance(0, 0, 0, 0)
+    );
+    Datetime startOfNextDay = startOfDay.addDays(1);
+    if (patientIds.isEmpty()) {
+      return [
+        SELECT
+          Id,
+          Name,
+          Status__c,
+          Class__c,
+          Start__c,
+          Reason__c,
+          Patient__c,
+          Patient__r.Name,
+          Patient__r.First_Name__c,
+          Patient__r.Last_Name__c
+        FROM Encounter__c
+        WHERE
+          Practitioner__c = :practitionerId
+          AND Start__c >= :startOfDay
+          AND Start__c < :startOfNextDay
+        ORDER BY Start__c DESC NULLS LAST
+        LIMIT :LIST_LIMIT
+      ];
+    }
+    if (practitionerId == null) {
+      return [
+        SELECT
+          Id,
+          Name,
+          Status__c,
+          Class__c,
+          Start__c,
+          Reason__c,
+          Patient__c,
+          Patient__r.Name,
+          Patient__r.First_Name__c,
+          Patient__r.Last_Name__c
+        FROM Encounter__c
+        WHERE
+          Patient__c IN :patientIds
+          AND Start__c >= :startOfDay
+          AND Start__c < :startOfNextDay
+        ORDER BY Start__c DESC NULLS LAST
+        LIMIT :LIST_LIMIT
+      ];
+    }
+    return [
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Class__c,
+        Start__c,
+        Reason__c,
+        Patient__c,
+        Patient__r.Name,
+        Patient__r.First_Name__c,
+        Patient__r.Last_Name__c
+      FROM Encounter__c
+      WHERE
+        (Patient__c IN :patientIds
+        OR Practitioner__c = :practitionerId)
+        AND Start__c >= :startOfDay
+        AND Start__c < :startOfNextDay
+      ORDER BY Start__c DESC NULLS LAST
+      LIMIT :LIST_LIMIT
+    ];
+  }
 
-    private static Set<Id> resolveCareTeamPatientIds(Id userId) {
-        Set<Id> patientIds = new Set<Id>();
-        Id practitionerId = resolvePractitionerId(userId);
-        List<CareTeamMember__c> members;
-        if (practitionerId == null) {
-            members = [
-                SELECT Care_Team__r.Patient__c
-                FROM CareTeamMember__c
-                WHERE User__c = :userId AND Active__c = TRUE
-            ];
-        } else {
-            members = [
-                SELECT Care_Team__r.Patient__c
-                FROM CareTeamMember__c
-                WHERE
-                    Active__c = TRUE
-                    AND (User__c = :userId OR Practitioner__c = :practitionerId)
-            ];
-        }
-        for (CareTeamMember__c member : members) {
-            if (member.Care_Team__r != null && member.Care_Team__r.Patient__c != null) {
-                patientIds.add(member.Care_Team__r.Patient__c);
-            }
-        }
-        return patientIds;
+  private static Integer countTodaysAppointments(Id practitionerId) {
+    if (practitionerId == null) {
+      return 0;
     }
+    Datetime startOfDay = Datetime.newInstance(
+      Date.today(),
+      Time.newInstance(0, 0, 0, 0)
+    );
+    Datetime startOfNextDay = startOfDay.addDays(1);
+    return [
+      SELECT COUNT()
+      FROM Appointment__c
+      WHERE
+        Practitioner__c = :practitionerId
+        AND Status__c IN :TODAY_APPOINTMENT_STATUSES
+        AND Start__c >= :startOfDay
+        AND Start__c < :startOfNextDay
+    ];
+  }
 
-    private static Integer countOpenEncounters(Set<Id> patientIds, Id practitionerId) {
-        if (patientIds.isEmpty() && practitionerId == null) {
-            return 0;
-        }
-        if (patientIds.isEmpty()) {
-            return [
-                SELECT COUNT()
-                FROM Encounter__c
-                WHERE Practitioner__c = :practitionerId AND Status__c NOT IN :CLOSED_ENCOUNTER_STATUSES
-            ];
-        }
-        if (practitionerId == null) {
-            return [
-                SELECT COUNT()
-                FROM Encounter__c
-                WHERE Patient__c IN :patientIds AND Status__c NOT IN :CLOSED_ENCOUNTER_STATUSES
-            ];
-        }
-        return [
-            SELECT COUNT()
-            FROM Encounter__c
-            WHERE
-                Status__c NOT IN :CLOSED_ENCOUNTER_STATUSES
-                AND (Patient__c IN :patientIds OR Practitioner__c = :practitionerId)
-        ];
+  private static List<Appointment__c> queryTodaysAppointments(
+    Id practitionerId
+  ) {
+    if (practitionerId == null) {
+      return new List<Appointment__c>();
     }
+    Datetime startOfDay = Datetime.newInstance(
+      Date.today(),
+      Time.newInstance(0, 0, 0, 0)
+    );
+    Datetime startOfNextDay = startOfDay.addDays(1);
+    return [
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Appointment_Type__c,
+        Reason__c,
+        Start__c,
+        End__c,
+        Location_Name__c,
+        Encounter__c,
+        Practitioner__c,
+        Patient__c,
+        Patient__r.Name,
+        Patient__r.First_Name__c,
+        Patient__r.Last_Name__c
+      FROM Appointment__c
+      WHERE
+        Practitioner__c = :practitionerId
+        AND Status__c IN :TODAY_APPOINTMENT_STATUSES
+        AND Start__c >= :startOfDay
+        AND Start__c < :startOfNextDay
+      ORDER BY Start__c ASC NULLS LAST
+      LIMIT :LIST_LIMIT
+    ];
+  }
 
-    private static List<Encounter__c> queryTodaysEncounters(Set<Id> patientIds, Id practitionerId) {
-        if (patientIds.isEmpty() && practitionerId == null) {
-            return new List<Encounter__c>();
-        }
-        Datetime startOfDay = Datetime.newInstance(Date.today(), Time.newInstance(0, 0, 0, 0));
-        Datetime startOfNextDay = startOfDay.addDays(1);
-        if (patientIds.isEmpty()) {
-            return [
-                SELECT
-                    Id,
-                    Name,
-                    Status__c,
-                    Class__c,
-                    Start__c,
-                    Reason__c,
-                    Patient__c,
-                    Patient__r.Name,
-                    Patient__r.First_Name__c,
-                    Patient__r.Last_Name__c
-                FROM Encounter__c
-                WHERE
-                    Practitioner__c = :practitionerId
-                    AND Start__c >= :startOfDay
-                    AND Start__c < :startOfNextDay
-                ORDER BY Start__c DESC NULLS LAST
-                LIMIT :LIST_LIMIT
-            ];
-        }
-        if (practitionerId == null) {
-            return [
-                SELECT
-                    Id,
-                    Name,
-                    Status__c,
-                    Class__c,
-                    Start__c,
-                    Reason__c,
-                    Patient__c,
-                    Patient__r.Name,
-                    Patient__r.First_Name__c,
-                    Patient__r.Last_Name__c
-                FROM Encounter__c
-                WHERE
-                    Patient__c IN :patientIds
-                    AND Start__c >= :startOfDay
-                    AND Start__c < :startOfNextDay
-                ORDER BY Start__c DESC NULLS LAST
-                LIMIT :LIST_LIMIT
-            ];
-        }
-        return [
-            SELECT
-                Id,
-                Name,
-                Status__c,
-                Class__c,
-                Start__c,
-                Reason__c,
-                Patient__c,
-                Patient__r.Name,
-                Patient__r.First_Name__c,
-                Patient__r.Last_Name__c
-            FROM Encounter__c
-            WHERE
-                (Patient__c IN :patientIds OR Practitioner__c = :practitionerId)
-                AND Start__c >= :startOfDay
-                AND Start__c < :startOfNextDay
-            ORDER BY Start__c DESC NULLS LAST
-            LIMIT :LIST_LIMIT
-        ];
+  private static Integer countResultsToReview(Set<Id> patientIds) {
+    if (patientIds.isEmpty()) {
+      return 0;
     }
+    return [
+      SELECT COUNT()
+      FROM DiagnosticReport__c
+      WHERE
+        Patient__c IN :patientIds
+        AND Reviewed__c = FALSE
+        AND Status__c IN :REVIEWABLE_REPORT_STATUSES
+    ];
+  }
 
-    private static Integer countTodaysAppointments(Id practitionerId) {
-        if (practitionerId == null) {
-            return 0;
-        }
-        Datetime startOfDay = Datetime.newInstance(Date.today(), Time.newInstance(0, 0, 0, 0));
-        Datetime startOfNextDay = startOfDay.addDays(1);
-        return [
-            SELECT COUNT()
-            FROM Appointment__c
-            WHERE
-                Practitioner__c = :practitionerId
-                AND Status__c IN :TODAY_APPOINTMENT_STATUSES
-                AND Start__c >= :startOfDay
-                AND Start__c < :startOfNextDay
-        ];
+  private static List<DiagnosticReport__c> queryResultsToReview(
+    Set<Id> patientIds
+  ) {
+    if (patientIds.isEmpty()) {
+      return new List<DiagnosticReport__c>();
     }
+    return [
+      SELECT
+        Id,
+        Name,
+        Report_Display__c,
+        Status__c,
+        Category__c,
+        Issued__c,
+        Effective_DateTime__c,
+        Patient__c,
+        Patient__r.Name,
+        Patient__r.First_Name__c,
+        Patient__r.Last_Name__c
+      FROM DiagnosticReport__c
+      WHERE
+        Patient__c IN :patientIds
+        AND Reviewed__c = FALSE
+        AND Status__c IN :REVIEWABLE_REPORT_STATUSES
+      ORDER BY Issued__c DESC NULLS LAST, Effective_DateTime__c DESC NULLS LAST
+      LIMIT :LIST_LIMIT
+    ];
+  }
 
-    private static List<Appointment__c> queryTodaysAppointments(Id practitionerId) {
-        if (practitionerId == null) {
-            return new List<Appointment__c>();
-        }
-        Datetime startOfDay = Datetime.newInstance(Date.today(), Time.newInstance(0, 0, 0, 0));
-        Datetime startOfNextDay = startOfDay.addDays(1);
-        return [
-            SELECT
-                Id,
-                Name,
-                Status__c,
-                Appointment_Type__c,
-                Reason__c,
-                Start__c,
-                End__c,
-                Location_Name__c,
-                Encounter__c,
-                Practitioner__c,
-                Patient__c,
-                Patient__r.Name,
-                Patient__r.First_Name__c,
-                Patient__r.Last_Name__c
-            FROM Appointment__c
-            WHERE
-                Practitioner__c = :practitionerId
-                AND Status__c IN :TODAY_APPOINTMENT_STATUSES
-                AND Start__c >= :startOfDay
-                AND Start__c < :startOfNextDay
-            ORDER BY Start__c ASC NULLS LAST
-            LIMIT :LIST_LIMIT
-        ];
+  private static Integer countUnsignedNotes(Id practitionerId) {
+    if (practitionerId == null) {
+      return 0;
     }
+    return [
+      SELECT COUNT()
+      FROM ClinicalNote__c
+      WHERE Author__c = :practitionerId AND Status__c = :NOTE_STATUS_DRAFT
+    ];
+  }
 
-    private static Integer countResultsToReview(Set<Id> patientIds) {
-        if (patientIds.isEmpty()) {
-            return 0;
-        }
-        return [
-            SELECT COUNT()
-            FROM DiagnosticReport__c
-            WHERE
-                Patient__c IN :patientIds
-                AND Reviewed__c = FALSE
-                AND Status__c IN :REVIEWABLE_REPORT_STATUSES
-        ];
+  private static List<ClinicalNote__c> queryUnsignedNotes(Id practitionerId) {
+    if (practitionerId == null) {
+      return new List<ClinicalNote__c>();
     }
+    return [
+      SELECT
+        Id,
+        Name,
+        Note_Type__c,
+        Status__c,
+        LastModifiedDate,
+        Patient__c,
+        Patient__r.Name,
+        Patient__r.First_Name__c,
+        Patient__r.Last_Name__c
+      FROM ClinicalNote__c
+      WHERE Author__c = :practitionerId AND Status__c = :NOTE_STATUS_DRAFT
+      ORDER BY LastModifiedDate DESC
+      LIMIT :LIST_LIMIT
+    ];
+  }
 
-    private static List<DiagnosticReport__c> queryResultsToReview(Set<Id> patientIds) {
-        if (patientIds.isEmpty()) {
-            return new List<DiagnosticReport__c>();
-        }
-        return [
-            SELECT
-                Id,
-                Name,
-                Report_Display__c,
-                Status__c,
-                Category__c,
-                Issued__c,
-                Effective_DateTime__c,
-                Patient__c,
-                Patient__r.Name,
-                Patient__r.First_Name__c,
-                Patient__r.Last_Name__c
-            FROM DiagnosticReport__c
-            WHERE
-                Patient__c IN :patientIds
-                AND Reviewed__c = FALSE
-                AND Status__c IN :REVIEWABLE_REPORT_STATUSES
-            ORDER BY Issued__c DESC NULLS LAST, Effective_DateTime__c DESC NULLS LAST
-            LIMIT :LIST_LIMIT
-        ];
+  private static Set<Id> collectPatientIds(List<Appointment__c> appointments) {
+    Set<Id> patientIds = new Set<Id>();
+    if (appointments == null) {
+      return patientIds;
     }
+    for (Appointment__c appointment : appointments) {
+      if (appointment.Patient__c != null) {
+        patientIds.add(appointment.Patient__c);
+      }
+    }
+    return patientIds;
+  }
 
-    private static Integer countUnsignedNotes(Id practitionerId) {
-        if (practitionerId == null) {
-            return 0;
-        }
-        return [
-            SELECT COUNT()
-            FROM ClinicalNote__c
-            WHERE Author__c = :practitionerId AND Status__c = :NOTE_STATUS_DRAFT
-        ];
+  private static Map<Id, String> queryLatestEligibilityByPatient(
+    Set<Id> patientIds
+  ) {
+    Map<Id, String> latestByPatient = new Map<Id, String>();
+    if (patientIds == null || patientIds.isEmpty()) {
+      return latestByPatient;
     }
+    for (Eligibility_Check__c check : [
+      SELECT Patient__c, Status__c
+      FROM Eligibility_Check__c
+      WHERE Patient__c IN :patientIds
+      ORDER BY Checked_Date__c DESC NULLS LAST, CreatedDate DESC
+    ]) {
+      if (!latestByPatient.containsKey(check.Patient__c)) {
+        latestByPatient.put(check.Patient__c, check.Status__c);
+      }
+    }
+    return latestByPatient;
+  }
 
-    private static List<ClinicalNote__c> queryUnsignedNotes(Id practitionerId) {
-        if (practitionerId == null) {
-            return new List<ClinicalNote__c>();
-        }
-        return [
-            SELECT
-                Id,
-                Name,
-                Note_Type__c,
-                Status__c,
-                LastModifiedDate,
-                Patient__c,
-                Patient__r.Name,
-                Patient__r.First_Name__c,
-                Patient__r.Last_Name__c
-            FROM ClinicalNote__c
-            WHERE Author__c = :practitionerId AND Status__c = :NOTE_STATUS_DRAFT
-            ORDER BY LastModifiedDate DESC
-            LIMIT :LIST_LIMIT
-        ];
-    }
-
-    private static Set<Id> collectPatientIds(List<Appointment__c> appointments) {
-        Set<Id> patientIds = new Set<Id>();
-        if (appointments == null) {
-            return patientIds;
-        }
-        for (Appointment__c appointment : appointments) {
-            if (appointment.Patient__c != null) {
-                patientIds.add(appointment.Patient__c);
-            }
-        }
-        return patientIds;
-    }
-
-    private static Map<Id, String> queryLatestEligibilityByPatient(Set<Id> patientIds) {
-        Map<Id, String> latestByPatient = new Map<Id, String>();
-        if (patientIds == null || patientIds.isEmpty()) {
-            return latestByPatient;
-        }
-        for (Eligibility_Check__c check : [
-            SELECT Patient__c, Status__c
-            FROM Eligibility_Check__c
-            WHERE Patient__c IN :patientIds
-            ORDER BY Checked_Date__c DESC NULLS LAST, CreatedDate DESC
-        ]) {
-            if (!latestByPatient.containsKey(check.Patient__c)) {
-                latestByPatient.put(check.Patient__c, check.Status__c);
-            }
-        }
-        return latestByPatient;
-    }
-
-    private static List<Patient__c> queryRecentPatients() {
-        return [
-            SELECT
-                Id,
-                Name,
-                First_Name__c,
-                Last_Name__c,
-                MRN__c,
-                Date_of_Birth__c,
-                Status__c,
-                LastViewedDate
-            FROM Patient__c
-            WHERE LastViewedDate != NULL
-            ORDER BY LastViewedDate DESC
-            LIMIT :LIST_LIMIT
-        ];
-    }
+  private static List<Patient__c> queryRecentPatients() {
+    return [
+      SELECT
+        Id,
+        Name,
+        First_Name__c,
+        Last_Name__c,
+        MRN__c,
+        Date_of_Birth__c,
+        Status__c,
+        LastViewedDate
+      FROM Patient__c
+      WHERE LastViewedDate != NULL
+      ORDER BY LastViewedDate DESC
+      LIMIT :LIST_LIMIT
+    ];
+  }
 }

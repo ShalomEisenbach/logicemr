@@ -1,6 +1,7 @@
 import { LightningElement, api, wire } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { RefreshEvent } from "lightning/refresh";
+import { refreshApex } from "@salesforce/apex";
 import LightningConfirm from "lightning/confirm";
 import getWorkspace from "@salesforce/apex/ClaimReadinessController.getWorkspace";
 import initializeSuperbill from "@salesforce/apex/ClaimReadinessController.initializeSuperbill";
@@ -12,6 +13,10 @@ import markReady from "@salesforce/apex/ClaimReadinessController.markReady";
 import reopen from "@salesforce/apex/ClaimReadinessController.reopen";
 import quoteRate from "@salesforce/apex/ClaimReadinessController.quoteRate";
 import getCanonicalJson from "@salesforce/apex/ClaimExportController.getCanonicalJson";
+import SUPERBILL_OBJECT from "@salesforce/schema/Superbill__c";
+import DIAGNOSIS_OBJECT from "@salesforce/schema/Superbill_Diagnosis__c";
+import CHARGE_OBJECT from "@salesforce/schema/Charge_Line__c";
+import { normalizeBillingRecord } from "c/emrBillingDataUtils";
 
 const EDIT = "edit";
 const DELETE = "delete";
@@ -20,6 +25,7 @@ export default class EmrClaimReadiness extends LightningElement {
   @api recordId;
 
   workspace;
+  wiredWorkspaceResult;
   errorMessage;
   isLoading = true;
   isSaving = false;
@@ -59,9 +65,10 @@ export default class EmrClaimReadiness extends LightningElement {
     { label: "Diagnosis", fieldName: "display" }
   ];
 
-  chargeColumns = [
+  editableChargeColumns = [
     { label: "Code", fieldName: "code" },
     { label: "Service", fieldName: "display" },
+    { label: "Origin", fieldName: "origin", wrapText: true },
     { label: "DOS", fieldName: "serviceDate", type: "date-local" },
     { label: "Units", fieldName: "units", type: "number" },
     { label: "Modifiers", fieldName: "modifiers" },
@@ -80,7 +87,9 @@ export default class EmrClaimReadiness extends LightningElement {
   ];
 
   @wire(getWorkspace, { encounterId: "$recordId" })
-  wiredWorkspace({ data, error }) {
+  wiredWorkspace(result) {
+    this.wiredWorkspaceResult = result;
+    const { data, error } = result;
     this.isLoading = false;
     if (data) {
       this.applyWorkspace(data);
@@ -92,7 +101,21 @@ export default class EmrClaimReadiness extends LightningElement {
   }
 
   applyWorkspace(data) {
-    this.workspace = data;
+    this.workspace = {
+      ...data,
+      superbill: normalizeBillingRecord(
+        data.superbill,
+        SUPERBILL_OBJECT.objectApiName
+      ),
+      diagnoses: normalizeBillingRecord(
+        data.diagnoses || [],
+        DIAGNOSIS_OBJECT.objectApiName
+      ),
+      charges: normalizeBillingRecord(
+        data.charges || [],
+        CHARGE_OBJECT.objectApiName
+      )
+    };
   }
 
   get hasSuperbill() {
@@ -133,6 +156,12 @@ export default class EmrClaimReadiness extends LightningElement {
 
   get isLockedOrSaving() {
     return this.isLocked || this.isSaving;
+  }
+
+  get chargeColumns() {
+    return this.isLocked
+      ? this.editableChargeColumns.filter((column) => column.type !== "action")
+      : this.editableChargeColumns;
   }
 
   get cannotMarkReady() {
@@ -283,6 +312,11 @@ export default class EmrClaimReadiness extends LightningElement {
       codeSystem: row.Procedure_Code_System__c,
       code: row.Procedure_Code__c,
       display: row.Procedure_Display__c,
+      origin: row.Procedure__c
+        ? "Procedure"
+        : row.Source_Procedure_Key__c
+          ? "Source removed"
+          : "Manual / unlinked",
       serviceDate: row.Service_Date__c,
       units: row.Units__c,
       chargeAmount: row.Charge_Amount__c,
@@ -298,6 +332,13 @@ export default class EmrClaimReadiness extends LightningElement {
 
   get hasCharges() {
     return this.charges.length > 0;
+  }
+
+  get hasUnlinkedChargesToReview() {
+    return (
+      !this.isLocked &&
+      this.charges.some((row) => row.origin === "Manual / unlinked")
+    );
   }
 
   get chargeModalTitle() {
@@ -457,6 +498,7 @@ export default class EmrClaimReadiness extends LightningElement {
   }
 
   async handleChargeAction(event) {
+    if (this.isLockedOrSaving) return;
     const { action, row } = event.detail;
     if (action.name === EDIT) {
       this.editingChargeId = row.id;
@@ -523,6 +565,16 @@ export default class EmrClaimReadiness extends LightningElement {
       }
     };
     this.dispatchEvent(new RefreshEvent());
+  }
+
+  async handleClaimStatusChanged() {
+    try {
+      if (this.wiredWorkspaceResult)
+        await refreshApex(this.wiredWorkspaceResult);
+      this.dispatchEvent(new RefreshEvent());
+    } catch (error) {
+      this.errorMessage = this.reduceError(error);
+    }
   }
 
   async handlePreviewExport() {

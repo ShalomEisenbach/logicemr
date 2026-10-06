@@ -1,263 +1,315 @@
 <template>
-    <lightning-card title="Book appointment" icon-name="standard:service_appointment">
-        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
-            <template lwc:if={errorMessage}>
-                <div class="slds-text-color_error slds-m-top_small" role="alert">{errorMessage}</div>
-            </template>
-            <template lwc:if={isBusy}>
-                <lightning-spinner alternative-text="Working on booking" size="small"></lightning-spinner>
-            </template>
+  <lightning-card
+    title="Book appointment"
+    icon-name="standard:service_appointment"
+  >
+    <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+      <template lwc:if={showBookingPermissionMessage}>
+        <p class="slds-m-top_small" role="status">
+          Appointment booking requires scheduling access.
+        </p>
+      </template>
+      <template lwc:if={errorMessage}>
+        <div class="slds-text-color_error slds-m-top_small" role="alert">
+          {errorMessage}
+        </div>
+      </template>
+      <template lwc:if={isBusy}>
+        <lightning-spinner
+          alternative-text="Working on booking"
+          size="small"
+        ></lightning-spinner>
+      </template>
 
-            <template lwc:if={isQuickBook}>
-                <template lwc:if={booking}>
-                    <p class="slds-text-body_regular slds-m-top_small" role="status">
-                        Booked
-                        <c-emr-record-link
-                            record-id={booking.appointmentId}
-                            object-api-name={appointmentObjectApiName}
-                            label={booking.appointmentName}
-                        ></c-emr-record-link>
-                    </p>
-                </template>
-                <template lwc:else>
-                    <p class="slds-text-body_regular slds-m-top_small slds-m-bottom_small">{slotSummary}</p>
-                    <lightning-record-picker
-                        label="Patient"
-                        placeholder="Search patients"
-                        object-api-name={patientObjectApiName}
-                        value={patientId}
-                        required
-                        onchange={handlePatientChange}
-                    ></lightning-record-picker>
-                    <c-emr-patient-registration
-                        button-variant="base"
-                        class="slds-m-top_x-small"
-                        onpatientcreated={handlePatientCreated}
-                    ></c-emr-patient-registration>
-                    <lightning-combobox
-                        name="appointmentType"
-                        label="Appointment type"
-                        value={appointmentType}
-                        options={typeOptions}
-                        required
-                        class="slds-m-top_small"
-                        onchange={handleTypeChange}
-                    ></lightning-combobox>
-                    <lightning-input
-                        name="reason"
-                        label="Reason"
-                        value={reason}
-                        maxlength="255"
-                        class="slds-m-top_small"
-                        onchange={handleReasonChange}
-                    ></lightning-input>
-                    <div class="slds-m-top_medium">
-                        <lightning-button
-                            label="Book"
-                            variant="brand"
-                            disabled={isBookDisabled}
-                            onclick={handleBook}
-                        ></lightning-button>
-                    </div>
-                </template>
+      <template lwc:if={isQuickBook}>
+        <template lwc:if={booking}>
+          <p class="slds-text-body_regular slds-m-top_small" role="status">
+            Booked
+            <c-emr-record-link
+              record-id={booking.appointmentId}
+              object-api-name={appointmentObjectApiName}
+              label={booking.appointmentName}
+            ></c-emr-record-link>
+          </p>
+        </template>
+        <template lwc:else>
+          <p
+            class="slds-text-body_regular slds-m-top_small slds-m-bottom_small"
+          >
+            {slotSummary}
+          </p>
+          <lightning-record-picker
+            label="Patient"
+            placeholder="Search patients"
+            object-api-name={patientObjectApiName}
+            value={patientId}
+            required
+            onchange={handlePatientChange}
+          ></lightning-record-picker>
+          <c-emr-patient-registration
+            button-variant="base"
+            class="slds-m-top_x-small"
+            onpatientcreated={handlePatientCreated}
+          ></c-emr-patient-registration>
+          <lightning-combobox
+            name="appointmentType"
+            label="Appointment type"
+            value={appointmentType}
+            options={typeOptions}
+            required
+            class="slds-m-top_small"
+            onchange={handleTypeChange}
+          ></lightning-combobox>
+          <lightning-input
+            name="reason"
+            label="Reason"
+            value={reason}
+            maxlength="255"
+            class="slds-m-top_small"
+            onchange={handleReasonChange}
+          ></lightning-input>
+          <div class="slds-m-top_medium">
+            <lightning-button
+              label="Book"
+              variant="brand"
+              disabled={isBookDisabled}
+              onclick={handleBook}
+            ></lightning-button>
+          </div>
+        </template>
+      </template>
+      <template lwc:else>
+        <lightning-progress-indicator current-step={currentStep} type="base">
+          <template lwc:if={patientLocked}>
+            <lightning-progress-step
+              label="Date"
+              value="date"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Provider"
+              value="provider"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Calendar"
+              value="slot"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Book"
+              value="book"
+            ></lightning-progress-step>
+          </template>
+          <template lwc:else>
+            <lightning-progress-step
+              label="Patient"
+              value="patient"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Date"
+              value="date"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Provider"
+              value="provider"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Calendar"
+              value="slot"
+            ></lightning-progress-step>
+            <lightning-progress-step
+              label="Book"
+              value="book"
+            ></lightning-progress-step>
+          </template>
+        </lightning-progress-indicator>
+
+        <template lwc:if={showPatientStep}>
+          <div class="slds-m-top_medium">
+            <lightning-record-picker
+              label="Patient"
+              placeholder="Search patients"
+              object-api-name={patientObjectApiName}
+              value={patientId}
+              required
+              onchange={handlePatientChange}
+            ></lightning-record-picker>
+            <c-emr-patient-registration
+              button-variant="base"
+              class="slds-m-top_x-small"
+              onpatientcreated={handlePatientCreated}
+            ></c-emr-patient-registration>
+          </div>
+        </template>
+
+        <template lwc:if={isStepDate}>
+          <div class="slds-m-top_medium">
+            <p class="slds-text-body_regular slds-m-bottom_small">
+              Choose the dates first. Next you can select one or more providers
+              and see their availability.
+            </p>
+            <div class="slds-grid slds-gutters slds-wrap">
+              <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                <lightning-input
+                  name="rangeStart"
+                  label="From"
+                  type="date"
+                  value={rangeStart}
+                  required
+                  onchange={handleRangeStartChange}
+                ></lightning-input>
+              </div>
+              <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                <lightning-input
+                  name="rangeEnd"
+                  label="To"
+                  type="date"
+                  value={rangeEnd}
+                  required
+                  min={rangeStart}
+                  onchange={handleRangeEndChange}
+                ></lightning-input>
+              </div>
+            </div>
+            <lightning-combobox
+              name="location"
+              label="Location"
+              value={locationKey}
+              options={locationOptions}
+              onchange={handleLocationChange}
+              class="slds-m-top_small"
+            ></lightning-combobox>
+          </div>
+        </template>
+
+        <template lwc:if={isStepProvider}>
+          <div class="slds-m-top_medium">
+            <p class="slds-text-body_regular slds-m-bottom_small">
+              {dateRangeSummary}
+            </p>
+            <p class="slds-text-body_small slds-m-bottom_small">
+              Select one or more providers. Use the header checkbox to select
+              all.
+            </p>
+            <div class="provider-toolbar slds-m-bottom_small">
+              <lightning-input
+                type="toggle"
+                label="Show all providers"
+                checked={showAllProviders}
+                disabled={isBusy}
+                onchange={handleShowAllProvidersChange}
+              ></lightning-input>
+              <lightning-button
+                label="Refresh providers"
+                variant="neutral"
+                disabled={isBusy}
+                onclick={handleRefreshProviders}
+              ></lightning-button>
+            </div>
+            <template lwc:if={hasProviders}>
+              <div class="slot-table">
+                <lightning-datatable
+                  key-field="practitionerId"
+                  data={providers}
+                  columns={providerColumns}
+                  selected-rows={selectedProviderIds}
+                  onrowselection={handleProviderSelection}
+                ></lightning-datatable>
+              </div>
+            </template>
+            <template lwc:elseif={showProvidersEmpty}>
+              <p class="slds-text-body_regular">{providersEmptyMessage}</p>
+            </template>
+          </div>
+        </template>
+
+        <template lwc:if={isStepSlot}>
+          <div class="slds-m-top_medium calendar-embed">
+            <p class="slds-text-body_regular slds-m-bottom_small">
+              {dateRangeSummary}
+              <template lwc:if={selectedProviderNames}>
+                · {selectedProviderNames}</template
+              >
+            </p>
+            <p class="slds-text-body_small slds-m-bottom_small">
+              Click a Free slot on the calendar to book.
+            </p>
+            <c-emr-enhanced-calendar
+              embedded
+              onbooked={handleCalendarBooked}
+            ></c-emr-enhanced-calendar>
+          </div>
+        </template>
+
+        <template lwc:if={isStepBook}>
+          <div class="slds-m-top_medium">
+            <template lwc:if={booking}>
+              <p class="slds-text-body_regular" role="status">
+                Booked
+                <c-emr-record-link
+                  record-id={booking.appointmentId}
+                  object-api-name={appointmentObjectApiName}
+                  label={booking.appointmentName}
+                ></c-emr-record-link>
+              </p>
+              <div class="slds-m-top_small">
+                <lightning-button
+                  label="Book another"
+                  variant="brand"
+                  onclick={handleBookAnother}
+                ></lightning-button>
+              </div>
             </template>
             <template lwc:else>
-            <lightning-progress-indicator current-step={currentStep} type="base">
-                <template lwc:if={patientLocked}>
-                    <lightning-progress-step label="Date" value="date"></lightning-progress-step>
-                    <lightning-progress-step label="Provider" value="provider"></lightning-progress-step>
-                    <lightning-progress-step label="Calendar" value="slot"></lightning-progress-step>
-                    <lightning-progress-step label="Book" value="book"></lightning-progress-step>
-                </template>
-                <template lwc:else>
-                    <lightning-progress-step label="Patient" value="patient"></lightning-progress-step>
-                    <lightning-progress-step label="Date" value="date"></lightning-progress-step>
-                    <lightning-progress-step label="Provider" value="provider"></lightning-progress-step>
-                    <lightning-progress-step label="Calendar" value="slot"></lightning-progress-step>
-                    <lightning-progress-step label="Book" value="book"></lightning-progress-step>
-                </template>
-            </lightning-progress-indicator>
-
-            <template lwc:if={showPatientStep}>
-                <div class="slds-m-top_medium">
-                    <lightning-record-picker
-                        label="Patient"
-                        placeholder="Search patients"
-                        object-api-name={patientObjectApiName}
-                        value={patientId}
-                        required
-                        onchange={handlePatientChange}
-                    ></lightning-record-picker>
-                    <c-emr-patient-registration
-                        button-variant="base"
-                        class="slds-m-top_x-small"
-                        onpatientcreated={handlePatientCreated}
-                    ></c-emr-patient-registration>
-                </div>
+              <p class="slds-text-body_regular slds-m-bottom_small">
+                {slotSummary}
+              </p>
+              <lightning-combobox
+                name="appointmentType"
+                label="Appointment type"
+                value={appointmentType}
+                options={typeOptions}
+                required
+                onchange={handleTypeChange}
+              ></lightning-combobox>
+              <lightning-input
+                name="reason"
+                label="Reason"
+                value={reason}
+                maxlength="255"
+                class="slds-m-top_small"
+                onchange={handleReasonChange}
+              ></lightning-input>
             </template>
+          </div>
+        </template>
 
-            <template lwc:if={isStepDate}>
-                <div class="slds-m-top_medium">
-                    <p class="slds-text-body_regular slds-m-bottom_small">
-                        Choose the dates first. Next you can select one or more providers and see their availability.
-                    </p>
-                    <div class="slds-grid slds-gutters slds-wrap">
-                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                            <lightning-input
-                                name="rangeStart"
-                                label="From"
-                                type="date"
-                                value={rangeStart}
-                                required
-                                onchange={handleRangeStartChange}
-                            ></lightning-input>
-                        </div>
-                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                            <lightning-input
-                                name="rangeEnd"
-                                label="To"
-                                type="date"
-                                value={rangeEnd}
-                                required
-                                min={rangeStart}
-                                onchange={handleRangeEndChange}
-                            ></lightning-input>
-                        </div>
-                    </div>
-                    <lightning-combobox
-                        name="location"
-                        label="Location"
-                        value={locationKey}
-                        options={locationOptions}
-                        onchange={handleLocationChange}
-                        class="slds-m-top_small"
-                    ></lightning-combobox>
-                </div>
-            </template>
-
-            <template lwc:if={isStepProvider}>
-                <div class="slds-m-top_medium">
-                    <p class="slds-text-body_regular slds-m-bottom_small">{dateRangeSummary}</p>
-                    <p class="slds-text-body_small slds-m-bottom_small">
-                        Select one or more providers. Use the header checkbox to select all.
-                    </p>
-                    <div class="provider-toolbar slds-m-bottom_small">
-                        <lightning-input
-                            type="toggle"
-                            label="Show all providers"
-                            checked={showAllProviders}
-                            disabled={isBusy}
-                            onchange={handleShowAllProvidersChange}
-                        ></lightning-input>
-                        <lightning-button
-                            label="Refresh providers"
-                            variant="neutral"
-                            disabled={isBusy}
-                            onclick={handleRefreshProviders}
-                        ></lightning-button>
-                    </div>
-                    <template lwc:if={hasProviders}>
-                        <div class="slot-table">
-                            <lightning-datatable
-                                key-field="practitionerId"
-                                data={providers}
-                                columns={providerColumns}
-                                selected-rows={selectedProviderIds}
-                                onrowselection={handleProviderSelection}
-                            ></lightning-datatable>
-                        </div>
-                    </template>
-                    <template lwc:elseif={showProvidersEmpty}>
-                        <p class="slds-text-body_regular">{providersEmptyMessage}</p>
-                    </template>
-                </div>
-            </template>
-
-            <template lwc:if={isStepSlot}>
-                <div class="slds-m-top_medium calendar-embed">
-                    <p class="slds-text-body_regular slds-m-bottom_small">
-                        {dateRangeSummary}
-                        <template lwc:if={selectedProviderNames}> · {selectedProviderNames}</template>
-                    </p>
-                    <p class="slds-text-body_small slds-m-bottom_small">
-                        Click a Free slot on the calendar to book.
-                    </p>
-                    <c-emr-enhanced-calendar
-                        embedded
-                        onbooked={handleCalendarBooked}
-                    ></c-emr-enhanced-calendar>
-                </div>
-            </template>
-
-            <template lwc:if={isStepBook}>
-                <div class="slds-m-top_medium">
-                    <template lwc:if={booking}>
-                        <p class="slds-text-body_regular" role="status">
-                            Booked
-                            <c-emr-record-link
-                                record-id={booking.appointmentId}
-                                object-api-name={appointmentObjectApiName}
-                                label={booking.appointmentName}
-                            ></c-emr-record-link>
-                        </p>
-                        <div class="slds-m-top_small">
-                            <lightning-button
-                                label="Book another"
-                                variant="brand"
-                                onclick={handleBookAnother}
-                            ></lightning-button>
-                        </div>
-                    </template>
-                    <template lwc:else>
-                        <p class="slds-text-body_regular slds-m-bottom_small">{slotSummary}</p>
-                        <lightning-combobox
-                            name="appointmentType"
-                            label="Appointment type"
-                            value={appointmentType}
-                            options={typeOptions}
-                            required
-                            onchange={handleTypeChange}
-                        ></lightning-combobox>
-                        <lightning-input
-                            name="reason"
-                            label="Reason"
-                            value={reason}
-                            maxlength="255"
-                            class="slds-m-top_small"
-                            onchange={handleReasonChange}
-                        ></lightning-input>
-                    </template>
-                </div>
-            </template>
-
-            <div class="slds-m-top_medium">
-                <template lwc:if={showBack}>
-                    <lightning-button
-                        label="Back"
-                        variant="neutral"
-                        class="slds-m-right_small"
-                        disabled={isBusy}
-                        onclick={handleBack}
-                    ></lightning-button>
-                </template>
-                <template lwc:if={showNext}>
-                    <lightning-button
-                        label="Next"
-                        variant="brand"
-                        disabled={isNextDisabled}
-                        onclick={handleNext}
-                    ></lightning-button>
-                </template>
-                <template lwc:if={showBookButton}>
-                    <lightning-button
-                        label="Book"
-                        variant="brand"
-                        disabled={isBookDisabled}
-                        onclick={handleBook}
-                    ></lightning-button>
-                </template>
-            </div>
-            </template>
+        <div class="slds-m-top_medium">
+          <template lwc:if={showBack}>
+            <lightning-button
+              label="Back"
+              variant="neutral"
+              class="slds-m-right_small"
+              disabled={isBusy}
+              onclick={handleBack}
+            ></lightning-button>
+          </template>
+          <template lwc:if={showNext}>
+            <lightning-button
+              label="Next"
+              variant="brand"
+              disabled={isNextDisabled}
+              onclick={handleNext}
+            ></lightning-button>
+          </template>
+          <template lwc:if={showBookButton}>
+            <lightning-button
+              label="Book"
+              variant="brand"
+              disabled={isBookDisabled}
+              onclick={handleBook}
+            ></lightning-button>
+          </template>
         </div>
-    </lightning-card>
+      </template>
+    </div>
+  </lightning-card>
 </template>

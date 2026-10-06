@@ -44,7 +44,7 @@
         >
           <div class="slds-p-horizontal_medium slds-p-bottom_medium">
             <template lwc:if={hasTodaysAppointments}>
-              <template for:each={todaysAppointments} for:item="row">
+              <template for:each={todaysAppointmentRows} for:item="row">
                 <article key={row.id} class="work-row">
                   <p class="work-title">
                     <c-emr-record-link
@@ -62,23 +62,27 @@
                       Eligibility: {row.eligibilityStatus}
                     </p>
                   </template>
-                  <template lwc:if={row.canArrive}>
+                  <template lwc:if={row.canAct}>
                     <div class="work-actions">
-                      <lightning-button
-                        label="Arrive"
-                        variant="brand"
-                        data-id={row.id}
-                        disabled={isSaving}
-                        class="slds-m-right_xx-small"
-                        onclick={handleArrive}
-                      ></lightning-button>
-                      <lightning-button
-                        label="No Show"
-                        variant="neutral"
-                        data-id={row.id}
-                        disabled={isSaving}
-                        onclick={handleNoShow}
-                      ></lightning-button>
+                      <template lwc:if={row.canArrive}>
+                        <lightning-button
+                          label="Arrive"
+                          variant="brand"
+                          data-id={row.id}
+                          disabled={isSaving}
+                          class="slds-m-right_xx-small"
+                          onclick={handleArrive}
+                        ></lightning-button>
+                      </template>
+                      <template lwc:if={row.canNoShow}>
+                        <lightning-button
+                          label="No Show"
+                          variant="neutral"
+                          data-id={row.id}
+                          disabled={isSaving}
+                          onclick={handleNoShow}
+                        ></lightning-button>
+                      </template>
                     </div>
                   </template>
                 </article>

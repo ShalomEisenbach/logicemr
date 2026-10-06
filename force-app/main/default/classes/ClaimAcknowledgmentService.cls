@@ -45,20 +45,20 @@ public without sharing class ClaimAcknowledgmentService {
     request.setMethod('GET');
     request.setEndpoint(
       'callout:' +
-      config.namedCredential +
-      REPORT_PATH +
-      EncodingUtil.urlEncode(transactionId, 'UTF-8') +
-      '/277'
+        config.namedCredential +
+        REPORT_PATH +
+        EncodingUtil.urlEncode(transactionId, 'UTF-8') +
+        '/277'
     );
     request.setTimeout(120000);
     HttpResponse response = new Http().send(request);
     if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
       throw error(
         'Unable to retrieve Stedi 277CA transaction ' +
-        transactionId +
-        ' (HTTP ' +
-        response.getStatusCode() +
-        ').'
+          transactionId +
+          ' (HTTP ' +
+          response.getStatusCode() +
+          ').'
       );
     }
     return ingestReport(transactionId, response.getBody());
@@ -82,17 +82,23 @@ public without sharing class ClaimAcknowledgmentService {
     if (root == null)
       throw error('The 277CA report must be a JSON object.');
 
-    String reportTransactionId = stringValue(asMap(root.get('meta'))?.get('transactionId'));
+    String reportTransactionId = stringValue(
+      asMap(root.get('meta'))?.get('transactionId')
+    );
     if (
       String.isNotBlank(reportTransactionId) &&
       !reportTransactionId.equalsIgnoreCase(transactionId)
     ) {
-      throw error('The 277CA report transaction identifier did not match the requested transaction.');
+      throw error(
+        'The 277CA report transaction identifier did not match the requested transaction.'
+      );
     }
 
     List<ParsedAcknowledgment> parsed = parseReport(transactionId, root);
     if (parsed.isEmpty())
-      throw error('The 277CA report did not contain any claim acknowledgments.');
+      throw error(
+        'The 277CA report did not contain any claim acknowledgments.'
+      );
 
     Set<String> patientControlNumbers = new Set<String>();
     Set<String> batchNumbers = new Set<String>();
@@ -114,12 +120,16 @@ public without sharing class ClaimAcknowledgmentService {
       WHERE
         Patient_Control_Number__c IN :patientControlNumbers
         OR Correlation_Id__c IN :batchNumbers
-      ORDER BY CreatedDate DESC
+      ORDER BY CreatedDate DESC, Id DESC
     ];
     Map<String, Claim_Submission__c> byPatientControl = new Map<String, Claim_Submission__c>();
     Map<String, Claim_Submission__c> byCorrelation = new Map<String, Claim_Submission__c>();
     for (Claim_Submission__c submission : submissions) {
-      putFirst(byPatientControl, submission.Patient_Control_Number__c, submission);
+      putFirst(
+        byPatientControl,
+        submission.Patient_Control_Number__c,
+        submission
+      );
       putFirst(byCorrelation, submission.Correlation_Id__c, submission);
     }
 
@@ -131,10 +141,7 @@ public without sharing class ClaimAcknowledgmentService {
       Claim_Submission__c submission = byPatientControl.get(
         normalize(item.patientControlNumber)
       );
-      if (
-        submission == null &&
-        String.isBlank(item.patientControlNumber)
-      ) {
+      if (submission == null && String.isBlank(item.patientControlNumber)) {
         submission = byCorrelation.get(
           normalize(item.claimTransactionBatchNumber)
         );
@@ -151,10 +158,7 @@ public without sharing class ClaimAcknowledgmentService {
         Status__c = item.status,
         Sender_Type__c = item.senderType,
         Sender_Name__c = truncate(item.senderName, 255),
-        Patient_Control_Number__c = truncate(
-          item.patientControlNumber,
-          40
-        ),
+        Patient_Control_Number__c = truncate(item.patientControlNumber, 40),
         Claim_Transaction_Batch_Number__c = truncate(
           item.claimTransactionBatchNumber,
           100
@@ -186,6 +190,21 @@ public without sharing class ClaimAcknowledgmentService {
   public static String reopenRejectedClaim(Id submissionId) {
     if (submissionId == null)
       throw error('Claim Submission Id is required.');
+    List<Claim_Submission__c> seeds = [
+      SELECT Superbill__c
+      FROM Claim_Submission__c
+      WHERE Id = :submissionId
+      LIMIT 1
+    ];
+    if (seeds.isEmpty())
+      throw error('Claim submission was not found.');
+    Superbill__c superbill = [
+      SELECT Id, Status__c
+      FROM Superbill__c
+      WHERE Id = :seeds[0].Superbill__c
+      LIMIT 1
+      FOR UPDATE
+    ];
     List<Claim_Submission__c> submissions = [
       SELECT
         Id,
@@ -211,19 +230,12 @@ public without sharing class ClaimAcknowledgmentService {
       SELECT Id
       FROM Claim_Submission__c
       WHERE Superbill__c = :submission.Superbill__c
-      ORDER BY CreatedDate DESC
+      ORDER BY CreatedDate DESC, Id DESC
       LIMIT 1
     ];
     if (latestSubmission.Id != submission.Id) {
       throw error('Only the latest rejected claim submission can be reopened.');
     }
-    Superbill__c superbill = [
-      SELECT Id, Status__c
-      FROM Superbill__c
-      WHERE Id = :submission.Superbill__c
-      LIMIT 1
-      FOR UPDATE
-    ];
     if (superbill.Status__c != 'Exported') {
       throw error('Only the exported rejected claim can be reopened.');
     }
@@ -233,7 +245,8 @@ public without sharing class ClaimAcknowledgmentService {
       submission.Acknowledgment_Message__c,
       MESSAGE_MAX
     );
-    update superbill;
+    ClaimIntegrityService.requireNoQueuedSubmission(superbill.Id, null);
+    ClaimIntegrityService.saveTransition(superbill);
     return superbill.Status__c;
   }
 
@@ -331,11 +344,15 @@ public without sharing class ClaimAcknowledgmentService {
       );
       if (
         effective != null &&
-        (parsed.effectiveDate == null || effective > parsed.effectiveDate)
+        (parsed.effectiveDate == null ||
+        effective > parsed.effectiveDate)
       ) {
         parsed.effectiveDate = effective;
       }
-      addMessage(parsed.messages, stringValue(information.get('statusMessage')));
+      addMessage(
+        parsed.messages,
+        stringValue(information.get('statusMessage'))
+      );
       parseStatuses(
         parsed,
         asList(information.get('informationStatuses')),
@@ -353,9 +370,7 @@ public without sharing class ClaimAcknowledgmentService {
       if (line == null)
         continue;
       String lineNumber = stringValue(line.get('lineItemControlNumber'));
-      for (
-        Object claimStatusValue : asList(line.get('serviceClaimStatuses'))
-      ) {
+      for (Object claimStatusValue : asList(line.get('serviceClaimStatuses'))) {
         Map<String, Object> claimStatus = asMap(claimStatusValue);
         parseStatuses(
           parsed,
@@ -396,8 +411,8 @@ public without sharing class ClaimAcknowledgmentService {
         addMessage(
           parsed.messages,
           (String.isBlank(prefix) ? '' : prefix + ': ') +
-          description +
-          (String.isBlank(entity) ? '' : ' (' + entity + ')')
+            description +
+            (String.isBlank(entity) ? '' : ' (' + entity + ')')
         );
       }
     }

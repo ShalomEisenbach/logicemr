@@ -5,15 +5,15 @@ LogicEMR creates a claim-ready billing snapshot from a finished encounter, queue
 ## Workflow
 
 1. The clinician advances an encounter to **Finished**.
-2. `EncounterWorkspaceController` calls `ClaimReadinessController.prepareForFinishedEncounter`.
-3. One `Superbill__c` is created for the encounter. `Encounter_Key__c` is a unique idempotency key.
+2. `EncounterTrigger` and `EncounterCompletionService` record the completion handoff and enqueue `EncounterCompletionQueueable`, including when an encounter is finished through standard UI or API operations. The worker fulfills the appointment and calls `ClaimReadinessController.prepareForFinishedEncounter` when no superbill exists.
+3. One `Superbill__c` is created for the encounter. `Encounter_Key__c` is a unique idempotency key. Existing bills are preserved. A failed handoff is visible on the encounter and can be retried through `EncounterCompletionService.retryHandoff`.
 4. Encounter diagnoses are copied to ordered `Superbill_Diagnosis__c` snapshots.
 5. Completed encounter procedures are copied to `Charge_Line__c` and priced from the fee schedule effective on the service date. Billing can also add CPT or HCPCS lines manually; those lines use the same pricing service.
 6. Claim-level patient, subscriber, payer, rendering-provider, and billing-provider values are copied onto the superbill with a refresh timestamp and revision number.
 7. Billing resolves the validation list and marks the superbill **Ready**.
 8. Billing submits the frozen claim through the configured adapter. A successful clearinghouse handoff marks the superbill **Exported**.
 
-The **Claim Readiness** panel is on the Encounter Workspace sidebar. The **Superbills** tab opens the claim-readiness work queue.
+The **Claim Readiness** panel is on the Encounter Workspace sidebar and on each Superbill Workspace. Billing Home exposes the readiness work queue, recent submissions, and recent acknowledgments; opening a superbill provides its readiness, export, submission, and acknowledgment controls directly.
 
 ## Readiness checks
 
@@ -33,11 +33,13 @@ Validation messages are stored on `Superbill__c.Validation_Messages__c` so the s
 
 ## Sync behavior
 
-**Sync from encounter** refreshes patient, coverage, rendering practitioner, billing organization, date of service, claim-party snapshots, diagnosis snapshots, and procedure-derived charges. Non-overridden procedure charges are repriced from the currently applicable effective-dated rate. Authorized overrides are preserved.
+**Sync from encounter** refreshes patient, coverage, rendering practitioner, billing organization, date of service, claim-party snapshots, diagnosis snapshots, and procedure-derived charges. Existing source charge identities stay stable while code, display, and service date follow the completed procedure. Non-overridden procedure charges are repriced using their retained units and the currently applicable effective-dated rate. Authorized overrides are preserved. Charges derived from procedures that are removed or no longer Completed are removed; manually added charges remain.
+
+Generated charges retain `Source_Procedure_Key__c` when Salesforce clears a deleted procedure lookup. Existing linked charges receive this internal key during review sync. Historical charges with neither a live source nor a saved key cannot be distinguished safely from manual entries; they remain labeled **Manual / unlinked** for billing review and are never removed by inference.
 
 **Refresh snapshots** replaces only the claim-level patient, subscriber, payer, and provider values with the current source-record values after an explicit confirmation. For self coverage, subscriber demographics come from the patient. For spouse, child, or other coverage, structured subscriber demographics come from the coverage record; the legacy Subscriber Name is used only as a name fallback. Each refresh advances `Snapshot_Version__c` and records `Snapshot_Refreshed_At__c`.
 
-`Ready`, `Exported`, and `Voided` snapshots are frozen. A Ready claim must be explicitly reopened before source values, charges, or snapshots can be resynchronized. Reopening does not itself change the captured values.
+`Ready`, `Exported`, and `Voided` snapshots are frozen. Triggers block changes and deletion of approved parent records, and creation, changes, and deletion of their charge/diagnosis children through standard UI or API operations. A Ready claim must be explicitly reopened before source values, charges, or snapshots can be resynchronized, and an outstanding queued transmission blocks reopening. Reopening does not itself change the captured values.
 
 ## Fee schedules
 
@@ -55,7 +57,7 @@ sf apex run --file scripts/apex/seedFeeSchedulesAndSuperbills.apex
 
 The script is safe to rerun. It refreshes four representative unlocked superbills through the production claim-preparation service so diagnosis and charge-rate snapshots stay representative of application behavior.
 
-`Exported` and `Voided` superbills are permanently locked by the Apex service.
+`Exported` superbills can be reopened only through the latest rejected 277CA correction workflow. `Voided` superbills remain locked.
 
 ## Canonical claim export
 

@@ -1,7 +1,4 @@
 public with sharing class ClaimSubmissionService {
-  private static final Set<String> PENDING_STATUSES = new Set<String>{
-    'Queued'
-  };
   private static final Integer PAYLOAD_MAX = 131072;
   private static final Integer ERROR_MAX = 32768;
   private static final Integer PROVIDER_STATUS_MAX = 80;
@@ -26,17 +23,15 @@ public with sharing class ClaimSubmissionService {
     if (superbills[0].Status__c != 'Ready') {
       throw error('Only a Ready superbill can be submitted.');
     }
-    if (
-      [
-        SELECT COUNT()
-        FROM Claim_Submission__c
-        WHERE Superbill__c = :superbillId AND Status__c IN :PENDING_STATUSES
-      ] > 0
-    ) {
-      throw error('This superbill already has a queued submission.');
-    }
-
-    ClaimExportService.build(superbillId);
+    ClaimIntegrityService.requireNoQueuedSubmission(superbillId, null);
+    String canonicalPayload = JSON.serialize(
+      ClaimExportService.build(superbillId)
+    );
+    if (canonicalPayload.length() > PAYLOAD_MAX)
+      throw error(
+        'The canonical claim exceeds the submission audit payload limit.'
+      );
+    config.webhookSecretHash = null;
     Claim_Submission__c submission = new Claim_Submission__c(
       Superbill__c = superbillId,
       Status__c = 'Queued',
@@ -45,6 +40,8 @@ public with sharing class ClaimSubmissionService {
       Idempotency_Key__c = randomHex(32),
       Patient_Control_Number__c = randomHex(17),
       Provider_Used__c = config.providerName,
+      Canonical_Payload__c = canonicalPayload,
+      Submission_Config__c = JSON.serialize(config),
       Queued_At__c = Datetime.now()
     );
     insert submission;
@@ -55,7 +52,21 @@ public with sharing class ClaimSubmissionService {
   public static Claim_Submission__c retry(Id submissionId) {
     if (submissionId == null)
       throw error('Claim Submission Id is required.');
-    ClaimSubmissionConfig config = ClaimSubmissionProviderFactory.getActiveConfig();
+    List<Claim_Submission__c> seeds = [
+      SELECT Superbill__c
+      FROM Claim_Submission__c
+      WHERE Id = :submissionId
+      LIMIT 1
+    ];
+    if (seeds.isEmpty())
+      throw error('Claim submission was not found.');
+    Superbill__c parent = [
+      SELECT Id, Status__c
+      FROM Superbill__c
+      WHERE Id = :seeds[0].Superbill__c
+      LIMIT 1
+      FOR UPDATE
+    ];
     List<Claim_Submission__c> rows = [
       SELECT
         Id,
@@ -63,7 +74,9 @@ public with sharing class ClaimSubmissionService {
         Superbill__r.Status__c,
         Status__c,
         Queued_At__c,
-        Async_Job_Id__c
+        Async_Job_Id__c,
+        Canonical_Payload__c,
+        Submission_Config__c
       FROM Claim_Submission__c
       WHERE Id = :submissionId
       LIMIT 1
@@ -77,10 +90,27 @@ public with sharing class ClaimSubmissionService {
         'Only a failed or stale queued transport attempt can be retried.'
       );
     }
-    if (submission.Superbill__r.Status__c != 'Ready')
+    if (parent.Status__c != 'Ready')
       throw error('The parent superbill must still be Ready.');
+    ClaimIntegrityService.requireNoQueuedSubmission(parent.Id, submission.Id);
+    Claim_Submission__c latest = [
+      SELECT Id
+      FROM Claim_Submission__c
+      WHERE Superbill__c = :parent.Id
+      ORDER BY CreatedDate DESC, Id DESC
+      LIMIT 1
+    ];
+    if (latest.Id != submission.Id)
+      throw error('Only the latest submission attempt can be retried.');
+    ClaimSubmissionConfig config = frozenConfig(submission);
+    if (
+      JSON.serialize(ClaimExportService.build(parent.Id)) !=
+      submission.Canonical_Payload__c
+    )
+      throw error(
+        'The approved claim changed after this attempt. Create a new submission for the corrected claim.'
+      );
     submission.Status__c = 'Queued';
-    submission.Provider_Used__c = config.providerName;
     submission.Error_Message__c = null;
     submission.Queued_At__c = Datetime.now();
     update submission;
@@ -96,7 +126,10 @@ public with sharing class ClaimSubmissionService {
         Status__c,
         Attempt_Number__c,
         Idempotency_Key__c,
-        Patient_Control_Number__c
+        Patient_Control_Number__c,
+        Canonical_Payload__c,
+        Submission_Config__c,
+        Superbill__r.Status__c
       FROM Claim_Submission__c
       WHERE Id = :submissionId
       LIMIT 1
@@ -106,8 +139,12 @@ public with sharing class ClaimSubmissionService {
     Claim_Submission__c submission = rows[0];
     ClaimSubmissionResult result;
     try {
-      VendorNeutralClaim claim = ClaimExportService.build(
-        submission.Superbill__c
+      if (submission.Superbill__r.Status__c != 'Ready')
+        throw error('The parent superbill must still be Ready.');
+      config = frozenConfig(submission);
+      VendorNeutralClaim claim = (VendorNeutralClaim) JSON.deserialize(
+        submission.Canonical_Payload__c,
+        VendorNeutralClaim.class
       );
       result = ClaimSubmissionProviderFactory.getProvider(config.providerName)
         .submit(
@@ -172,7 +209,7 @@ public with sharing class ClaimSubmissionService {
       ];
       if (!superbills.isEmpty() && superbills[0].Status__c == 'Ready') {
         superbills[0].Status__c = 'Exported';
-        update superbills[0];
+        ClaimIntegrityService.saveTransition(superbills[0]);
       }
     }
   }
@@ -214,6 +251,24 @@ public with sharing class ClaimSubmissionService {
     ClaimSubmissionResult result = new ClaimSubmissionResult();
     result.errorMessage = message;
     return result;
+  }
+
+  private static ClaimSubmissionConfig frozenConfig(
+    Claim_Submission__c submission
+  ) {
+    if (
+      String.isBlank(submission.Canonical_Payload__c) ||
+      String.isBlank(submission.Submission_Config__c)
+    )
+      throw error(
+        'This historical attempt has no frozen payload. Review its clearinghouse status before creating a new submission.'
+      );
+    ClaimSubmissionConfig config = (ClaimSubmissionConfig) JSON.deserialize(
+      submission.Submission_Config__c,
+      ClaimSubmissionConfig.class
+    );
+    config.validate();
+    return config;
   }
 
   private static void enqueue(

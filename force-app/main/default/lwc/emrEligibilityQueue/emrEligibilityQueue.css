@@ -1,0 +1,10 @@
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+.queue-content {
+  position: relative;
+  min-height: 6rem;
+}

@@ -7,12 +7,26 @@ import retrySubmission from "@salesforce/apex/ClaimSubmissionController.retrySub
 import getAcknowledgments from "@salesforce/apex/ClaimSubmissionController.getAcknowledgments";
 import reopenRejectedClaim from "@salesforce/apex/ClaimSubmissionController.reopenRejectedClaim";
 import { refreshApex } from "@salesforce/apex";
+import SUBMISSION_OBJECT from "@salesforce/schema/Claim_Submission__c";
+import ACKNOWLEDGMENT_OBJECT from "@salesforce/schema/Claim_Acknowledgment__c";
+import { normalizeBillingRecord } from "c/emrBillingDataUtils";
 
 export default class EmrClaimSubmission extends LightningElement {
   static STALE_QUEUE_MS = 15 * 60 * 1000;
 
   @api superbillId;
-  @api claimStatus;
+  _claimStatus;
+  notifiedSubmissionId;
+
+  @api
+  get claimStatus() {
+    return this._claimStatus;
+  }
+
+  set claimStatus(value) {
+    this._claimStatus = value;
+    this.rebuildSubmissions();
+  }
 
   submissions = [];
   rawSubmissions = [];
@@ -26,7 +40,10 @@ export default class EmrClaimSubmission extends LightningElement {
   wiredSubmissions(result) {
     this.wiredResult = result;
     if (result.data) {
-      this.rawSubmissions = result.data;
+      this.rawSubmissions = normalizeBillingRecord(
+        result.data,
+        SUBMISSION_OBJECT.objectApiName
+      );
       this.rebuildSubmissions();
       this.errorMessage = undefined;
       this.schedulePoll();
@@ -40,7 +57,10 @@ export default class EmrClaimSubmission extends LightningElement {
   wiredAcknowledgments(result) {
     this.wiredAcknowledgmentsResult = result;
     if (result.data) {
-      this.acknowledgments = result.data;
+      this.acknowledgments = normalizeBillingRecord(
+        result.data,
+        ACKNOWLEDGMENT_OBJECT.objectApiName
+      );
       this.rebuildSubmissions();
     } else if (result.error) {
       this.errorMessage = this.reduceError(result.error);
@@ -77,6 +97,7 @@ export default class EmrClaimSubmission extends LightningElement {
   }
 
   async handleSubmit() {
+    if (this.isWorking || !this.canSubmit) return;
     const confirmed = await LightningConfirm.open({
       label: "Submit professional claim",
       message: "Queue this frozen claim for clearinghouse submission?",
@@ -212,19 +233,37 @@ export default class EmrClaimSubmission extends LightningElement {
         acknowledgmentStatusClass: `ack-status ack-${acknowledgmentStatus.toLowerCase()}`,
         acknowledgments,
         hasAcknowledgments: acknowledgments.length > 0,
-        canRetry: this.canRetryRow(row),
+        canRetry: this.canRetryRow(row, index),
         retryLabel: row.Status__c === "Queued" ? "Recover" : "Retry",
         canReopenRejected:
           index === 0 &&
           row.Status__c === "Submitted" &&
           acknowledgmentStatus === "Rejected" &&
-          this.claimStatus === "Exported"
+          this.claimStatus === "Exported" &&
+          !this.rawSubmissions.some((other) => other.Status__c === "Queued")
       };
     });
+    const latest = this.submissions[0];
+    if (
+      this.claimStatus === "Ready" &&
+      latest?.Status__c === "Submitted" &&
+      latest.Id !== this.notifiedSubmissionId
+    ) {
+      this.notifiedSubmissionId = latest.Id;
+      this.dispatchEvent(new CustomEvent("claimstatuschanged"));
+    }
     this.schedulePoll();
   }
 
-  canRetryRow(row) {
+  canRetryRow(row, index) {
+    if (
+      this.claimStatus !== "Ready" ||
+      index !== 0 ||
+      this.rawSubmissions.some(
+        (other) => other.Id !== row.Id && other.Status__c === "Queued"
+      )
+    )
+      return false;
     if (row.Status__c === "Failed") return true;
     if (row.Status__c !== "Queued" || !row.Queued_At__c) return false;
     const queuedAt = Date.parse(row.Queued_At__c);

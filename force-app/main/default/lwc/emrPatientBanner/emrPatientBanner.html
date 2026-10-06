@@ -119,7 +119,7 @@
               <p class="slds-text-title_caps">Latest vitals</p>
               <template lwc:if={vitalsRecordedAt}>
                 <p class="slds-text-body_small slds-text-color_weak">
-                  Recorded &nbsp;
+                  Most recent measurement &nbsp;
                   <lightning-formatted-date-time
                     value={vitalsRecordedAt}
                     year="numeric"
@@ -137,6 +137,17 @@
                   <div key={item.key} class="vital">
                     <p class="slds-text-title_caps">{item.label}</p>
                     <p class="vital-value">{item.value}</p>
+                    <template lwc:if={item.recordedAt}>
+                      <p class="slds-text-body_small slds-text-color_weak">
+                        <lightning-formatted-date-time
+                          value={item.recordedAt}
+                          month="short"
+                          day="2-digit"
+                          hour="numeric"
+                          minute="2-digit"
+                        ></lightning-formatted-date-time>
+                      </p>
+                    </template>
                   </div>
                 </template>
               </div>

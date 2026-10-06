@@ -32,7 +32,7 @@ public with sharing class ClaimSubmissionController {
         Error_Message__c
       FROM Claim_Submission__c
       WHERE Superbill__c = :superbillId
-      ORDER BY CreatedDate DESC
+      ORDER BY CreatedDate DESC, Id DESC
       LIMIT 25
     ];
   }

@@ -149,6 +149,10 @@ private class ClaimSubmissionServiceTest {
       Idempotency_Key__c = 'IDEMPOTENCY-RETRY-1',
       Patient_Control_Number__c = 'PCNRETRY000000001',
       Provider_Used__c = 'Stedi',
+      Canonical_Payload__c = JSON.serialize(
+        ClaimExportService.build(data.superbill.Id)
+      ),
+      Submission_Config__c = JSON.serialize(testConfig()),
       Error_Message__c = 'Timed out'
     );
     insert submission;
@@ -184,6 +188,10 @@ private class ClaimSubmissionServiceTest {
       Idempotency_Key__c = 'IDEMPOTENCY-STALE-1',
       Patient_Control_Number__c = 'PCNSTALE000000001',
       Provider_Used__c = 'Stedi',
+      Canonical_Payload__c = JSON.serialize(
+        ClaimExportService.build(staleData.superbill.Id)
+      ),
+      Submission_Config__c = JSON.serialize(testConfig()),
       Queued_At__c = Datetime.now().addHours(-1)
     );
     insert stale;
@@ -348,6 +356,140 @@ private class ClaimSubmissionServiceTest {
     System.assertEquals(true, blocked);
   }
 
+  @IsTest
+  static void queuedTransportBlocksCompetingRetryAndReopening() {
+    TestData data = createReadyClaim('Self');
+    configureSubmission();
+    ClaimSubmissionService.skipEnqueue = true;
+    Claim_Submission__c first = ClaimSubmissionService.queue(data.superbill.Id);
+    first.Status__c = 'Failed';
+    update first;
+    ClaimSubmissionService.queue(data.superbill.Id);
+    Boolean retryBlocked = false;
+    try {
+      ClaimSubmissionService.retry(first.Id);
+    } catch (ClaimSubmissionProviderFactory.ClaimSubmissionException e) {
+      retryBlocked = e.getMessage().contains('queued submission');
+    }
+    System.assert(
+      retryBlocked,
+      'A failed earlier attempt must not race another queued submission'
+    );
+    ClaimReadinessController.manageClaimsOverride = true;
+    Boolean reopenBlocked = false;
+    try {
+      ClaimReadinessController.reopen(data.superbill.Id);
+    } catch (ClaimSubmissionProviderFactory.ClaimSubmissionException e) {
+      reopenBlocked = e.getMessage().contains('queued submission');
+    }
+    System.assert(
+      reopenBlocked,
+      'Queued transport must keep the approved claim frozen'
+    );
+  }
+
+  @IsTest
+  static void retriesUseFrozenConfigurationAndPayloadAfterSettingsChange() {
+    TestData data = createReadyClaim('Self');
+    configureSubmission();
+    ClaimSubmissionService.skipEnqueue = true;
+    Claim_Submission__c first = ClaimSubmissionService.queue(data.superbill.Id);
+    first.Status__c = 'Failed';
+    update first;
+    Claim_Submission__c frozen = [
+      SELECT Canonical_Payload__c, Submission_Config__c, Idempotency_Key__c
+      FROM Claim_Submission__c
+      WHERE Id = :first.Id
+    ];
+    ClaimSubmissionProviderFactory.settingsOverride[0].Usage_Indicator__c = 'P';
+    ClaimSubmissionProviderFactory.settingsOverride[0]
+      .Contact_Name__c = 'Changed contact';
+    ClaimSubmissionService.skipEnqueue = false;
+    Test.setMock(HttpCalloutMock.class, new SuccessMock());
+    Test.startTest();
+    ClaimSubmissionService.retry(first.Id);
+    Test.stopTest();
+    Claim_Submission__c sent = ClaimSubmissionService.getById(first.Id);
+    System.assertEquals('Submitted', sent.Status__c);
+    System.assert(
+      sent.Request_Payload__c.contains('"usageIndicator":"T"'),
+      'A retry cannot silently switch a test claim to production'
+    );
+    System.assert(
+      sent.Request_Payload__c.contains('Billing Office'),
+      'Captured contact configuration must be reused'
+    );
+    System.assertEquals(frozen.Idempotency_Key__c, sent.Idempotency_Key__c);
+    System.assertEquals(
+      false,
+      Database.update(
+          new Claim_Submission__c(Id = first.Id, Canonical_Payload__c = '{}'),
+          false
+        )
+        .isSuccess(),
+      'Frozen transport input cannot be overwritten'
+    );
+  }
+
+  @IsTest
+  static void retryRejectsAChangedApproval() {
+    TestData data = createReadyClaim('Self');
+    configureSubmission();
+    ClaimSubmissionService.skipEnqueue = true;
+    Claim_Submission__c attempt = ClaimSubmissionService.queue(
+      data.superbill.Id
+    );
+    attempt.Status__c = 'Failed';
+    update attempt;
+    ClaimIntegrityService.saveTransition(
+      new Superbill__c(
+        Id = data.superbill.Id,
+        Status__c = 'Needs Review',
+        Ready_Date__c = null
+      )
+    );
+    update new Superbill__c(
+      Id = data.superbill.Id,
+      Status__c = 'Ready',
+      Ready_Date__c = Datetime.now().addSeconds(5)
+    );
+    Boolean changedBlocked = false;
+    try {
+      ClaimSubmissionService.retry(attempt.Id);
+    } catch (ClaimSubmissionProviderFactory.ClaimSubmissionException e) {
+      changedBlocked = e.getMessage().contains('approved claim changed');
+    }
+    System.assert(
+      changedBlocked,
+      'An idempotency key must not be reused for a later approval revision'
+    );
+  }
+
+  @IsTest
+  static void retryRejectsHistoricalMissingPayload() {
+    configureSubmission();
+    ClaimSubmissionService.skipEnqueue = true;
+    TestData historicalData = createReadyClaim('Spouse');
+    Claim_Submission__c historical = new Claim_Submission__c(
+      Superbill__c = historicalData.superbill.Id,
+      Status__c = 'Failed',
+      Idempotency_Key__c = 'HISTORICAL',
+      Patient_Control_Number__c = 'HISTORICAL-PCN',
+      Provider_Used__c = 'Stedi'
+    );
+    insert historical;
+    Boolean historicalBlocked = false;
+    try {
+      ClaimSubmissionService.retry(historical.Id);
+    } catch (ClaimSubmissionProviderFactory.ClaimSubmissionException e) {
+      historicalBlocked = e.getMessage().contains('historical attempt');
+    }
+    System.assert(
+      historicalBlocked,
+      'Historical attempts require investigation when the original transport input was not captured'
+    );
+  }
+
   private static void configureSubmission() {
     ClaimSubmissionConfig config = testConfig();
     ClaimSubmissionProviderFactory.settingsOverride = new List<Claim_Submission_Setting__mdt>{
@@ -448,7 +590,7 @@ private class ClaimSubmissionServiceTest {
       Billing_Organization__c = organization.Id,
       Date_of_Service__c = serviceDate,
       Place_of_Service_Code__c = '11',
-      Status__c = 'Ready',
+      Status__c = 'Needs Review',
       Ready_Date__c = Datetime.now(),
       Snapshot_Refreshed_At__c = Datetime.now(),
       Snapshot_Version__c = 1,
@@ -517,6 +659,8 @@ private class ClaimSubmissionServiceTest {
       Rate_Source__c = 'Frozen contract rate',
       Rate_Override__c = false
     );
+    data.superbill.Status__c = 'Ready';
+    update data.superbill;
     return data;
   }
 

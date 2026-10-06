@@ -4,13 +4,13 @@ LogicEMR stores eligibility results on `Eligibility_Check__c` (PHI). Sharing is 
 
 ## What the package ships
 
-| Artifact | Developer name | Role |
-| --- | --- | --- |
-| Named Credential | `Stedi_Eligibility` | Callout target. Apex uses `callout:Stedi_Eligibility` (or the name in `Eligibility_Setting__mdt.Named_Credential__c`). |
-| External Credential | `Stedi_Eligibility` | Custom auth. Injects an `Authorization` header from a stored secret. |
-| Principal (structure only) | `Stedi_API` | Named Principal. The API key is **not** packaged. |
-| Custom Metadata | `Eligibility_Setting.Stedi` | `Provider_Name__c = Stedi`, `Named_Credential__c = Stedi_Eligibility`, `Default_Service_Type__c = 30`, `Active__c = true`. |
-| Custom permission | `LogicEMR_Run_Eligibility` | Gates the Check Eligibility action. |
+| Artifact                   | Developer name              | Role                                                                                                                       |
+| -------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Named Credential           | `Stedi_Eligibility`         | Callout target. Apex uses `callout:Stedi_Eligibility` (or the name in `Eligibility_Setting__mdt.Named_Credential__c`).     |
+| External Credential        | `Stedi_Eligibility`         | Custom auth. Injects an `Authorization` header from a stored secret.                                                       |
+| Principal (structure only) | `Stedi_API`                 | Named Principal. The API key is **not** packaged.                                                                          |
+| Custom Metadata            | `Eligibility_Setting.Stedi` | `Provider_Name__c = Stedi`, `Named_Credential__c = Stedi_Eligibility`, `Default_Service_Type__c = 30`, `Active__c = true`. |
+| Custom permission          | `LogicEMR_Run_Eligibility`  | Gates the Check Eligibility action.                                                                                        |
 
 The Named Credential URL is maintained in Setup (packaged default is the Stedi healthcare host). Change it in the Named Credential if Stedi publishes a different host. Do not copy that URL into code.
 
@@ -56,11 +56,11 @@ The packaged `Stedi_API` principal is structure only. If you skip the `ApiKey` p
 
 Assign permission sets. Do not edit profiles.
 
-| Permission set | `Eligibility_Check__c` | Check Eligibility action | Callout credentials |
-| --- | --- | --- | --- |
+| Permission set         | `Eligibility_Check__c`   | Check Eligibility action         | Callout credentials                                            |
+| ---------------------- | ------------------------ | -------------------------------- | -------------------------------------------------------------- |
 | **LogicEMR Clinician** | Read (object and fields) | Yes (`LogicEMR_Run_Eligibility`) | Grant `Stedi_Eligibility-Stedi_API` after the principal exists |
-| **LogicEMR Billing** | Read | Yes (`LogicEMR_Run_Eligibility`) | Same |
-| **LogicEMR Admin** | Full CRUD | Yes (`LogicEMR_Run_Eligibility`) | Same |
+| **LogicEMR Billing**   | Read                     | Yes (`LogicEMR_Run_Eligibility`) | Same                                                           |
+| **LogicEMR Admin**     | Full CRUD                | Yes (`LogicEMR_Run_Eligibility`) | Same                                                           |
 
 All three grant Apex access to `EligibilityService`, `StediEligibilityProvider`, `EligibilityProviderFactory`, and `EligibilityBatch`.
 
@@ -85,24 +85,36 @@ If search returns **Unauthorized**, the callout reached Stedi without a valid ke
 
 Setup → **Custom Metadata Types** → **Eligibility Setting** → **Stedi**.
 
-| Field | Packaged default | Notes |
-| --- | --- | --- |
-| `Provider_Name__c` | `Stedi` | Factory maps this name to `StediEligibilityProvider`. Another class name can be used for a custom `EligibilityProvider`. |
-| `Named_Credential__c` | `Stedi_Eligibility` | Must match the Named Credential developer name. Not a URL and not a key. |
-| `Default_Service_Type__c` | `30` | Health benefit plan coverage. Override per request when needed. |
-| `Active__c` | true | Factory uses the first active row (by provider name). |
+| Field                     | Packaged default    | Notes                                                                                                                    |
+| ------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `Provider_Name__c`        | `Stedi`             | Factory maps this name to `StediEligibilityProvider`. Another class name can be used for a custom `EligibilityProvider`. |
+| `Named_Credential__c`     | `Stedi_Eligibility` | Must match the Named Credential developer name. Not a URL and not a key.                                                 |
+| `Default_Service_Type__c` | `30`                | Health benefit plan coverage. Override per request when needed.                                                          |
+| `Active__c`               | true                | Factory uses the first active row (by provider name).                                                                    |
 
 Only one row should be active unless you intend a specific sort order. To add another clearinghouse later, see [eligibility-adapters.md](eligibility-adapters.md).
+
+## Eligibility operations work queue
+
+Open **Admin Console → Eligibility work queue**, or add **Eligibility Work Queue** to a Lightning app or home page. Access requires `LogicEMR_Run_Eligibility` and read access to the eligibility, patient, coverage, and payer fields used by the queue.
+
+- Apply any combination of outcome, payer name/identifier, patient name/MRN, and inclusive date filters. Dates use the Salesforce user's timezone. Success includes both Active and Inactive results; Pending is separate.
+- The queue displays the newest 100 matching attempts. When more match, narrow the filters to inspect older checks. Counts and the top five rejection reasons describe only the displayed attempts.
+- **Retry** is available for errors with an accessible, matching patient and coverage. It runs a new check using the original service type and current patient, coverage, and eligibility settings. The original attempt remains unchanged; a retry that is still an error is reported as such.
+- **Mode** and **Stedi trace ID** are captured from new Stedi responses, including error responses that contain metadata. Mode comes from `meta.applicationMode`; the trace uses `meta.traceId`, falling back to `meta.outboundTraceId`. Historical checks and responses without mode metadata display **Unknown**. See the [Stedi response metadata reference](https://www.stedi.com/docs/healthcare/api-reference/post-healthcare-eligibility-legacy).
+- Auto-refresh runs every 30 seconds while the queue is open and the browser tab is visible. Turn it off to pause, or use **Refresh**. Refreshes do not overlap callouts or retries; a failed refresh retains the last results with an error message.
+
+Deploy the two new eligibility fields with the controller, provider, queue component, admin console, layout, and updated Admin/Billing/Clinician permission sets. Existing records are not backfilled. Payer AAA rejection reasons are captured for new attempts, including nested payer, provider, subscriber, and dependent errors.
 
 ## PHI at rest (`Request_Payload__c` / `Raw_Response__c`)
 
 `Eligibility_Check__c` persists the outbound 270 (`Request_Payload__c`) and the inbound 271 (`Raw_Response__c`). Both are long text and contain PHI.
 
-| Control | Packaged behavior | Subscriber option |
-| --- | --- | --- |
-| Organization-Wide Default | `Patient__c` is **Private**. `Eligibility_Check__c` is **Controlled by Parent**, so checks inherit Patient sharing. | Leave Private. Do not open OWD. |
-| Object access | Clinician and Billing: Read. Admin: CRUD. Access is permission sets only. | Assign the least privilege set that matches the role. |
-| Platform Encryption | Not packaged. The package does not enable Shield or mark these fields as encrypted. | If the org has **Salesforce Shield Platform Encryption**, encrypt `Request_Payload__c` and `Raw_Response__c` (and other PHI fields) in Setup. That is a subscriber configuration, not a package change. |
+| Control                   | Packaged behavior                                                                                                   | Subscriber option                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization-Wide Default | `Patient__c` is **Private**. `Eligibility_Check__c` is **Controlled by Parent**, so checks inherit Patient sharing. | Leave Private. Do not open OWD.                                                                                                                                                                         |
+| Object access             | Clinician and Billing: Read. Admin: CRUD. Access is permission sets only.                                           | Assign the least privilege set that matches the role.                                                                                                                                                   |
+| Platform Encryption       | Not packaged. The package does not enable Shield or mark these fields as encrypted.                                 | If the org has **Salesforce Shield Platform Encryption**, encrypt `Request_Payload__c` and `Raw_Response__c` (and other PHI fields) in Setup. That is a subscriber configuration, not a package change. |
 
 Do not copy request or response bodies into Custom Settings, Platform Cache, debug logs you retain, or email. The Check Eligibility UI shows parsed status and benefits, not the raw payload.
 

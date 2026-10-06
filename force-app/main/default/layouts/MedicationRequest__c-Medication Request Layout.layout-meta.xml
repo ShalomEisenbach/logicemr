@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Layout xmlns="http://soap.sforce.com/2006/04/metadata">
     <excludeButtons>Submit</excludeButtons>
     <layoutSections>
@@ -83,6 +83,27 @@
         <customLabel>true</customLabel>
         <detailHeading>true</detailHeading>
         <editHeading>true</editHeading>
+        <label>Dispensing</label>
+        <layoutColumns>
+            <layoutItems><behavior>Edit</behavior><field
+        >Dispense_Quantity__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field
+        >Refills__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field
+        >Pharmacy__c</field></layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems><behavior>Edit</behavior><field
+        >Start_Date__c</field></layoutItems>
+            <layoutItems><behavior>Edit</behavior><field
+        >End_Date__c</field></layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
         <label>Status</label>
         <layoutColumns>
             <layoutItems>
@@ -122,9 +143,9 @@
         <detailHeading>true</detailHeading>
         <editHeading>true</editHeading>
         <label>Custom Links</label>
-        <layoutColumns/>
-        <layoutColumns/>
-        <layoutColumns/>
+        <layoutColumns />
+        <layoutColumns />
+        <layoutColumns />
         <style>CustomLinks</style>
     </layoutSections>
     <relatedLists>
@@ -134,7 +155,8 @@
         <fields>Dose_Quantity__c</fields>
         <fields>Dose_Unit__c</fields>
         <fields>Performer__c</fields>
-        <relatedList>MedicationAdministration__c.Medication_Request__c</relatedList>
+        <relatedList
+    >MedicationAdministration__c.Medication_Request__c</relatedList>
     </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>
     <showHighlightsPanel>false</showHighlightsPanel>

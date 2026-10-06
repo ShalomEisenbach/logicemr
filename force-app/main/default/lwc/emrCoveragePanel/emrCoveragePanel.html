@@ -1,263 +1,365 @@
 <template>
-    <c-emr-chart-panel
-        title="Coverage"
-        count={coverageCount}
-        view-all-label="View All"
-        has-records={hasCoverages}
-        onviewall={handleViewAll}
-    >
-        <lightning-button
-            slot="actions"
-            label="Add"
+  <c-emr-chart-panel
+    title="Coverage"
+    count={coverageCount}
+    view-all-label="View All"
+    has-records={hasCoverages}
+    onviewall={handleViewAll}
+  >
+    <lightning-button
+      slot="actions"
+      label="Add"
+      variant="neutral"
+      onclick={handleToggleAdd}
+    ></lightning-button>
+    <template lwc:if={errorMessage}>
+      <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+        {errorMessage}
+      </div>
+    </template>
+    <template lwc:if={showEligibility}>
+      <c-emr-modal
+        title="Check Eligibility"
+        size="large"
+        onclose={handleCloseEligibility}
+      >
+        <c-emr-eligibility-check
+          record-id={eligibilityCoverageId}
+          embedded={eligibilityEmbedded}
+          oneligibilitychecked={handleEligibilityChecked}
+        ></c-emr-eligibility-check>
+        <div slot="footer">
+          <lightning-button
+            label="Close"
             variant="neutral"
-            onclick={handleToggleAdd}
-        ></lightning-button>
+            onclick={handleCloseEligibility}
+          ></lightning-button>
+        </div>
+      </c-emr-modal>
+    </template>
+    <template lwc:if={showForm}>
+      <c-emr-modal title={formTitle} onclose={handleCloseForm}>
         <template lwc:if={errorMessage}>
-            <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
+          <div class="slds-text-color_error slds-m-bottom_small" role="alert">
+            {errorMessage}
+          </div>
         </template>
-        <template lwc:if={showEligibility}>
-            <c-emr-modal title="Check Eligibility" size="large" onclose={handleCloseEligibility}>
-                <c-emr-eligibility-check
-                    record-id={eligibilityCoverageId}
-                    embedded={eligibilityEmbedded}
-                    oneligibilitychecked={handleEligibilityChecked}
-                ></c-emr-eligibility-check>
-                <div slot="footer">
-                    <lightning-button label="Close" variant="neutral" onclick={handleCloseEligibility}></lightning-button>
-                </div>
-            </c-emr-modal>
+        <lightning-record-picker
+          label="Payer"
+          placeholder="Search payers"
+          object-api-name={payerObjectApiName}
+          value={payerId}
+          filter={payerFilter}
+          required
+          onchange={handlePayerChange}
+        ></lightning-record-picker>
+        <lightning-input
+          name="memberId"
+          label="Member ID"
+          value={memberId}
+          maxlength="50"
+          class="slds-m-top_small"
+          onchange={handleMemberChange}
+        ></lightning-input>
+        <lightning-input
+          name="groupNumber"
+          label="Group number"
+          value={groupNumber}
+          maxlength="50"
+          class="slds-m-top_small"
+          onchange={handleGroupChange}
+        ></lightning-input>
+        <lightning-input
+          name="planName"
+          label="Plan name"
+          value={planName}
+          maxlength="120"
+          class="slds-m-top_small"
+          onchange={handlePlanChange}
+        ></lightning-input>
+        <lightning-combobox
+          name="coverageType"
+          label="Type"
+          value={coverageType}
+          options={typeOptions}
+          class="slds-m-top_small"
+          onchange={handleTypeChange}
+        ></lightning-combobox>
+        <lightning-combobox
+          name="priority"
+          label="Priority"
+          value={priority}
+          options={priorityOptions}
+          class="slds-m-top_small"
+          onchange={handlePriorityChange}
+        ></lightning-combobox>
+        <lightning-combobox
+          name="relationship"
+          label="Relationship to subscriber"
+          value={relationshipToSubscriber}
+          options={relationshipOptions}
+          class="slds-m-top_small"
+          onchange={handleRelationshipChange}
+        ></lightning-combobox>
+        <lightning-input
+          name="subscriberName"
+          label="Subscriber name"
+          value={subscriberName}
+          maxlength="120"
+          class="slds-m-top_small"
+          onchange={handleSubscriberChange}
+        ></lightning-input>
+        <lightning-input
+          type="date"
+          name="effectiveStart"
+          label="Effective start"
+          value={effectiveStart}
+          class="slds-m-top_small"
+          onchange={handleStartChange}
+        ></lightning-input>
+        <template lwc:if={showSubscriberDetails}>
+          <div class="slds-m-top_medium">
+            <h3 class="slds-text-title_bold">Policy holder</h3>
+            <lightning-input
+              type="checkbox"
+              name="memberIdIdentifiesPatient"
+              label="Member ID uniquely identifies this patient"
+              checked={subscriberDetails.memberIdIdentifiesPatient}
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <p class="slds-text-body_small">
+              Clear this when the patient uses the policy holder's member ID for
+              eligibility.
+            </p>
+            <lightning-input
+              name="subscriberFirstName"
+              label="Policy holder first name"
+              value={subscriberDetails.subscriberFirstName}
+              required={requiresSubscriberIdentity}
+              maxlength="80"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-input
+              name="subscriberLastName"
+              label="Policy holder last name"
+              value={subscriberDetails.subscriberLastName}
+              required={requiresSubscriberIdentity}
+              maxlength="80"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-input
+              type="date"
+              name="subscriberDateOfBirth"
+              label="Policy holder date of birth"
+              value={subscriberDetails.subscriberDateOfBirth}
+              required={requiresSubscriberIdentity}
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-combobox
+              name="subscriberSex"
+              label="Policy holder sex"
+              value={subscriberDetails.subscriberSex}
+              options={sexOptions}
+              onchange={handleSubscriberDetail}
+            ></lightning-combobox>
+            <lightning-input
+              name="subscriberStreet"
+              label="Policy holder street"
+              value={subscriberDetails.subscriberStreet}
+              maxlength="255"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-input
+              name="subscriberCity"
+              label="Policy holder city"
+              value={subscriberDetails.subscriberCity}
+              maxlength="80"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-input
+              name="subscriberState"
+              label="Policy holder state"
+              value={subscriberDetails.subscriberState}
+              maxlength="80"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-input
+              name="subscriberPostalCode"
+              label="Policy holder postal code"
+              value={subscriberDetails.subscriberPostalCode}
+              maxlength="20"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+            <lightning-input
+              name="subscriberCountry"
+              label="Policy holder country"
+              value={subscriberDetails.subscriberCountry}
+              maxlength="80"
+              onchange={handleSubscriberDetail}
+            ></lightning-input>
+          </div>
         </template>
-        <template lwc:if={showForm}>
-            <c-emr-modal title={formTitle} onclose={handleCloseForm}>
-                <template lwc:if={errorMessage}>
-                    <div class="slds-text-color_error slds-m-bottom_small" role="alert">{errorMessage}</div>
-                </template>
-                <lightning-record-picker
-                    label="Payer"
-                    placeholder="Search payers"
-                    object-api-name={payerObjectApiName}
-                    value={payerId}
-                    filter={payerFilter}
-                    required
-                    onchange={handlePayerChange}
-                ></lightning-record-picker>
-                <lightning-input
-                    name="memberId"
-                    label="Member ID"
-                    value={memberId}
-                    maxlength="50"
-                    class="slds-m-top_small"
-                    onchange={handleMemberChange}
-                ></lightning-input>
-                <lightning-input
-                    name="groupNumber"
-                    label="Group number"
-                    value={groupNumber}
-                    maxlength="50"
-                    class="slds-m-top_small"
-                    onchange={handleGroupChange}
-                ></lightning-input>
-                <lightning-input
-                    name="planName"
-                    label="Plan name"
-                    value={planName}
-                    maxlength="120"
-                    class="slds-m-top_small"
-                    onchange={handlePlanChange}
-                ></lightning-input>
-                <lightning-combobox
-                    name="coverageType"
-                    label="Type"
-                    value={coverageType}
-                    options={typeOptions}
-                    class="slds-m-top_small"
-                    onchange={handleTypeChange}
-                ></lightning-combobox>
-                <lightning-combobox
-                    name="priority"
-                    label="Priority"
-                    value={priority}
-                    options={priorityOptions}
-                    class="slds-m-top_small"
-                    onchange={handlePriorityChange}
-                ></lightning-combobox>
-                <lightning-combobox
-                    name="relationship"
-                    label="Relationship to subscriber"
-                    value={relationshipToSubscriber}
-                    options={relationshipOptions}
-                    class="slds-m-top_small"
-                    onchange={handleRelationshipChange}
-                ></lightning-combobox>
-                <lightning-input
-                    name="subscriberName"
-                    label="Subscriber name"
-                    value={subscriberName}
-                    maxlength="120"
-                    class="slds-m-top_small"
-                    onchange={handleSubscriberChange}
-                ></lightning-input>
-                <lightning-input
-                    type="date"
-                    name="effectiveStart"
-                    label="Effective start"
-                    value={effectiveStart}
-                    class="slds-m-top_small"
-                    onchange={handleStartChange}
-                ></lightning-input>
-                <lightning-input
-                    type="date"
-                    name="effectiveEnd"
-                    label="Effective end"
-                    value={effectiveEnd}
-                    class="slds-m-top_small"
-                    onchange={handleEndChange}
-                ></lightning-input>
-                <lightning-combobox
-                    name="status"
-                    label="Status"
-                    value={status}
-                    options={statusOptions}
-                    class="slds-m-top_small"
-                    onchange={handleStatusChange}
-                ></lightning-combobox>
-                <section class="id-card-section">
-                    <h3 class="id-card-heading">ID card</h3>
-                    <template lwc:if={idCardHint}>
-                        <p class="id-card-hint">{idCardHint}</p>
+        <lightning-input
+          type="date"
+          name="effectiveEnd"
+          label="Effective end"
+          value={effectiveEnd}
+          class="slds-m-top_small"
+          onchange={handleEndChange}
+        ></lightning-input>
+        <lightning-combobox
+          name="status"
+          label="Status"
+          value={status}
+          options={statusOptions}
+          class="slds-m-top_small"
+          onchange={handleStatusChange}
+        ></lightning-combobox>
+        <section class="id-card-section">
+          <h3 class="id-card-heading">ID card</h3>
+          <template lwc:if={idCardHint}>
+            <p class="id-card-hint">{idCardHint}</p>
+          </template>
+          <template lwc:if={canUploadIdCard}>
+            <div class="id-card-grid">
+              <div>
+                <lightning-file-upload
+                  name="idCardFront"
+                  label="Front"
+                  accept={idCardAccept}
+                  record-id={editingId}
+                  disabled={isSaving}
+                  onuploadfinished={handleFrontUploadFinished}
+                ></lightning-file-upload>
+                <template lwc:if={frontIdCard}>
+                  <div class="id-card-preview">
+                    <template lwc:if={frontIdCard.isImage}>
+                      <img src={frontIdCard.previewUrl} alt="ID card front" />
                     </template>
-                    <template lwc:if={canUploadIdCard}>
-                        <div class="id-card-grid">
-                            <div>
-                                <lightning-file-upload
-                                    name="idCardFront"
-                                    label="Front"
-                                    accept={idCardAccept}
-                                    record-id={editingId}
-                                    disabled={isSaving}
-                                    onuploadfinished={handleFrontUploadFinished}
-                                ></lightning-file-upload>
-                                <template lwc:if={frontIdCard}>
-                                    <div class="id-card-preview">
-                                        <template lwc:if={frontIdCard.isImage}>
-                                            <img src={frontIdCard.previewUrl} alt="ID card front" />
-                                        </template>
-                                        <a href={frontIdCard.downloadUrl} target="_blank" rel="noreferrer">
-                                            {frontIdCard.title}
-                                        </a>
-                                        <lightning-button
-                                            label="Remove"
-                                            variant="base"
-                                            data-document-id={frontIdCard.contentDocumentId}
-                                            disabled={isSaving}
-                                            onclick={handleRemoveIdCard}
-                                        ></lightning-button>
-                                    </div>
-                                </template>
-                            </div>
-                            <div>
-                                <lightning-file-upload
-                                    name="idCardBack"
-                                    label="Back"
-                                    accept={idCardAccept}
-                                    record-id={editingId}
-                                    disabled={isSaving}
-                                    onuploadfinished={handleBackUploadFinished}
-                                ></lightning-file-upload>
-                                <template lwc:if={backIdCard}>
-                                    <div class="id-card-preview">
-                                        <template lwc:if={backIdCard.isImage}>
-                                            <img src={backIdCard.previewUrl} alt="ID card back" />
-                                        </template>
-                                        <a href={backIdCard.downloadUrl} target="_blank" rel="noreferrer">
-                                            {backIdCard.title}
-                                        </a>
-                                        <lightning-button
-                                            label="Remove"
-                                            variant="base"
-                                            data-document-id={backIdCard.contentDocumentId}
-                                            disabled={isSaving}
-                                            onclick={handleRemoveIdCard}
-                                        ></lightning-button>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </template>
-                </section>
-                <div slot="footer">
+                    <a
+                      href={frontIdCard.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {frontIdCard.title}
+                    </a>
                     <lightning-button
-                        label={closeLabel}
-                        variant="neutral"
-                        onclick={handleCloseForm}
-                        class="slds-m-right_small"
+                      label="Remove"
+                      variant="base"
+                      data-document-id={frontIdCard.contentDocumentId}
+                      disabled={isSaving}
+                      onclick={handleRemoveIdCard}
                     ></lightning-button>
-                    <lightning-button
-                        label="Save coverage"
-                        variant="brand"
-                        disabled={isSaving}
-                        onclick={handleSave}
-                    ></lightning-button>
-                </div>
-            </c-emr-modal>
-        </template>
-        <template lwc:if={hasCoverages}>
-            <div class="table-wide">
-                <lightning-datatable
-                    key-field="Id"
-                    data={coverages}
-                    columns={columns}
-                    hide-checkbox-column
-                    onrowaction={handleRowAction}
-                ></lightning-datatable>
-            </div>
-            <div class="stack-narrow">
-                <template for:each={coverageCards} for:item="row">
-                    <article key={row.id} class="stack-card">
-                        <p class="stack-title">
-                            <c-emr-record-link
-                                record-id={row.id}
-                                object-api-name={row.objectApiName}
-                                label={row.title}
-                            ></c-emr-record-link>
-                        </p>
-                        <p class="stack-meta">{row.meta}</p>
-                        <template lwc:if={row.detail}>
-                            <p class="stack-detail">{row.detail}</p>
-                        </template>
-                        <div class="stack-actions">
-                            <template lwc:if={canRunEligibility}>
-                                <lightning-button
-                                    label="Check Eligibility"
-                                    variant="neutral"
-                                    data-id={row.id}
-                                    disabled={isSaving}
-                                    onclick={handleCheckEligibilityCard}
-                                ></lightning-button>
-                            </template>
-                            <lightning-button
-                                label="Edit"
-                                variant="neutral"
-                                data-id={row.id}
-                                disabled={isSaving}
-                                onclick={handleEditCard}
-                            ></lightning-button>
-                            <template lwc:if={row.canInactivate}>
-                                <lightning-button
-                                    label="Inactivate"
-                                    variant="neutral"
-                                    data-id={row.id}
-                                    disabled={isSaving}
-                                    onclick={handleInactivateCard}
-                                ></lightning-button>
-                            </template>
-                        </div>
-                    </article>
+                  </div>
                 </template>
+              </div>
+              <div>
+                <lightning-file-upload
+                  name="idCardBack"
+                  label="Back"
+                  accept={idCardAccept}
+                  record-id={editingId}
+                  disabled={isSaving}
+                  onuploadfinished={handleBackUploadFinished}
+                ></lightning-file-upload>
+                <template lwc:if={backIdCard}>
+                  <div class="id-card-preview">
+                    <template lwc:if={backIdCard.isImage}>
+                      <img src={backIdCard.previewUrl} alt="ID card back" />
+                    </template>
+                    <a
+                      href={backIdCard.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {backIdCard.title}
+                    </a>
+                    <lightning-button
+                      label="Remove"
+                      variant="base"
+                      data-document-id={backIdCard.contentDocumentId}
+                      disabled={isSaving}
+                      onclick={handleRemoveIdCard}
+                    ></lightning-button>
+                  </div>
+                </template>
+              </div>
             </div>
+          </template>
+        </section>
+        <div slot="footer">
+          <lightning-button
+            label={closeLabel}
+            variant="neutral"
+            onclick={handleCloseForm}
+            class="slds-m-right_small"
+          ></lightning-button>
+          <lightning-button
+            label="Save coverage"
+            variant="brand"
+            disabled={isSaving}
+            onclick={handleSave}
+          ></lightning-button>
+        </div>
+      </c-emr-modal>
+    </template>
+    <template lwc:if={hasCoverages}>
+      <div class="table-wide">
+        <lightning-datatable
+          key-field="Id"
+          data={coverages}
+          columns={columns}
+          hide-checkbox-column
+          onrowaction={handleRowAction}
+        ></lightning-datatable>
+      </div>
+      <div class="stack-narrow">
+        <template for:each={coverageCards} for:item="row">
+          <article key={row.id} class="stack-card">
+            <p class="stack-title">
+              <c-emr-record-link
+                record-id={row.id}
+                object-api-name={row.objectApiName}
+                label={row.title}
+              ></c-emr-record-link>
+            </p>
+            <p class="stack-meta">{row.meta}</p>
+            <template lwc:if={row.detail}>
+              <p class="stack-detail">{row.detail}</p>
+            </template>
+            <div class="stack-actions">
+              <template lwc:if={canRunEligibility}>
+                <lightning-button
+                  label="Check Eligibility"
+                  variant="neutral"
+                  data-id={row.id}
+                  disabled={isSaving}
+                  onclick={handleCheckEligibilityCard}
+                ></lightning-button>
+              </template>
+              <lightning-button
+                label="Edit"
+                variant="neutral"
+                data-id={row.id}
+                disabled={isSaving}
+                onclick={handleEditCard}
+              ></lightning-button>
+              <template lwc:if={row.canInactivate}>
+                <lightning-button
+                  label="Inactivate"
+                  variant="neutral"
+                  data-id={row.id}
+                  disabled={isSaving}
+                  onclick={handleInactivateCard}
+                ></lightning-button>
+              </template>
+            </div>
+          </article>
         </template>
-        <template lwc:elseif={showEmpty}>
-            <p class="slds-text-body_regular">No coverage on file.</p>
-        </template>
-    </c-emr-chart-panel>
+      </div>
+    </template>
+    <template lwc:elseif={showEmpty}>
+      <p class="slds-text-body_regular">No coverage on file.</p>
+    </template>
+  </c-emr-chart-panel>
 </template>
