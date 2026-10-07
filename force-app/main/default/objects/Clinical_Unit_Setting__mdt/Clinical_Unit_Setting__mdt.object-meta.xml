@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description
+  >Org preferences for temperature and body measurement units in clinical vitals workflows.</description>
+    <label>Clinical Unit Setting</label>
+    <pluralLabel>Clinical Unit Settings</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

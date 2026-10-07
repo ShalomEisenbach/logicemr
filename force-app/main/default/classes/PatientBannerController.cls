@@ -217,7 +217,19 @@ public with sharing class PatientBannerController {
     VitalItem item = new VitalItem();
     item.key = key;
     item.label = label;
-    item.value = withUnit(amount, unitOf(row));
+    String unit = unitOf(row);
+    if ((key == 'temp' || key == 'weight') && row.Value_Quantity__c != null) {
+      VitalsCaptureController.VitalValue preferred = VitalsCaptureController.preferredVitalValue(
+        row.Observation_Code__c,
+        row.Value_Quantity__c,
+        row.Value_Unit__c
+      );
+      if (preferred != null && preferred.converted == true) {
+        amount = preferred.value.stripTrailingZeros().toPlainString();
+        unit = preferred.displayUnit;
+      }
+    }
+    item.value = withUnit(amount, unit);
     item.recordedAt = row.Effective_DateTime__c;
     items.add(item);
   }

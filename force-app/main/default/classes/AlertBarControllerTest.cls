@@ -790,6 +790,158 @@ private class AlertBarControllerTest {
     );
   }
 
+  @IsTest
+  static void preferredVitalAlertUnitsPreserveFlagsAndLaboratoryMeasurements() {
+    useUnitPreferences('Cel', 'Metric');
+    Patient__c patient = insertPatient('MRN-AB-UNIT-PREF');
+    Patient__c laboratory = insertPatient('MRN-AB-UNIT-LAB');
+    Datetime recorded = Datetime.newInstance(2026, 10, 7, 9, 0, 0);
+    Observation__c temperature = insertObservation(
+      patient.Id,
+      '8310-5',
+      'Body temperature',
+      98.6,
+      'F',
+      'High',
+      recorded
+    );
+    Observation__c height = insertObservation(
+      patient.Id,
+      '8302-2',
+      'Body height',
+      70,
+      'in',
+      'Low',
+      recorded
+    );
+    Observation__c weight = insertObservation(
+      patient.Id,
+      '29463-7',
+      'Body weight',
+      220.4623,
+      'lbs',
+      'Critical',
+      recorded
+    );
+    update new List<Observation__c>{
+      new Observation__c(Id = temperature.Id, Category__c = 'Vital Signs'),
+      new Observation__c(Id = height.Id, Category__c = 'Vital Signs'),
+      new Observation__c(Id = weight.Id, Category__c = 'Vital Signs')
+    };
+    Observation__c potassium = insertObservation(
+      patient.Id,
+      '2823-3',
+      'Potassium',
+      6.2,
+      'mmol/L',
+      'High',
+      recorded
+    );
+    Observation__c laboratoryTemperature = insertObservation(
+      laboratory.Id,
+      '8310-5',
+      'Laboratory sample temperature',
+      98.6,
+      'F',
+      'High',
+      recorded
+    );
+
+    Test.startTest();
+    Integer dmlBefore = Limits.getDmlStatements();
+    AlertBarController.SummarySection section = byKey(
+        AlertBarController.getClinicalSummary(patient.Id).sections
+      )
+      .get('flowsheet');
+    Map<Id, AlertBarController.SummaryItem> metric = itemsById(section.items);
+    Map<Id, AlertBarController.SummaryItem> laboratoryItems = itemsById(
+      byKey(AlertBarController.getClinicalSummary(laboratory.Id).sections)
+        .get('flowsheet')
+        .items
+    );
+    useUnitPreferences('F', 'Imperial');
+    Map<Id, AlertBarController.SummaryItem> imperial = itemsById(
+      byKey(AlertBarController.getClinicalSummary(patient.Id).sections)
+        .get('flowsheet')
+        .items
+    );
+    System.assertEquals(
+      dmlBefore,
+      Limits.getDmlStatements(),
+      'Display conversion performs no DML'
+    );
+    Test.stopTest();
+
+    System.assertEquals('37', metric.get(temperature.Id).value);
+    System.assertEquals('°C', metric.get(temperature.Id).unit);
+    System.assertEquals('High', metric.get(temperature.Id).flag);
+    System.assertEquals('177.8', metric.get(height.Id).value);
+    System.assertEquals('cm', metric.get(height.Id).unit);
+    System.assertEquals('Low', metric.get(height.Id).flag);
+    System.assertEquals(
+      '100',
+      metric.get(weight.Id).value,
+      'Whole-number zeros are retained'
+    );
+    System.assertEquals('kg', metric.get(weight.Id).unit);
+    System.assertEquals('Critical', metric.get(weight.Id).flag);
+    System.assertEquals(
+      'high',
+      section.tone,
+      'Severity remains based on recorded interpretation'
+    );
+    System.assertEquals('6.2', metric.get(potassium.Id).value);
+    System.assertEquals('mmol/L', metric.get(potassium.Id).unit);
+    System.assertEquals(
+      '98.6',
+      laboratoryItems.get(laboratoryTemperature.Id).value,
+      'A laboratory observation with a matching vital code is not converted'
+    );
+    System.assertEquals(
+      '°F',
+      laboratoryItems.get(laboratoryTemperature.Id).unit
+    );
+    System.assertEquals('98.6', imperial.get(temperature.Id).value);
+    System.assertEquals('°F', imperial.get(temperature.Id).unit);
+    System.assertEquals('70', imperial.get(height.Id).value);
+    System.assertEquals('in', imperial.get(height.Id).unit);
+    System.assertEquals('220.4623', imperial.get(weight.Id).value);
+    System.assertEquals('lbs', imperial.get(weight.Id).unit);
+    Observation__c stored = [
+      SELECT
+        Value_Quantity__c,
+        Value_Unit__c,
+        Interpretation__c,
+        Effective_DateTime__c
+      FROM Observation__c
+      WHERE Id = :weight.Id
+    ];
+    System.assertEquals(220.4623, stored.Value_Quantity__c);
+    System.assertEquals('lbs', stored.Value_Unit__c);
+    System.assertEquals('Critical', stored.Interpretation__c);
+    System.assertEquals(recorded, stored.Effective_DateTime__c);
+  }
+
+  private static void useUnitPreferences(
+    String temperatureUnit,
+    String measurementSystem
+  ) {
+    ClinicalUnitSettings.Preferences preferences = new ClinicalUnitSettings.Preferences();
+    preferences.temperatureUnit = temperatureUnit;
+    preferences.measurementSystem = measurementSystem;
+    ClinicalUnitSettings.preferenceOverride = preferences;
+  }
+
+  private static Map<Id, AlertBarController.SummaryItem> itemsById(
+    List<AlertBarController.SummaryItem> items
+  ) {
+    Map<Id, AlertBarController.SummaryItem> result = new Map<Id, AlertBarController.SummaryItem>();
+    for (AlertBarController.SummaryItem item : items) {
+      result.put(item.id, item);
+    }
+    return result;
+  }
+
   private static Map<String, AlertBarController.SummarySection> byKey(
     List<AlertBarController.SummarySection> sections
   ) {

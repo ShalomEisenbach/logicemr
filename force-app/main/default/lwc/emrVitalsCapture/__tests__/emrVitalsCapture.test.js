@@ -1,7 +1,23 @@
 import { createElement } from "lwc";
 import EmrVitalsCapture from "c/emrVitalsCapture";
 import saveVitals from "@salesforce/apex/VitalsCaptureController.saveVitals";
-import getEncounterVitalDetails from "@salesforce/apex/VitalsCaptureController.getEncounterVitalDetails";
+import getEncounterVitalsForCapture from "@salesforce/apex/VitalsCaptureController.getEncounterVitalsForCapture";
+
+jest.mock(
+  "@salesforce/schema/Observation__c.Observation_Code__c",
+  () => ({ default: { fieldApiName: "lfemr__Observation_Code__c" } }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/schema/Observation__c.Value_Quantity__c",
+  () => ({ default: { fieldApiName: "lfemr__Value_Quantity__c" } }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/schema/Observation__c.Value_Unit__c",
+  () => ({ default: { fieldApiName: "lfemr__Value_Unit__c" } }),
+  { virtual: true }
+);
 
 jest.mock(
   "@salesforce/apex/VitalsCaptureController.saveVitals",
@@ -9,7 +25,7 @@ jest.mock(
   { virtual: true }
 );
 jest.mock(
-  "@salesforce/apex/VitalsCaptureController.getEncounterVitalDetails",
+  "@salesforce/apex/VitalsCaptureController.getEncounterVitalsForCapture",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -56,7 +72,7 @@ const metricVitals = {
 };
 
 async function mount(details = metricVitals, recordId = "encounter-one") {
-  getEncounterVitalDetails.mockResolvedValueOnce(details);
+  getEncounterVitalsForCapture.mockResolvedValueOnce(details);
   const element = createElement("c-emr-vitals-capture", {
     is: EmrVitalsCapture
   });
@@ -96,7 +112,7 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
     jest.resetAllMocks();
   });
 
-  it("loads Celsius, kilograms and centimeters with their recorded units and correct bounds", async () => {
+  it("loads Celsius, kilograms and centimeters with the preferred units and correct bounds", async () => {
     const element = await mount();
     expect(inputFor(element, "temp").label).toBe("Temp (°C)");
     expect(inputFor(element, "temp").value).toBe("36.8");
@@ -105,6 +121,9 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
     expect(inputFor(element, "weight").value).toBe("70");
     expect(inputFor(element, "height").label).toBe("Height (cm)");
     expect(inputFor(element, "height").value).toBe("170");
+    expect(inputFor(element, "hr").step).toBe("1");
+    expect(inputFor(element, "temp").step).toBe("0.1");
+    expect(inputFor(element, "height").step).toBe("0.01");
     expect(saveVitals).not.toHaveBeenCalled();
   });
 
@@ -121,7 +140,7 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
     expect(inputFor(element, "height").value).toBe("170");
   });
 
-  it("saves edited metric quantities in their source units", async () => {
+  it("saves edited metric quantities with their explicit input units", async () => {
     const element = await mount();
     change(element, "temp", "37");
     change(element, "weight", "71");
@@ -177,6 +196,115 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
     expect(saveVitals).not.toHaveBeenCalled();
   });
 
+  it("uses the org preference for new measurements and keeps temperature independent", async () => {
+    const element = await mount({
+      ...metricVitals,
+      temp: {
+        value: null,
+        unit: "F",
+        displayUnit: "°F",
+        supportedUnit: true,
+        minValue: 86,
+        maxValue: 113
+      },
+      height: { ...metricVitals.height, value: null },
+      weight: { ...metricVitals.weight, value: null }
+    });
+    expect(inputFor(element, "temp").label).toBe("Temp (°F)");
+    expect(inputFor(element, "temp").value).toBe("");
+    expect(inputFor(element, "height").label).toBe("Height (cm)");
+    expect(inputFor(element, "weight").label).toBe("Weight (kg)");
+    change(element, "temp", "98.6");
+    change(element, "height", "170");
+    change(element, "weight", "70");
+    await autosave();
+    expect(saveVitals).toHaveBeenCalledWith({
+      encounterId: "encounter-one",
+      vitals: [
+        { key: "temp", value: 98.6, unit: "F" },
+        { key: "height", value: 170, unit: "cm" },
+        { key: "weight", value: 70, unit: "kg" }
+      ]
+    });
+  });
+
+  it("does not autosave converted display values after loading or reloading", async () => {
+    const converted = {
+      ...metricVitals,
+      weight: { ...metricVitals.weight, value: 68.0389 }
+    };
+    const element = await mount(converted);
+    change(element, "weight", "68.038900");
+    await autosave();
+    expect(saveVitals).not.toHaveBeenCalled();
+    getEncounterVitalsForCapture.mockResolvedValueOnce(converted);
+    element.recordId = "encounter-two";
+    await flushPromises();
+    await autosave();
+    expect(inputFor(element, "weight").value).toBe("68.0389");
+    expect(inputFor(element, "weight").step).toBe("0.0001");
+    expect(saveVitals).not.toHaveBeenCalled();
+  });
+
+  it("updates recorded-source help from saved namespaced observations while keeping preferred input units", async () => {
+    const element = await mount({
+      ...metricVitals,
+      temp: {
+        ...metricVitals.temp,
+        value: 37,
+        sourceValue: 98.6,
+        sourceUnit: "F"
+      }
+    });
+    expect(inputFor(element, "temp").fieldLevelHelp).toContain(
+      "Recorded as 98.6 F."
+    );
+    saveVitals.mockResolvedValueOnce([
+      {
+        lfemr__Observation_Code__c: "8310-5",
+        lfemr__Value_Quantity__c: 98.78,
+        lfemr__Value_Unit__c: "F"
+      }
+    ]);
+    change(element, "temp", "37.1");
+    await autosave();
+    expect(inputFor(element, "temp").fieldLevelHelp).toContain(
+      "Recorded as 98.78 F."
+    );
+    expect(inputFor(element, "temp").label).toBe("Temp (°C)");
+    expect(inputFor(element, "temp").value).toBe("37.1");
+  });
+
+  it("adds recorded-source help after creating a new measurement without replacing later drafts", async () => {
+    const element = await mount({
+      ...metricVitals,
+      weight: { ...metricVitals.weight, value: null }
+    });
+    let finish;
+    saveVitals.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    change(element, "weight", "71");
+    await autosave();
+    change(element, "weight", "72");
+    finish([
+      {
+        lfemr__Observation_Code__c: "29463-7",
+        lfemr__Value_Quantity__c: 71,
+        lfemr__Value_Unit__c: "kg"
+      }
+    ]);
+    await flushPromises();
+    expect(inputFor(element, "weight").fieldLevelHelp).toContain(
+      "Recorded as 71 kg."
+    );
+    expect(inputFor(element, "weight").value).toBe("72");
+    expect(saveVitals).toHaveBeenCalledTimes(1);
+  });
+
   it("retains edits made during an in-flight save and sends them once that save finishes", async () => {
     const element = await mount();
     let finishFirst;
@@ -203,7 +331,7 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
   it("cancels a pending autosave when the encounter changes", async () => {
     const element = await mount();
     change(element, "hr", "74");
-    getEncounterVitalDetails.mockResolvedValueOnce({});
+    getEncounterVitalsForCapture.mockResolvedValueOnce({});
     element.recordId = "encounter-two";
     await flushPromises();
     await autosave();
@@ -212,7 +340,7 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
   });
 
   it("blocks editing until recorded units have loaded and offers a retry after load failure", async () => {
-    getEncounterVitalDetails.mockRejectedValueOnce(
+    getEncounterVitalsForCapture.mockRejectedValueOnce(
       new Error("Unable to load units")
     );
     const element = createElement("c-emr-vitals-capture", {
@@ -222,7 +350,7 @@ describe("c-emr-vitals-capture unit-aware autosave", () => {
     document.body.appendChild(element);
     await flushPromises();
     expect(inputFor(element, "hr").disabled).toBe(true);
-    getEncounterVitalDetails.mockResolvedValueOnce(metricVitals);
+    getEncounterVitalsForCapture.mockResolvedValueOnce(metricVitals);
     element.shadowRoot.querySelector("lightning-button").click();
     await flushPromises();
     expect(inputFor(element, "hr").disabled).toBe(false);

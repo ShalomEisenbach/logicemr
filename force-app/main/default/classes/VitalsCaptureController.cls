@@ -21,6 +21,12 @@ public with sharing class VitalsCaptureController {
     public Decimal minValue { get; set; }
     @AuraEnabled
     public Decimal maxValue { get; set; }
+    @AuraEnabled
+    public Decimal sourceValue { get; set; }
+    @AuraEnabled
+    public String sourceUnit { get; set; }
+    @AuraEnabled
+    public Boolean converted { get; set; }
   }
 
   @TestVisible
@@ -51,6 +57,7 @@ public with sharing class VitalsCaptureController {
   private static final String CODE_SYSTEM_LOINC = 'LOINC';
   private static final String KEY_SYSTOLIC = 'systolic';
   private static final String KEY_DIASTOLIC = 'diastolic';
+  private static final Integer CAPTURE_SCALE = 4;
 
   @TestVisible
   private static final Map<String, VitalDef> VITAL_DEFS = new Map<String, VitalDef>{
@@ -171,7 +178,26 @@ public with sharing class VitalsCaptureController {
             existing.Value_Unit__c
           )
           .setScale(4);
-        if (existing.Value_Quantity__c == storedValue) {
+        // A preference change can round the displayed conversion. Treat that
+        // exact display value as unchanged rather than reducing source precision.
+        Decimal existingInputValue = existing.Value_Quantity__c == null
+          ? null
+          : fromDefaultUnit(
+                row.key,
+                toDefaultUnit(
+                  row.key,
+                  existing.Value_Quantity__c,
+                  existing.Value_Unit__c
+                ),
+                inputUnit
+              )
+              .setScale(CAPTURE_SCALE);
+        if (
+          existing.Value_Quantity__c == storedValue ||
+          (normalizedUnit(row.key, inputUnit) !=
+          normalizedUnit(row.key, existing.Value_Unit__c) &&
+          row.value == existingInputValue)
+        ) {
           continue;
         }
         existing.Value_Quantity__c = storedValue;
@@ -330,6 +356,9 @@ public with sharing class VitalsCaptureController {
         VitalValue detail = new VitalValue();
         detail.value = row.Value_Quantity__c;
         detail.unit = row.Value_Unit__c;
+        detail.sourceValue = row.Value_Quantity__c;
+        detail.sourceUnit = row.Value_Unit__c;
+        detail.converted = false;
         detail.supportedUnit = canonical != null;
         detail.displayUnit = canonical == 'Cel'
           ? '°C'
@@ -340,6 +369,106 @@ public with sharing class VitalsCaptureController {
         }
         result.put(key, detail);
       }
+    }
+    return result;
+  }
+
+  @AuraEnabled
+  public static Map<String, VitalValue> getEncounterVitalsForCapture(
+    Id encounterId
+  ) {
+    requireVitalsReadAccess();
+    if (encounterId != null) {
+      List<Encounter__c> encounters = [
+        SELECT Id
+        FROM Encounter__c
+        WHERE Id = :encounterId
+        WITH USER_MODE
+        LIMIT 1
+      ];
+      if (encounters.isEmpty()) {
+        throw accessError('Encounter was not found or is not accessible.');
+      }
+    }
+    ClinicalUnitSettings.Preferences preferences = ClinicalUnitSettings.getPreferences();
+    Map<String, VitalValue> existing = getEncounterVitalDetails(encounterId);
+    Map<String, VitalValue> result = new Map<String, VitalValue>();
+    for (String key : VITAL_DEFS.keySet()) {
+      VitalValue detail = existing.get(key);
+      result.put(
+        key,
+        preferredValue(key, detail?.value, detail?.unit, preferences)
+      );
+    }
+    return result;
+  }
+
+  public static VitalValue preferredVitalValue(
+    String loinc,
+    Decimal value,
+    String sourceUnit
+  ) {
+    for (String key : VITAL_DEFS.keySet()) {
+      if (VITAL_DEFS.get(key).loinc == loinc) {
+        return preferredValue(
+          key,
+          value,
+          sourceUnit,
+          ClinicalUnitSettings.getPreferences()
+        );
+      }
+    }
+    return null;
+  }
+
+  private static VitalValue preferredValue(
+    String key,
+    Decimal value,
+    String sourceUnit,
+    ClinicalUnitSettings.Preferences preferences
+  ) {
+    VitalDef def = VITAL_DEFS.get(key);
+    VitalValue result = new VitalValue();
+    result.sourceValue = value;
+    result.sourceUnit = sourceUnit;
+    result.converted = false;
+    // A blank new measurement has no source unit yet. A recorded quantity with
+    // an unknown or missing unit must stay raw and noneditable.
+    if (value != null && normalizedUnit(key, sourceUnit) == null) {
+      result.value = value;
+      result.unit = sourceUnit;
+      result.displayUnit = sourceUnit;
+      result.supportedUnit = false;
+      return result;
+    }
+    String captureUnit = def.unit;
+    if (key == 'temp') {
+      captureUnit = preferences.temperatureUnit == 'Cel' ? 'Cel' : 'F';
+    } else if (preferences.measurementSystem == 'Metric') {
+      if (key == 'height')
+        captureUnit = 'cm';
+      if (key == 'weight')
+        captureUnit = 'kg';
+    }
+    result.unit = captureUnit;
+    result.displayUnit = key == 'temp'
+      ? (captureUnit == 'Cel' ? '°C' : '°F')
+      : captureUnit;
+    result.supportedUnit = true;
+    result.converted =
+      value != null &&
+      normalizedUnit(key, sourceUnit) != captureUnit;
+    result.minValue = fromDefaultUnit(key, def.minValue, captureUnit)
+      .setScale(CAPTURE_SCALE);
+    result.maxValue = fromDefaultUnit(key, def.maxValue, captureUnit)
+      .setScale(CAPTURE_SCALE);
+    if (value != null) {
+      result.value = fromDefaultUnit(
+          key,
+          toDefaultUnit(key, value, sourceUnit),
+          captureUnit
+        )
+        .setScale(CAPTURE_SCALE);
     }
     return result;
   }

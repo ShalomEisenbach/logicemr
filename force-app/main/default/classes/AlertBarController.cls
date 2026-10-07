@@ -2,6 +2,11 @@ public with sharing class AlertBarController {
   private static final Integer MAX_RESULTS = 200;
   private static final Integer MAX_QUERY = 50;
   private static final Integer MAX_CHIPS = 8;
+  private static final Set<String> PREFERRED_UNIT_CODES = new Set<String>{
+    '8310-5',
+    '8302-2',
+    '29463-7'
+  };
   private static final String STATUS_ACTIVE = 'Active';
   private static final String CATEGORY_PROBLEM = 'Problem List Item';
   private static final String CRITICALITY_HIGH = 'High';
@@ -232,6 +237,7 @@ public with sharing class AlertBarController {
         Observation_Display__c,
         Observation_Code__c,
         Observation_Code_System__c,
+        Category__c,
         Value_Quantity__c,
         Value_String__c,
         Value_Unit__c,
@@ -485,6 +491,21 @@ public with sharing class AlertBarController {
       );
       item.value = formatObservationValue(row);
       item.unit = displayUnit(row.Value_Unit__c);
+      if (
+        row.Category__c == 'Vital Signs' &&
+        PREFERRED_UNIT_CODES.contains(row.Observation_Code__c) &&
+        row.Value_Quantity__c != null
+      ) {
+        VitalsCaptureController.VitalValue preferred = VitalsCaptureController.preferredVitalValue(
+          row.Observation_Code__c,
+          row.Value_Quantity__c,
+          row.Value_Unit__c
+        );
+        if (preferred != null && preferred.converted == true) {
+          item.value = preferred.value.stripTrailingZeros().toPlainString();
+          item.unit = preferred.displayUnit;
+        }
+      }
       items.add(item);
     }
     String tone = 'empty';

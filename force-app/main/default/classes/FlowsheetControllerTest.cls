@@ -2,6 +2,7 @@
 private class FlowsheetControllerTest {
   @IsTest
   static void getDataGroupsDistinctObservationsIntoRowsAndTimeColumns() {
+    useUnitPreferences('F', 'Imperial');
     Patient__c patient = insertPatient('MRN-FS-1');
     Datetime newer = secondPrecision(Datetime.now().addHours(-2));
     Datetime older = secondPrecision(Datetime.now().addHours(-10));
@@ -580,6 +581,220 @@ private class FlowsheetControllerTest {
       data.totalObservationCount,
       'Raw observation count should include truncated points'
     );
+  }
+
+  @IsTest
+  static void preferredUnitsApplyPerVitalCellWithoutRewritingHistoryOrLabs() {
+    useUnitPreferences('Cel', 'Metric');
+    Patient__c patient = insertPatient('MRN-FS-UNIT-PREF');
+    Datetime newer = secondPrecision(Datetime.now().addHours(-1));
+    Datetime older = newer.addHours(-1);
+    Observation__c oldTemperature = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '8310-5',
+      'Body temperature',
+      98.6,
+      null,
+      'F',
+      'High',
+      older
+    );
+    Observation__c newTemperature = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '8310-5',
+      'Body temperature',
+      37.2,
+      null,
+      'Cel',
+      'Normal',
+      newer
+    );
+    Observation__c height = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '8302-2',
+      'Body height',
+      70,
+      null,
+      '[in_i]',
+      'Normal',
+      older
+    );
+    Observation__c weight = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '29463-7',
+      'Body weight',
+      220.4623,
+      null,
+      '[lb_av]',
+      'High',
+      older
+    );
+    Observation__c laboratory = insertObservation(
+      patient.Id,
+      'Laboratory',
+      '8310-5',
+      'Laboratory sample temperature',
+      98.6,
+      null,
+      'F',
+      'High',
+      newer
+    );
+    Observation__c unsupported = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '8310-5',
+      'Unknown temperature',
+      310,
+      null,
+      'K',
+      'Abnormal',
+      older
+    );
+    Observation__c missingUnit = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '29463-7',
+      'Weight without unit',
+      70,
+      null,
+      null,
+      'Normal',
+      older
+    );
+    Observation__c text = insertObservation(
+      patient.Id,
+      'Vital Signs',
+      '8310-5',
+      'Text temperature',
+      null,
+      'See note',
+      'Cel',
+      'Abnormal',
+      older
+    );
+
+    Test.startTest();
+    Integer dmlBefore = Limits.getDmlStatements();
+    FlowsheetController.FlowsheetData metric = FlowsheetController.getData(
+      patient.Id,
+      'All',
+      'all'
+    );
+    useUnitPreferences('F', 'Imperial');
+    FlowsheetController.FlowsheetData imperial = FlowsheetController.getData(
+      patient.Id,
+      'All',
+      'all'
+    );
+    System.assertEquals(
+      dmlBefore,
+      Limits.getDmlStatements(),
+      'Flowsheet conversion performs no DML'
+    );
+    Test.stopTest();
+
+    Map<Id, FlowsheetController.FlowsheetCell> metricCells = cellsById(
+      metric.rows
+    );
+    Map<Id, FlowsheetController.FlowsheetCell> imperialCells = cellsById(
+      imperial.rows
+    );
+    System.assertEquals(
+      2,
+      metric.columns.size(),
+      'Both historical time points remain visible'
+    );
+    System.assertEquals(newer, metric.columns[0].effectiveDateTime);
+    System.assertEquals(older, metric.columns[1].effectiveDateTime);
+    System.assertEquals('37', metricCells.get(oldTemperature.Id).value);
+    System.assertEquals('°C', metricCells.get(oldTemperature.Id).unit);
+    System.assertEquals(
+      'High',
+      metricCells.get(oldTemperature.Id).interpretation
+    );
+    System.assertEquals('37.2', metricCells.get(newTemperature.Id).value);
+    System.assertEquals(
+      'Cel',
+      metricCells.get(newTemperature.Id).unit,
+      'Already-preferred source unit text is retained'
+    );
+    System.assertEquals('177.8', metricCells.get(height.Id).value);
+    System.assertEquals('cm', metricCells.get(height.Id).unit);
+    System.assertEquals('100', metricCells.get(weight.Id).value);
+    System.assertEquals('kg', metricCells.get(weight.Id).unit);
+    System.assertEquals('98.6', imperialCells.get(oldTemperature.Id).value);
+    System.assertEquals('F', imperialCells.get(oldTemperature.Id).unit);
+    System.assertEquals('98.96', imperialCells.get(newTemperature.Id).value);
+    System.assertEquals('°F', imperialCells.get(newTemperature.Id).unit);
+    System.assertEquals('70', imperialCells.get(height.Id).value);
+    System.assertEquals(
+      '[in_i]',
+      imperialCells.get(height.Id).unit,
+      'Matching imperial aliases keep their source spelling'
+    );
+    System.assertEquals('220.4623', imperialCells.get(weight.Id).value);
+    System.assertEquals('[lb_av]', imperialCells.get(weight.Id).unit);
+    for (
+      Map<Id, FlowsheetController.FlowsheetCell> cells : new List<Map<Id, FlowsheetController.FlowsheetCell>>{
+        metricCells,
+        imperialCells
+      }
+    ) {
+      System.assertEquals(
+        '98.6',
+        cells.get(laboratory.Id).value,
+        'Matching LOINC alone does not convert a laboratory measurement'
+      );
+      System.assertEquals('F', cells.get(laboratory.Id).unit);
+      System.assertEquals('310', cells.get(unsupported.Id).value);
+      System.assertEquals('K', cells.get(unsupported.Id).unit);
+      System.assertEquals('Abnormal', cells.get(unsupported.Id).interpretation);
+      System.assertEquals('70', cells.get(missingUnit.Id).value);
+      System.assertEquals(null, cells.get(missingUnit.Id).unit);
+      System.assertEquals('See note', cells.get(text.Id).value);
+      System.assertEquals('Cel', cells.get(text.Id).unit);
+    }
+    Map<Id, Observation__c> raw = new Map<Id, Observation__c>(
+      metric.observations
+    );
+    System.assertEquals(98.6, raw.get(oldTemperature.Id).Value_Quantity__c);
+    System.assertEquals('F', raw.get(oldTemperature.Id).Value_Unit__c);
+    System.assertEquals(
+      older,
+      raw.get(oldTemperature.Id).Effective_DateTime__c
+    );
+    System.assertEquals(220.4623, raw.get(weight.Id).Value_Quantity__c);
+    System.assertEquals('[lb_av]', raw.get(weight.Id).Value_Unit__c);
+    System.assertEquals('High', raw.get(weight.Id).Interpretation__c);
+  }
+
+  private static void useUnitPreferences(
+    String temperatureUnit,
+    String measurementSystem
+  ) {
+    ClinicalUnitSettings.Preferences preferences = new ClinicalUnitSettings.Preferences();
+    preferences.temperatureUnit = temperatureUnit;
+    preferences.measurementSystem = measurementSystem;
+    ClinicalUnitSettings.preferenceOverride = preferences;
+  }
+
+  private static Map<Id, FlowsheetController.FlowsheetCell> cellsById(
+    List<FlowsheetController.FlowsheetRow> rows
+  ) {
+    Map<Id, FlowsheetController.FlowsheetCell> result = new Map<Id, FlowsheetController.FlowsheetCell>();
+    for (FlowsheetController.FlowsheetRow row : rows) {
+      for (FlowsheetController.FlowsheetCell cell : row.cells) {
+        if (cell.observationId != null) {
+          result.put(cell.observationId, cell);
+        }
+      }
+    }
+    return result;
   }
 
   // Salesforce persists DateTime fields at second precision.

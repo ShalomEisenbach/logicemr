@@ -1,7 +1,10 @@
 import { LightningElement, api } from "lwc";
 import { RefreshEvent } from "lightning/refresh";
 import saveVitals from "@salesforce/apex/VitalsCaptureController.saveVitals";
-import getEncounterVitalDetails from "@salesforce/apex/VitalsCaptureController.getEncounterVitalDetails";
+import getEncounterVitalsForCapture from "@salesforce/apex/VitalsCaptureController.getEncounterVitalsForCapture";
+import OBSERVATION_CODE_FIELD from "@salesforce/schema/Observation__c.Observation_Code__c";
+import VALUE_QUANTITY_FIELD from "@salesforce/schema/Observation__c.Value_Quantity__c";
+import VALUE_UNIT_FIELD from "@salesforce/schema/Observation__c.Value_Unit__c";
 
 const SAVE_DELAY_MS = 400;
 
@@ -110,6 +113,13 @@ const VITAL_ORDER = [
   "weight"
 ];
 
+function decimalPlaces(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric)
+    ? (String(numeric).split(".")[1] || "").length
+    : 0;
+}
+
 export default class EmrVitalsCapture extends LightningElement {
   errorMessage;
   isSaving = false;
@@ -160,15 +170,28 @@ export default class EmrVitalsCapture extends LightningElement {
       const max = detail ? detail.maxValue : def.max;
       const unsupported = !!detail && detail.supportedUnit !== true;
       const rangeMessage = `${def.display} must be between ${min} and ${max} ${displayUnit}.`;
+      const precision = Math.min(
+        4,
+        Math.max(
+          decimalPlaces(def.step),
+          decimalPlaces(min),
+          decimalPlaces(this.values[key])
+        )
+      );
       return {
         ...def,
         label: `${def.label.replace(/\s*\(.*\)$/, "")} (${displayUnit})`,
         unit,
         min,
         max,
-        step: detail ? "any" : def.step,
+        // Avoid Lightning's three-decimal rounding for "any" while respecting
+        // the measurement and range precision, up to the server's four decimals.
+        step: ["1", "0.1", "0.01", "0.001", "0.0001"][precision],
         value: this.values[key],
-        help: `LOINC ${def.loinc}`,
+        help:
+          detail?.sourceValue != null && detail.sourceUnit
+            ? `Recorded as ${detail.sourceValue} ${detail.sourceUnit}. LOINC ${def.loinc}`
+            : `LOINC ${def.loinc}`,
         disabled: this.isLoading || this.loadFailed || unsupported,
         unitWarning: unsupported
           ? `Recorded unit ${unit || "(missing)"} requires review before this measurement can be edited.`
@@ -234,13 +257,28 @@ export default class EmrVitalsCapture extends LightningElement {
     const requestId = ++this.saveRequestId;
     const encounterId = this.recordId;
     try {
-      await saveVitals({
+      const observations = await saveVitals({
         encounterId,
         vitals: parsed
       });
       if (requestId !== this.saveRequestId || encounterId !== this.recordId) {
         return;
       }
+      const details = { ...this.details };
+      for (const observation of observations || []) {
+        const code = observation[OBSERVATION_CODE_FIELD.fieldApiName];
+        const key = VITAL_ORDER.find(
+          (vitalKey) => VITAL_DEFS[vitalKey].loinc === code
+        );
+        if (key) {
+          details[key] = {
+            ...details[key],
+            sourceValue: observation[VALUE_QUANTITY_FIELD.fieldApiName],
+            sourceUnit: observation[VALUE_UNIT_FIELD.fieldApiName]
+          };
+        }
+      }
+      this.details = details;
       const saved = { ...this.savedValues };
       for (const row of parsed) {
         saved[row.key] = String(row.value);
@@ -274,7 +312,7 @@ export default class EmrVitalsCapture extends LightningElement {
     this.isLoading = true;
     this.loadFailed = false;
     try {
-      const latest = await getEncounterVitalDetails({
+      const latest = await getEncounterVitalsForCapture({
         encounterId: this.recordId
       });
       if (requestId !== this.loadRequestId) {

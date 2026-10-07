@@ -358,6 +358,59 @@
           </c-emr-chart-panel>
         </template>
 
+        <template lwc:elseif={isClinicalUnits}>
+          <c-emr-chart-panel title="Vital units">
+            <p class="slds-m-bottom_medium">
+              Choose the units used to display and enter encounter vitals across
+              the organization. Temperature and body measurements can be set
+              independently.
+            </p>
+            <template lwc:if={clinicalUnitsDraft}>
+              <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                  <lightning-combobox
+                    label="Temperature"
+                    value={clinicalUnitsDraft.temperatureUnit}
+                    options={temperatureUnitOptions}
+                    data-field="temperatureUnit"
+                    onchange={handleClinicalUnitsChange}
+                    disabled={isSaving}
+                  ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                  <lightning-combobox
+                    label="Height and weight"
+                    value={clinicalUnitsDraft.measurementSystem}
+                    options={measurementSystemOptions}
+                    data-field="measurementSystem"
+                    onchange={handleClinicalUnitsChange}
+                    disabled={isSaving}
+                  ></lightning-combobox>
+                </div>
+              </div>
+              <p class="slds-m-top_medium slds-text-body_small">
+                Previously recorded measurements keep their original values and
+                units. Compatible measurements are converted for display.
+              </p>
+              <div class="slds-m-top_medium">
+                <lightning-button
+                  variant="brand"
+                  label="Save vital units"
+                  onclick={handleSaveClinicalUnits}
+                  disabled={isSaving}
+                ></lightning-button>
+              </div>
+              <p class="slds-m-top_small slds-text-body_small">
+                Saving may take a moment. Refresh to confirm the saved settings,
+                then reload the encounter vitals to apply them.
+              </p>
+            </template>
+            <template lwc:else>
+              <p>Refresh to load the vital unit settings.</p>
+            </template>
+          </c-emr-chart-panel>
+        </template>
+
         <template lwc:elseif={isCommunications}>
           <c-emr-chart-panel title="Appointment communications">
             <template lwc:if={commDraft}>

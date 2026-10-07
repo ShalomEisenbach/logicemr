@@ -834,6 +834,509 @@ private class VitalsCaptureControllerTest {
     );
   }
 
+  @IsTest
+  static void captureDefaultsPopulateEveryBlankVitalWithIndependentPreferences() {
+    Encounter__c encounter = insertEncounter('MRN-VIT-CAPTURE-BLANK');
+    setCapturePreferences('F', 'Metric');
+    Map<String, VitalsCaptureController.VitalValue> fahrenheitMetric = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    assertCaptureKeys(fahrenheitMetric);
+    assertCaptureDetail(fahrenheitMetric.get('temp'), null, 'F', 86, 113);
+    assertCaptureDetail(
+      fahrenheitMetric.get('height'),
+      null,
+      'cm',
+      30.48,
+      274.32
+    );
+    assertCaptureDetail(
+      fahrenheitMetric.get('weight'),
+      null,
+      'kg',
+      0.4536,
+      498.9516
+    );
+    for (
+      VitalsCaptureController.VitalValue detail : fahrenheitMetric.values()
+    ) {
+      System.assertEquals(
+        null,
+        detail.value,
+        'New measurements must stay blank'
+      );
+      System.assertEquals(null, detail.sourceValue);
+      System.assertEquals(null, detail.sourceUnit);
+      System.assertEquals(false, detail.converted);
+      System.assertEquals(true, detail.supportedUnit);
+    }
+    setCapturePreferences('Cel', 'Imperial');
+    Map<String, VitalsCaptureController.VitalValue> celsiusImperial = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    assertCaptureDetail(celsiusImperial.get('temp'), null, 'Cel', 30, 45);
+    assertCaptureDetail(celsiusImperial.get('height'), null, 'in', 12, 108);
+    assertCaptureDetail(celsiusImperial.get('weight'), null, 'lbs', 1, 1100);
+    System.assertEquals('°C', celsiusImperial.get('temp').displayUnit);
+    System.assertEquals('/min', celsiusImperial.get('hr').unit);
+    System.assertEquals('mmHg', celsiusImperial.get('systolic').unit);
+    System.assertEquals('%', celsiusImperial.get('spo2').unit);
+    System.assertEquals(
+      0,
+      [SELECT COUNT() FROM Observation__c WHERE Encounter__c = :encounter.Id]
+    );
+    System.assertEquals(
+      true,
+      VitalsCaptureController.getEncounterVitalDetails(encounter.Id).isEmpty(),
+      'The raw API must retain its sparse empty-map contract'
+    );
+    assertCaptureKeys(
+      VitalsCaptureController.getEncounterVitalsForCapture(null)
+    );
+  }
+
+  @IsTest
+  static void captureConvertsMetricSourcesWithoutChangingRawOrLegacyReads() {
+    Encounter__c encounter = insertEncounter('MRN-VIT-CAPTURE-IMPERIAL');
+    insertMetricVitals(encounter);
+    List<Observation__c> before = captureObservations(encounter.Id);
+    setCapturePreferences('F', 'Imperial');
+    Integer dmlBefore = Limits.getDmlStatements();
+    Map<String, VitalsCaptureController.VitalValue> capture = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    System.assertEquals(
+      dmlBefore,
+      Limits.getDmlStatements(),
+      'Capture reads must not write observations'
+    );
+    assertCaptureDetail(capture.get('temp'), 98.24, 'F', 86, 113);
+    assertCaptureDetail(
+      capture.get('height'),
+      (170 / Decimal.valueOf('2.54')).setScale(4),
+      'in',
+      12,
+      108
+    );
+    assertCaptureDetail(
+      capture.get('weight'),
+      (70 / Decimal.valueOf('0.45359237')).setScale(4),
+      'lbs',
+      1,
+      1100
+    );
+    System.assertEquals('°F', capture.get('temp').displayUnit);
+    System.assertEquals(36.8, capture.get('temp').sourceValue);
+    System.assertEquals('Cel', capture.get('temp').sourceUnit);
+    System.assertEquals(true, capture.get('temp').converted);
+    Map<String, VitalsCaptureController.VitalValue> raw = VitalsCaptureController.getEncounterVitalDetails(
+      encounter.Id
+    );
+    System.assertEquals(36.8, raw.get('temp').value);
+    System.assertEquals('Cel', raw.get('temp').unit);
+    System.assertEquals(170, raw.get('height').value);
+    System.assertEquals('cm', raw.get('height').unit);
+    System.assertEquals(70, raw.get('weight').value);
+    System.assertEquals('kg', raw.get('weight').unit);
+    System.assertEquals(
+      98.24,
+      VitalsCaptureController.getEncounterVitals(encounter.Id).get('temp')
+    );
+    assertCaptureObservationsUnchanged(before);
+  }
+
+  @IsTest
+  static void captureConvertsImperialSourcesToCelsiusAndMetric() {
+    Encounter__c encounter = insertEncounter('MRN-VIT-CAPTURE-METRIC');
+    insert new List<Observation__c>{
+      recordedVital(encounter, '8310-5', 98.6, '[degF]'),
+      recordedVital(encounter, '8302-2', 67, '[in_i]'),
+      recordedVital(encounter, '29463-7', 154, '[lb_av]')
+    };
+    List<Observation__c> before = captureObservations(encounter.Id);
+    setCapturePreferences('Cel', 'Metric');
+    Map<String, VitalsCaptureController.VitalValue> capture = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    assertCaptureDetail(capture.get('temp'), 37, 'Cel', 30, 45);
+    assertCaptureDetail(capture.get('height'), 170.18, 'cm', 30.48, 274.32);
+    assertCaptureDetail(
+      capture.get('weight'),
+      (154 * Decimal.valueOf('0.45359237')).setScale(4),
+      'kg',
+      0.4536,
+      498.9516
+    );
+    System.assertEquals('[degF]', capture.get('temp').sourceUnit);
+    System.assertEquals('[in_i]', capture.get('height').sourceUnit);
+    System.assertEquals('[lb_av]', capture.get('weight').sourceUnit);
+    System.assertEquals(true, capture.get('height').converted);
+    assertCaptureObservationsUnchanged(before);
+  }
+
+  @IsTest
+  static void convertedCaptureRoundTripsDoNotRedateButRealEditsPreserveSourceAliases() {
+    Encounter__c encounter = insertEncounter('MRN-VIT-CAPTURE-ROUNDTRIP');
+    insert new List<Observation__c>{
+      recordedVital(encounter, '8310-5', 36.8123, 'degC'),
+      recordedVital(encounter, '8302-2', 1.7001, 'm'),
+      recordedVital(encounter, '29463-7', 70000.1234, 'g')
+    };
+    List<Observation__c> before = captureObservations(encounter.Id);
+    for (String measurementSystem : new List<String>{ 'Imperial', 'Metric' }) {
+      setCapturePreferences(
+        measurementSystem == 'Imperial' ? 'F' : 'Cel',
+        measurementSystem
+      );
+      Map<String, VitalsCaptureController.VitalValue> capture = VitalsCaptureController.getEncounterVitalsForCapture(
+        encounter.Id
+      );
+      List<VitalsCaptureController.VitalInput> unchangedInputs = new List<VitalsCaptureController.VitalInput>();
+      for (String key : new List<String>{ 'temp', 'height', 'weight' }) {
+        unchangedInputs.add(
+          vitalWithUnit(key, capture.get(key).value, capture.get(key).unit)
+        );
+      }
+      Integer dmlBefore = Limits.getDmlStatements();
+      System.assertEquals(
+        0,
+        VitalsCaptureController.saveVitals(encounter.Id, unchangedInputs)
+          .size(),
+        'A rounded preferred presentation is still the same source measurement'
+      );
+      System.assertEquals(
+        dmlBefore,
+        Limits.getDmlStatements(),
+        'Preference changes must not cause DML'
+      );
+      assertCaptureObservationsUnchanged(before);
+    }
+    setCapturePreferences('F', 'Imperial');
+    VitalsCaptureController.saveVitals(
+      encounter.Id,
+      new List<VitalsCaptureController.VitalInput>{
+        vitalWithUnit('temp', 99.5, 'F'),
+        vitalWithUnit('height', 68, 'in'),
+        vitalWithUnit('weight', 160, 'lbs')
+      }
+    );
+    Map<String, VitalsCaptureController.VitalValue> raw = VitalsCaptureController.getEncounterVitalDetails(
+      encounter.Id
+    );
+    System.assertEquals(37.5, raw.get('temp').value);
+    System.assertEquals('degC', raw.get('temp').unit);
+    System.assertEquals(1.7272, raw.get('height').value);
+    System.assertEquals('m', raw.get('height').unit);
+    System.assertEquals(72574.7792, raw.get('weight').value);
+    System.assertEquals('g', raw.get('weight').unit);
+    for (Observation__c after : captureObservations(encounter.Id)) {
+      System.assertNotEquals(
+        before[0].Effective_DateTime__c,
+        after.Effective_DateTime__c,
+        'A genuine edit records a new effective timestamp'
+      );
+    }
+  }
+
+  @IsTest
+  static void blankCaptureCreatesMeasurementsInSelectedUnitsThenReloadsWithoutWrites() {
+    Encounter__c encounter = insertEncounter('MRN-VIT-CAPTURE-NEW');
+    setCapturePreferences('Cel', 'Metric');
+    Map<String, VitalsCaptureController.VitalValue> empty = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    VitalsCaptureController.saveVitals(
+      encounter.Id,
+      new List<VitalsCaptureController.VitalInput>{
+        vitalWithUnit('temp', 36.8, empty.get('temp').unit),
+        vitalWithUnit('height', 170, empty.get('height').unit),
+        vitalWithUnit('weight', 70, empty.get('weight').unit)
+      }
+    );
+    Map<String, VitalsCaptureController.VitalValue> raw = VitalsCaptureController.getEncounterVitalDetails(
+      encounter.Id
+    );
+    System.assertEquals(36.8, raw.get('temp').value);
+    System.assertEquals('Cel', raw.get('temp').unit);
+    System.assertEquals(170, raw.get('height').value);
+    System.assertEquals('cm', raw.get('height').unit);
+    System.assertEquals(70, raw.get('weight').value);
+    System.assertEquals('kg', raw.get('weight').unit);
+    List<Observation__c> before = captureObservations(encounter.Id);
+    setCapturePreferences('F', 'Imperial');
+    Map<String, VitalsCaptureController.VitalValue> reload = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    System.assertEquals(
+      0,
+      VitalsCaptureController.saveVitals(
+          encounter.Id,
+          new List<VitalsCaptureController.VitalInput>{
+            vitalWithUnit(
+              'temp',
+              reload.get('temp').value,
+              reload.get('temp').unit
+            ),
+            vitalWithUnit(
+              'height',
+              reload.get('height').value,
+              reload.get('height').unit
+            ),
+            vitalWithUnit(
+              'weight',
+              reload.get('weight').value,
+              reload.get('weight').unit
+            )
+          }
+        )
+        .size()
+    );
+    assertCaptureObservationsUnchanged(before);
+  }
+
+  @IsTest
+  static void preferredCaptureRetainsUnsupportedAndMissingSourceUnits() {
+    Encounter__c encounter = insertEncounter('MRN-VIT-CAPTURE-UNKNOWN');
+    insert new List<Observation__c>{
+      recordedVital(encounter, '8310-5', 310, 'K'),
+      recordedVital(encounter, '8302-2', 1, 'furlong'),
+      recordedVital(encounter, '29463-7', 70, null)
+    };
+    List<Observation__c> before = captureObservations(encounter.Id);
+    setCapturePreferences('Cel', 'Metric');
+    Map<String, VitalsCaptureController.VitalValue> capture = VitalsCaptureController.getEncounterVitalsForCapture(
+      encounter.Id
+    );
+    assertCaptureKeys(capture);
+    for (String key : new List<String>{ 'temp', 'height', 'weight' }) {
+      VitalsCaptureController.VitalValue detail = capture.get(key);
+      System.assertEquals(false, detail.supportedUnit);
+      System.assertEquals(false, detail.converted);
+      System.assertEquals(detail.sourceValue, detail.value);
+      System.assertEquals(detail.sourceUnit, detail.unit);
+      System.assertEquals(null, detail.minValue);
+      System.assertEquals(null, detail.maxValue);
+    }
+    System.assertEquals(310, capture.get('temp').value);
+    System.assertEquals('K', capture.get('temp').displayUnit);
+    System.assertEquals(null, capture.get('weight').unit);
+    Boolean rejected = false;
+    try {
+      VitalsCaptureController.saveVitals(
+        encounter.Id,
+        new List<VitalsCaptureController.VitalInput>{
+          vitalWithUnit('weight', 71, 'kg')
+        }
+      );
+    } catch (AuraHandledException error) {
+      rejected = true;
+    }
+    System.assert(
+      rejected,
+      'A preference cannot label an unknown recorded unit'
+    );
+    assertCaptureObservationsUnchanged(before);
+  }
+
+  @IsTest
+  static void sharedPreferredVitalHelperPreservesProvenanceAndIgnoresOtherCodes() {
+    setCapturePreferences('Cel', 'Metric');
+    VitalsCaptureController.VitalValue converted = VitalsCaptureController.preferredVitalValue(
+      '8310-5',
+      98.6,
+      '[degF]'
+    );
+    System.assertEquals(37, converted.value);
+    System.assertEquals('Cel', converted.unit);
+    System.assertEquals(98.6, converted.sourceValue);
+    System.assertEquals('[degF]', converted.sourceUnit);
+    System.assertEquals(true, converted.converted);
+    VitalsCaptureController.VitalValue sameUnit = VitalsCaptureController.preferredVitalValue(
+      '8310-5',
+      37.1234,
+      'degC'
+    );
+    System.assertEquals(37.1234, sameUnit.value);
+    System.assertEquals('Cel', sameUnit.unit);
+    System.assertEquals('degC', sameUnit.sourceUnit);
+    System.assertEquals(
+      false,
+      sameUnit.converted,
+      'Same-canonical unit aliases allow displays to preserve their original text'
+    );
+    System.assertEquals(
+      170,
+      VitalsCaptureController.preferredVitalValue('8302-2', 1.7, 'm').value
+    );
+    System.assertEquals(
+      70,
+      VitalsCaptureController.preferredVitalValue('29463-7', 70000, 'g').value
+    );
+    System.assertEquals(
+      null,
+      VitalsCaptureController.preferredVitalValue('2339-0', 90, 'mg/dL'),
+      'An unrelated lab result must not be classified as a vital'
+    );
+    System.assertEquals(
+      null,
+      VitalsCaptureController.preferredVitalValue(null, 90, 'mg/dL')
+    );
+  }
+
+  @IsTest
+  static void captureRequiresObservationReadAccess() {
+    User reader = accessUser('vitnread');
+    insert reader;
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-CAPTURE-NO-READ');
+      insertMetricVitals(encounter);
+    }
+    System.runAs(reader) {
+      System.assertEquals(
+        false,
+        Observation__c.SObjectType.getDescribe().isAccessible()
+      );
+      Boolean denied = false;
+      try {
+        VitalsCaptureController.getEncounterVitalsForCapture(encounter.Id);
+      } catch (AuraHandledException error) {
+        denied = error.getMessage().contains('permission');
+      }
+      System.assert(
+        denied,
+        'A direct capture API call must enforce read access'
+      );
+    }
+  }
+
+  @IsTest
+  static void captureAllowsAuthorizedReaderAndRequiresUnitFieldAccess() {
+    User reader = vitalsAccessUser('vitcaprd', false, false, null);
+    User restricted = vitalsAccessUser('vitcapfl', false, false, null);
+    String unitFieldName =
+      qualifiedObjectName(Observation__c.SObjectType) +
+      '.' +
+      Observation__c.Value_Unit__c.getDescribe().getName();
+    delete [
+      SELECT Id
+      FROM FieldPermissions
+      WHERE Parent.Name = 'Vitals_vitcapfl_Test' AND Field = :unitFieldName
+    ];
+    Encounter__c encounter;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      encounter = insertEncounter('MRN-VIT-CAPTURE-READ-FLS');
+      insertMetricVitals(encounter);
+    }
+    setCapturePreferences('Cel', 'Metric');
+    System.runAs(reader) {
+      System.assertEquals(
+        36.8,
+        VitalsCaptureController.getEncounterVitalsForCapture(encounter.Id)
+          .get('temp')
+          .value,
+        'A reader can view preferred values without clinical edit grants'
+      );
+    }
+    System.runAs(restricted) {
+      System.assertEquals(
+        false,
+        Observation__c.Value_Unit__c.getDescribe().isAccessible()
+      );
+      Boolean denied = false;
+      try {
+        VitalsCaptureController.getEncounterVitalsForCapture(encounter.Id);
+      } catch (AuraHandledException error) {
+        denied = error.getMessage().contains('permission');
+      }
+      System.assert(
+        denied,
+        'Unit conversion must not read a restricted source field'
+      );
+    }
+  }
+
+  private static void setCapturePreferences(
+    String temperatureUnit,
+    String measurementSystem
+  ) {
+    ClinicalUnitSettings.Preferences preferences = new ClinicalUnitSettings.Preferences();
+    preferences.temperatureUnit = temperatureUnit;
+    preferences.measurementSystem = measurementSystem;
+    ClinicalUnitSettings.preferenceOverride = preferences;
+  }
+
+  private static void assertCaptureKeys(
+    Map<String, VitalsCaptureController.VitalValue> capture
+  ) {
+    System.assertEquals(
+      new Set<String>{
+        'systolic',
+        'diastolic',
+        'hr',
+        'rr',
+        'temp',
+        'spo2',
+        'height',
+        'weight'
+      },
+      capture.keySet()
+    );
+  }
+
+  private static void assertCaptureDetail(
+    VitalsCaptureController.VitalValue detail,
+    Decimal value,
+    String unit,
+    Decimal minimum,
+    Decimal maximum
+  ) {
+    System.assertEquals(value, detail.value);
+    System.assertEquals(unit, detail.unit);
+    System.assertEquals(minimum, detail.minValue);
+    System.assertEquals(maximum, detail.maxValue);
+    System.assertEquals(true, detail.supportedUnit);
+  }
+
+  private static List<Observation__c> captureObservations(Id encounterId) {
+    return [
+      SELECT
+        Id,
+        Observation_Code__c,
+        Value_Quantity__c,
+        Value_Unit__c,
+        Effective_DateTime__c
+      FROM Observation__c
+      WHERE Encounter__c = :encounterId
+      ORDER BY Id
+    ];
+  }
+
+  private static void assertCaptureObservationsUnchanged(
+    List<Observation__c> before
+  ) {
+    Set<Id> observationIds = new Map<Id, Observation__c>(before).keySet();
+    Map<Id, Observation__c> after = new Map<Id, Observation__c>(
+      [
+        SELECT Id, Value_Quantity__c, Value_Unit__c, Effective_DateTime__c
+        FROM Observation__c
+        WHERE Id IN :observationIds
+      ]
+    );
+    for (Observation__c row : before) {
+      System.assertEquals(
+        row.Value_Quantity__c,
+        after.get(row.Id).Value_Quantity__c
+      );
+      System.assertEquals(row.Value_Unit__c, after.get(row.Id).Value_Unit__c);
+      System.assertEquals(
+        row.Effective_DateTime__c,
+        after.get(row.Id).Effective_DateTime__c,
+        'A preferred presentation must not redate a recorded observation'
+      );
+    }
+  }
+
   private static void assertMeasurementUnchanged(Observation__c before) {
     Observation__c after = [
       SELECT Value_Quantity__c, Effective_DateTime__c

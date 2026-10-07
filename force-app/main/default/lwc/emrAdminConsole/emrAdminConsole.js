@@ -11,6 +11,7 @@ import getBillingOrganization from "@salesforce/apex/AdminConsoleController.getB
 import saveBillingOrganization from "@salesforce/apex/AdminConsoleController.saveBillingOrganization";
 import saveEligibilitySetting from "@salesforce/apex/AdminConsoleController.saveEligibilitySetting";
 import saveCommConfig from "@salesforce/apex/AdminConsoleController.saveCommConfig";
+import saveClinicalUnits from "@salesforce/apex/AdminConsoleController.saveClinicalUnits";
 import saveMessageTemplate from "@salesforce/apex/AdminConsoleController.saveMessageTemplate";
 import saveNameFormat from "@salesforce/apex/AdminConsoleController.saveNameFormat";
 import scheduleReminderJob from "@salesforce/apex/AdminConsoleController.scheduleReminderJob";
@@ -32,6 +33,7 @@ const SECTIONS = [
   { id: "eligibility", label: "Eligibility" },
   { id: "eligibilityQueue", label: "Eligibility work queue" },
   { id: "communications", label: "Communications" },
+  { id: "clinicalUnits", label: "Vital units" },
   { id: "noteTemplates", label: "Note templates" },
   { id: "codeSets", label: "Code sets" },
   { id: "nameFormats", label: "Name formats" },
@@ -53,6 +55,7 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
   @track billingOrgDraft = {};
   @track eligibilityDraft;
   @track commDraft;
+  @track clinicalUnitsDraft;
   @track messageTemplates = [];
   @track nameFormats = [];
   @track nameBackfillObjects = [];
@@ -104,6 +107,23 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
   }
   get isCommunications() {
     return this.activeSection === "communications";
+  }
+  get isClinicalUnits() {
+    return this.activeSection === "clinicalUnits";
+  }
+
+  get temperatureUnitOptions() {
+    return [
+      { label: "Fahrenheit (°F)", value: "F" },
+      { label: "Celsius (°C)", value: "Cel" }
+    ];
+  }
+
+  get measurementSystemOptions() {
+    return [
+      { label: "Imperial — inches and pounds", value: "Imperial" },
+      { label: "Metric — centimeters and kilograms", value: "Metric" }
+    ];
   }
   get isNoteTemplates() {
     return this.activeSection === "noteTemplates";
@@ -322,6 +342,9 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
         ? { ...data.eligibilitySetting }
         : null;
       this.commDraft = data.commConfig ? { ...data.commConfig } : null;
+      this.clinicalUnitsDraft = data.clinicalUnits
+        ? { ...data.clinicalUnits }
+        : null;
       this.messageTemplates = (data.messageTemplates || []).map((row) => ({
         ...row
       }));
@@ -483,6 +506,31 @@ export default class EmrAdminConsole extends NavigationMixin(LightningElement) {
     await this.runAction(
       () => saveCommConfig({ config: this.commDraft }),
       "Communications config deploy queued."
+    );
+  }
+
+  handleClinicalUnitsChange(event) {
+    const field = event.target.dataset.field;
+    if (!["temperatureUnit", "measurementSystem"].includes(field)) {
+      return;
+    }
+    this.clinicalUnitsDraft = {
+      ...this.clinicalUnitsDraft,
+      [field]: event.detail.value
+    };
+  }
+
+  async handleSaveClinicalUnits() {
+    if (this.isSaving || !this.clinicalUnitsDraft) {
+      return;
+    }
+    await this.runAction(
+      () =>
+        saveClinicalUnits({
+          temperatureUnit: this.clinicalUnitsDraft.temperatureUnit,
+          measurementSystem: this.clinicalUnitsDraft.measurementSystem
+        }),
+      "Vital unit settings queued. Refresh to confirm the saved settings."
     );
   }
 

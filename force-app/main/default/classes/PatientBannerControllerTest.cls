@@ -2,6 +2,7 @@
 private class PatientBannerControllerTest {
   @IsTest
   static void getLatestVitalsReturnsNewestOfEachCodeAndPairsBloodPressure() {
+    useUnitPreferences('F', 'Metric');
     Patient__c patient = insertPatient('MRN-BAN-1');
     Patient__c other = insertPatient('MRN-BAN-2');
     Datetime older = Datetime.newInstance(2024, 3, 1, 8, 0, 0);
@@ -294,6 +295,131 @@ private class PatientBannerControllerTest {
       result.items[1].recordedAt,
       'An older vital keeps its own date instead of borrowing the latest date'
     );
+  }
+
+  @IsTest
+  static void preferredUnitsConvertBannerValuesWithoutChangingRecordedMeasurements() {
+    useUnitPreferences('Cel', 'Metric');
+    Patient__c patient = insertPatient('MRN-BAN-UNIT-PREF');
+    Datetime recorded = Datetime.newInstance(2026, 10, 7, 9, 0, 0);
+    Observation__c temperature = insertObservation(
+      patient.Id,
+      '8310-5',
+      98.6,
+      'F',
+      recorded
+    );
+    Observation__c weight = insertObservation(
+      patient.Id,
+      '29463-7',
+      220.4623,
+      'lbs',
+      recorded
+    );
+    insertObservation(patient.Id, '8867-4', 72, '/min', recorded);
+
+    Test.startTest();
+    Integer dmlBefore = Limits.getDmlStatements();
+    PatientBannerController.LatestVitals metric = PatientBannerController.getLatestVitals(
+      patient.Id
+    );
+    useUnitPreferences('F', 'Imperial');
+    PatientBannerController.LatestVitals imperial = PatientBannerController.getLatestVitals(
+      patient.Id
+    );
+    useUnitPreferences('Cel', 'Imperial');
+    PatientBannerController.LatestVitals mixed = PatientBannerController.getLatestVitals(
+      patient.Id
+    );
+    System.assertEquals(
+      dmlBefore,
+      Limits.getDmlStatements(),
+      'Display preferences perform no DML'
+    );
+    Test.stopTest();
+
+    System.assertEquals('37 °C', valuesByKey(metric.items).get('temp'));
+    System.assertEquals(
+      '100 kg',
+      valuesByKey(metric.items).get('weight'),
+      'Conversion removes fractional zeros without losing whole-number zeros'
+    );
+    System.assertEquals('72 /min', valuesByKey(metric.items).get('hr'));
+    System.assertEquals('98.6 °F', valuesByKey(imperial.items).get('temp'));
+    System.assertEquals(
+      '220.4623 lbs',
+      valuesByKey(imperial.items).get('weight')
+    );
+    System.assertEquals('37 °C', valuesByKey(mixed.items).get('temp'));
+    System.assertEquals(
+      '220.4623 lbs',
+      valuesByKey(mixed.items).get('weight'),
+      'Temperature preference is independent of the measurement system'
+    );
+    System.assertEquals(recorded, metric.recordedAt);
+    for (PatientBannerController.VitalItem item : metric.items) {
+      System.assertEquals(
+        recorded,
+        item.recordedAt,
+        'Each vital retains its recorded time'
+      );
+    }
+    Map<Id, Observation__c> stored = new Map<Id, Observation__c>(
+      [
+        SELECT Value_Quantity__c, Value_Unit__c, Effective_DateTime__c
+        FROM Observation__c
+        WHERE Id IN :new List<Id>{ temperature.Id, weight.Id }
+      ]
+    );
+    System.assertEquals(98.6, stored.get(temperature.Id).Value_Quantity__c);
+    System.assertEquals('F', stored.get(temperature.Id).Value_Unit__c);
+    System.assertEquals(220.4623, stored.get(weight.Id).Value_Quantity__c);
+    System.assertEquals('lbs', stored.get(weight.Id).Value_Unit__c);
+    System.assertEquals(recorded, stored.get(weight.Id).Effective_DateTime__c);
+  }
+
+  @IsTest
+  static void unsupportedBannerUnitsAndMatchingAliasesRetainRecordedText() {
+    useUnitPreferences('Cel', 'Metric');
+    Patient__c unknown = insertPatient('MRN-BAN-UNIT-UNKNOWN');
+    Patient__c aliases = insertPatient('MRN-BAN-UNIT-ALIASES');
+    Datetime recorded = Datetime.newInstance(2026, 10, 7, 10, 0, 0);
+    insertObservation(unknown.Id, '8310-5', 310, 'K', recorded);
+    insertObservation(unknown.Id, '29463-7', 70, null, recorded);
+    insertObservation(aliases.Id, '8310-5', 98.6, '[degF]', recorded);
+    insertObservation(aliases.Id, '29463-7', 170, '[lb_av]', recorded);
+    // A newer laboratory observation cannot replace a recorded vital of the same code.
+    insertLab(unknown.Id, '8310-5', 999, recorded.addHours(1));
+
+    Map<String, String> unknownValues = valuesByKey(
+      PatientBannerController.getLatestVitals(unknown.Id).items
+    );
+    useUnitPreferences('F', 'Imperial');
+    Map<String, String> aliasValues = valuesByKey(
+      PatientBannerController.getLatestVitals(aliases.Id).items
+    );
+    System.assertEquals('310 K', unknownValues.get('temp'));
+    System.assertEquals(
+      '70',
+      unknownValues.get('weight'),
+      'A missing unit cannot be guessed'
+    );
+    System.assertEquals('98.6 °F', aliasValues.get('temp'));
+    System.assertEquals(
+      '170 [lb_av]',
+      aliasValues.get('weight'),
+      'An already-preferred unit alias keeps its recorded spelling'
+    );
+  }
+
+  private static void useUnitPreferences(
+    String temperatureUnit,
+    String measurementSystem
+  ) {
+    ClinicalUnitSettings.Preferences preferences = new ClinicalUnitSettings.Preferences();
+    preferences.temperatureUnit = temperatureUnit;
+    preferences.measurementSystem = measurementSystem;
+    ClinicalUnitSettings.preferenceOverride = preferences;
   }
 
   private static Map<String, String> valuesByKey(
