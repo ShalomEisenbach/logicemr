@@ -1,0 +1,28 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+
+.clear-button {
+    pointer-events: auto;
+}
+
+.chevron {
+    pointer-events: none;
+}
+
+.option-label,
+.option-meta {
+    display: block;
+}
+
+.option-meta {
+    font-size: 0.75rem;
+    color: var(--slds-g-color-neutral-base-30, #5c5c5c);
+}
+
+.no-match {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--slds-g-color-neutral-base-30, #5c5c5c);
+}

@@ -355,6 +355,8 @@ private class SchedulingIntegrityServiceTest {
     List<ObjectPermissions> objectAccess = new List<ObjectPermissions>();
     for (
       Schema.SObjectType objectType : new List<Schema.SObjectType>{
+        // Read on Encounter requires read on its parent Patient, or the insert below is refused.
+        Patient__c.SObjectType,
         Schedule__c.SObjectType,
         Slot__c.SObjectType,
         Appointment__c.SObjectType,

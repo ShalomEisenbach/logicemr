@@ -9,7 +9,8 @@ export const APPT_PROPOSED = "Proposed";
 export const DEFAULT_DURATION = 30;
 export const DEFAULT_START_MINUTES = 8 * 60;
 export const DEFAULT_END_MINUTES = 17 * 60;
-export const ROW_HEIGHT = 28;
+// Tall enough for an appointment's two lines (name, then time and status) in one slot row.
+export const ROW_HEIGHT = 36;
 export const DRAG_THRESHOLD = 4;
 export const OPEN_STATUSES = new Set([APPT_PROPOSED, APPT_BOOKED]);
 
@@ -344,6 +345,49 @@ export function assignLanes(items) {
     lanes.set(item.id, lane);
   });
   return { lanes, laneCount: Math.max(1, laneEnds.length) };
+}
+
+/**
+ * Lanes grouped by provider. Each provider gets its own run of lanes, in name order, so a day with
+ * several providers reads as one labeled column per provider instead of slots packed wherever they
+ * fit. Within a provider, overlapping slots (two clinics, a double booking) still sit side by side.
+ * Returns the same shape as assignLanes plus providers: [{ key, name, locations, startLane, span }].
+ */
+export function assignProviderLanes(items) {
+  const groupsByKey = new Map();
+  (items || []).forEach((item) => {
+    const key = item.practitionerId || "";
+    if (!groupsByKey.has(key)) {
+      groupsByKey.set(key, {
+        key,
+        name: item.practitionerName || "Unassigned",
+        items: []
+      });
+    }
+    groupsByKey.get(key).items.push(item);
+  });
+  const groups = [...groupsByKey.values()].sort(
+    (left, right) =>
+      left.name.localeCompare(right.name) || left.key.localeCompare(right.key)
+  );
+  const lanes = new Map();
+  let offset = 0;
+  const providers = groups.map((group) => {
+    const packed = assignLanes(group.items);
+    packed.lanes.forEach((lane, id) => lanes.set(id, offset + lane));
+    const entry = {
+      key: group.key,
+      name: group.name,
+      locations: [
+        ...new Set(group.items.map((item) => item.locationName).filter(Boolean))
+      ],
+      startLane: offset,
+      span: packed.laneCount
+    };
+    offset += packed.laneCount;
+    return entry;
+  });
+  return { lanes, laneCount: Math.max(1, offset), providers };
 }
 
 export function laneInsetStyle(lane, laneCount) {

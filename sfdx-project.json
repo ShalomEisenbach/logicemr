@@ -4,13 +4,20 @@
       "path": "force-app",
       "default": true,
       "package": "LogicEMR",
-      "versionName": "ver 0.1",
-      "versionNumber": "0.1.0.NEXT",
+      "versionName": "ver 0.3",
+      "versionNumber": "0.3.0.NEXT",
+      "versionDescription": "LogicEMR: Logicfold's EMR on Salesforce (patient chart, scheduling, coverage, billing).",
       "definitionFile": "config/project-scratch-def.json"
     }
   ],
   "name": "LogicEMR",
   "namespace": "lfemr",
   "sfdcLoginUrl": "https://login.salesforce.com",
-  "sourceApiVersion": "61.0"
+  "sourceApiVersion": "61.0",
+  "packageAliases": {
+    "LogicEMR": "0HoQU00000004A50AI",
+    "LogicEMR@0.1.0-1": "04tQU00000YwWojYAF",
+    "LogicEMR@0.2.0-1": "04tQU00000YwZg9YAF",
+    "LogicEMR@0.3.0-1": "04tQU00000YwbDJYAZ"
+  }
 }

@@ -8,6 +8,7 @@ import getGridForProviders from "@salesforce/apex/AppointmentCalendarController.
 import getActiveSchedules from "@salesforce/apex/AppointmentCalendarController.getActiveSchedules";
 import getActiveSchedulesForProviders from "@salesforce/apex/AppointmentCalendarController.getActiveSchedulesForProviders";
 import getNextAvailability from "@salesforce/apex/AppointmentCalendarController.getNextAvailability";
+import getProviders from "@salesforce/apex/AppointmentCalendarController.getProviders";
 import bookAppointment from "@salesforce/apex/AppointmentCalendarController.bookAppointment";
 import rescheduleAppointment from "@salesforce/apex/AppointmentCalendarController.rescheduleAppointment";
 import cancelAppointment from "@salesforce/apex/AppointmentCalendarController.cancelAppointment";
@@ -51,6 +52,7 @@ import {
   emptyState,
   findFreeSlotAt,
   assignLanes,
+  assignProviderLanes,
   formatClock,
   formatDayHeader,
   formatRangeLabel,
@@ -112,6 +114,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
   locationOptions = [{ label: "Any location", value: ANY_LOCATION }];
   schedules = [];
   nextAvailability = [];
+  providers = [];
   viewMode = VIEW_DAY;
   selectedDate;
   slotDurationMinutes = DEFAULT_DURATION;
@@ -168,6 +171,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
     if (this.embedded) {
       return;
     }
+    this.loadProviders();
     this.loadLocations();
     this.loadGrid();
     this.loadNextAvailability();
@@ -475,12 +479,15 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
       const key = toIsoDate(day);
       const header = formatDayHeader(day);
       const isToday = civilDateKey(today, TIME_ZONE) === key;
+      const providers = this.providersForDay(key);
       return {
         key,
         weekday: header.weekday,
         dateLabel: header.dateLabel,
         headerClass: isToday ? "day-header day-header_today" : "day-header",
-        bodyStyle: `height:${totalHeight}px`,
+        providers,
+        hasProviders: providers.length > 0,
+        bodyStyle: `height:${totalHeight}px;--row-h:${ROW_HEIGHT}px`,
         slots: this.slotsForDay(key, bounds.startMinutes),
         blocks: this.blocksForDay(key, bounds.startMinutes),
         showNow:
@@ -498,15 +505,69 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
       : "paint-preview";
   }
 
+  /**
+   * How a day's slots share the width. Day view with several providers: one labeled run of lanes per
+   * provider. Week view, or a single provider: slots pack wherever they fit, as before.
+   */
+  packingForDay(daySlots) {
+    if (!this.isWeek) {
+      const grouped = assignProviderLanes(daySlots);
+      if (grouped.providers.length > 1) {
+        return grouped;
+      }
+    }
+    return { ...assignLanes(daySlots), providers: [] };
+  }
+
+  /** The provider headings over a day column; empty when the day isn't grouped by provider. */
+  providersForDay(dayKey) {
+    const packing = this.packingForDay(
+      this.state.slots.filter(
+        (slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey
+      )
+    );
+    return packing.providers.map((provider) => ({
+      key: provider.key || "unassigned",
+      name: provider.name,
+      meta: provider.locations.join(" · "),
+      title: [provider.name, ...provider.locations].join(" · "),
+      style: `left:${(provider.startLane / packing.laneCount) * 100}%;width:${(provider.span / packing.laneCount) * 100}%`
+    }));
+  }
+
+  /** Day view grouped by provider: a spacer in the time gutter keeps the hours lined up with the rows. */
+  get showProviderRow() {
+    return this.dayColumns.some((day) => day.hasProviders);
+  }
+
+  /** Keeps every provider column wide enough to read; the grid scrolls sideways when there are many. */
+  get gridStyle() {
+    if (this.isWeek) {
+      return "";
+    }
+    const lanes = this.packingForDay(
+      this.state.slots.filter(
+        (slot) =>
+          civilDateKey(slot.startTime, TIME_ZONE) ===
+          toIsoDate(visibleDays(this.selectedDate, false)[0])
+      )
+    ).laneCount;
+    return lanes > 1 ? `min-width:calc(4.25rem + ${lanes} * 11rem)` : "";
+  }
+
   slotsForDay(dayKey, startMinutes) {
     const daySlots = this.state.slots.filter(
       (slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey
     );
-    const packing = assignLanes(daySlots);
+    const packing = this.packingForDay(daySlots);
     return daySlots.map((slot) => {
       const context = slotContext(slot);
       return {
         id: slot.id,
+        time:
+          slot.status === SLOT_FREE
+            ? formatClock(slot.startTime, TIME_ZONE)
+            : "",
         label:
           slot.status === SLOT_FREE && !this.isWeek && this.practitionerId
             ? slot.locationName || ""
@@ -533,18 +594,25 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
     const daySlots = this.state.slots.filter(
       (slot) => civilDateKey(slot.startTime, TIME_ZONE) === dayKey
     );
-    const packing = assignLanes(daySlots);
+    const packing = this.packingForDay(daySlots);
+    // Under a provider heading the provider's name on every card is noise; the location still helps.
+    const grouped = packing.providers.length > 1;
     return this.state.blocks
       .filter((block) => civilDateKey(block.startTime, TIME_ZONE) === dayKey)
       .map((block) => {
         const dragging = this.drag?.appointmentId === block.id;
         const context = slotContext(block);
         const lane = packing.lanes.get(block.slotId) || 0;
+        const metaContext = grouped
+          ? block.locationName
+            ? ` · ${block.locationName}`
+            : ""
+          : context;
         return {
           id: block.id,
           slotId: block.slotId,
           label: block.patientName || block.name || "Appointment",
-          meta: `${formatClock(block.startTime, TIME_ZONE)} · ${block.status}${context}`,
+          meta: `${formatClock(block.startTime, TIME_ZONE)} · ${block.status}${metaContext}`,
           title: `${block.patientName || block.name || "Appointment"} · ${block.status}${context}`,
           className: [
             "block",
@@ -607,8 +675,10 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
     );
   }
 
+  /** The provider filter changed: a provider's Id, or nothing for all providers. */
   async handlePractitionerChange(event) {
-    this._practitionerId = event.detail.recordId;
+    this._practitionerId =
+      event.detail.value || event.detail.recordId || undefined;
     this.practitionerIds = this.practitionerId ? [this.practitionerId] : [];
     if (!this.practitionerId) {
       this.manageAvailability = false;
@@ -800,9 +870,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
       return;
     }
     const hit = this.hitTest(event.clientX, event.clientY);
-    const target = hit
-      ? findFreeSlotAt(this.state.slots, hit.dayKey, hit.minutes, TIME_ZONE)
-      : null;
+    const target = hit ? this.freeSlotAtHit(hit) : null;
     if (!target || target.id === drag.snapshot.fromSlotId) {
       this.state = revertMove(this.state, drag.snapshot);
       if (target?.id !== drag.snapshot.fromSlotId) {
@@ -1084,6 +1152,25 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
       return;
     }
     this[NavigationMixin.Navigate](recordViewPageRef(recordId, objectApiName));
+  }
+
+  /** Every active provider, for the filter's dropdown. A failure leaves only "All providers". */
+  async loadProviders() {
+    if (this.hideFilters) {
+      return;
+    }
+    try {
+      this.providers = (await getProviders()) || [];
+    } catch {
+      this.providers = [];
+    }
+  }
+
+  get providerOptions() {
+    return (this.providers || []).map((row) => ({
+      value: row.id,
+      label: row.name || "Provider"
+    }));
   }
 
   async loadNextAvailability() {
@@ -1462,11 +1549,46 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
             bounds.startMinutes,
             this.slotDurationMinutes,
             ROW_HEIGHT
-          )
+          ),
+          // How far across the day the pointer is (0 to 1), to tell which provider's column it is over.
+          fraction: rect.width ? (clientX - rect.left) / rect.width : 0
         };
       }
     }
     return null;
+  }
+
+  /**
+   * The Free slot under the pointer. In a day grouped by provider only that provider's column counts,
+   * so dropping an appointment in Dr. Lee's column never lands it on another provider's opening.
+   */
+  freeSlotAtHit(hit) {
+    const daySlots = this.state.slots.filter(
+      (slot) => civilDateKey(slot.startTime, TIME_ZONE) === hit.dayKey
+    );
+    const packing = this.packingForDay(daySlots);
+    if (packing.providers.length > 1) {
+      const lane = Math.min(
+        packing.laneCount - 1,
+        Math.max(0, Math.floor((hit.fraction || 0) * packing.laneCount))
+      );
+      const provider = packing.providers.find(
+        (row) => lane >= row.startLane && lane < row.startLane + row.span
+      );
+      const key = provider ? provider.key : "";
+      return findFreeSlotAt(
+        daySlots.filter((slot) => (slot.practitionerId || "") === key),
+        hit.dayKey,
+        hit.minutes,
+        TIME_ZONE
+      );
+    }
+    return findFreeSlotAt(
+      this.state.slots,
+      hit.dayKey,
+      hit.minutes,
+      TIME_ZONE
+    );
   }
 
   toast(message, variant) {

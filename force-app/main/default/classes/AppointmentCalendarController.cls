@@ -121,6 +121,14 @@ public with sharing class AppointmentCalendarController {
     }
   }
 
+  /** One row of the calendar's provider filter. */
+  public class ProviderOption {
+    @AuraEnabled
+    public Id id;
+    @AuraEnabled
+    public String name;
+  }
+
   public class ScheduleOption {
     @AuraEnabled
     public Id id;
@@ -183,6 +191,31 @@ public with sharing class AppointmentCalendarController {
     public Integer created;
     @AuraEnabled
     public Integer skipped;
+  }
+
+  /**
+   * Every active practitioner the user can see, by name, for the calendar's provider filter.
+   * A user with no access to practitioners gets an empty list rather than an error.
+   */
+  @AuraEnabled
+  public static List<ProviderOption> getProviders() {
+    List<ProviderOption> options = new List<ProviderOption>();
+    if (!Schema.sObjectType.Practitioner__c.isAccessible()) {
+      return options;
+    }
+    for (Practitioner__c row : [
+      SELECT Id, Name
+      FROM Practitioner__c
+      WHERE Active__c = TRUE
+      ORDER BY Name
+      LIMIT 1000
+    ]) {
+      ProviderOption option = new ProviderOption();
+      option.id = row.Id;
+      option.name = row.Name;
+      options.add(option);
+    }
+    return options;
   }
 
   @AuraEnabled

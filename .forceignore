@@ -12,3 +12,10 @@ package.xml
 **/__tests__/**
 
 node_modules/
+
+# Regression tests from the 2026-10-07 mapping audit. They fail on purpose until the mapping tool is fixed,
+# so they stay out of deploys and package versions until then.
+**/MappingBuilderSafetyRegressionTest.cls
+**/MappingBuilderSafetyRegressionTest.cls-meta.xml
+**/MappingSafetyRegressionTest.cls
+**/MappingSafetyRegressionTest.cls-meta.xml
