@@ -1,34 +1,9 @@
 <template>
-  <lightning-card title="Enhanced calendar" icon-name="standard:event">
+  <lightning-card title="Schedule" icon-name="standard:event">
     <div class={shellClass}>
       <div class={toolbarClass}>
-        <template lwc:if={showFilters}>
-          <div class="toolbar-filters">
-            <lightning-record-picker
-              label="Provider"
-              placeholder="Search practitioners"
-              object-api-name={practitionerObjectApiName}
-              value={practitionerId}
-              onchange={handlePractitionerChange}
-            ></lightning-record-picker>
-            <lightning-combobox
-              name="location"
-              label="Location"
-              value={locationKey}
-              options={locationOptions}
-              onchange={handleLocationChange}
-            ></lightning-combobox>
-          </div>
-        </template>
+        <!-- When: the date and how much of it, on one line -->
         <div class="toolbar-nav">
-          <lightning-radio-group
-            name="viewMode"
-            label="View"
-            options={viewOptions}
-            value={viewMode}
-            type="button"
-            onchange={handleViewChange}
-          ></lightning-radio-group>
           <div class="nav-row">
             <lightning-button-icon
               icon-name="utility:chevronleft"
@@ -56,22 +31,54 @@
               type="date"
               value={selectedDate}
               variant="label-hidden"
+              class="nav-date"
               onchange={handleDateChange}
             ></lightning-input>
+            <p class="range-label" aria-live="polite">{rangeLabel}</p>
+          </div>
+          <div class="nav-row nav-row_end">
+            <lightning-radio-group
+              name="viewMode"
+              label="View"
+              variant="label-hidden"
+              options={viewOptions}
+              value={viewMode}
+              type="button"
+              onchange={handleViewChange}
+            ></lightning-radio-group>
             <lightning-button
               label="Refresh"
+              icon-name="utility:refresh"
               variant="neutral"
               disabled={isBusy}
               onclick={handleRefresh}
             ></lightning-button>
           </div>
-          <p class="range-label" aria-live="polite">{rangeLabel}</p>
         </div>
+        <!-- Who and where -->
+        <template lwc:if={showFilters}>
+          <div class="toolbar-filters">
+            <lightning-record-picker
+              label="Provider"
+              placeholder="All providers"
+              object-api-name={practitionerObjectApiName}
+              value={practitionerId}
+              onchange={handlePractitionerChange}
+            ></lightning-record-picker>
+            <lightning-combobox
+              name="location"
+              label="Location"
+              value={locationKey}
+              options={locationOptions}
+              onchange={handleLocationChange}
+            ></lightning-combobox>
+          </div>
+        </template>
       </div>
 
       <template lwc:if={showNextAvailability}>
         <div class="next-availability">
-          <h3 class="next-availability-title">Next availability</h3>
+          <h3 class="next-availability-title">Next opening</h3>
           <ul class="next-list">
             <template for:each={nextAvailabilityRows} for:item="row">
               <li key={row.key}>
@@ -101,6 +108,8 @@
             label={manageToggleLabel}
             checked={manageAvailability}
             disabled={isManageDisabled}
+            message-toggle-active="On"
+            message-toggle-inactive="Off"
             onchange={handleManageToggle}
           ></lightning-input>
           <template lwc:if={showPaintMode}>
@@ -150,17 +159,22 @@
       </template>
       <template lwc:elseif={showGrid}>
         <div class="legend" aria-hidden="true">
-          <span class="legend-item legend-item_free">Free</span>
+          <span class="legend-item legend-item_free">Open</span>
           <span class="legend-item legend-item_booked">Booked</span>
           <span class="legend-item legend-item_arrived">Arrived</span>
           <span class="legend-item legend-item_blocked">Blocked</span>
-          <span class="legend-item legend-item_noshow">No Show</span>
+          <span class="legend-item legend-item_noshow">No show</span>
           <span class="legend-item legend-item_cancelled">Cancelled</span>
         </div>
         <div class="grid-scroll">
-          <div class={gridClass}>
+          <div class={gridClass} style={gridStyle}>
             <div class="time-gutter">
-              <div class="time-gutter-header"></div>
+              <div class="grid-head">
+                <div class="time-gutter-header"></div>
+                <template lwc:if={showProviderRow}>
+                  <div class="provider-row provider-row_gutter"></div>
+                </template>
+              </div>
               <template for:each={timeLabels} for:item="tick">
                 <div key={tick.key} class={tick.className} style={tick.style}>
                   {tick.label}
@@ -169,9 +183,30 @@
             </div>
             <template for:each={dayColumns} for:item="day">
               <div key={day.key} class="day-col">
-                <div class={day.headerClass}>
-                  <span class="day-weekday">{day.weekday}</span>
-                  <span class="day-date">{day.dateLabel}</span>
+                <!-- The date, and under it one heading per provider, stay in view while the day scrolls -->
+                <div class="grid-head">
+                  <div class={day.headerClass}>
+                    <span class="day-weekday">{day.weekday}</span>
+                    <span class="day-date">{day.dateLabel}</span>
+                  </div>
+                  <template lwc:if={day.hasProviders}>
+                    <div class="provider-row" data-id="provider-row">
+                      <template for:each={day.providers} for:item="provider">
+                        <div
+                          key={provider.key}
+                          class="provider-head"
+                          style={provider.style}
+                          title={provider.title}
+                          data-id="provider-head"
+                        >
+                          <span class="provider-name">{provider.name}</span>
+                          <template lwc:if={provider.meta}>
+                            <span class="provider-meta">{provider.meta}</span>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
                 </div>
                 <div
                   class="day-body"
@@ -192,6 +227,9 @@
                       disabled={slot.disabled}
                       onclick={handleSlotClick}
                     >
+                      <template lwc:if={slot.time}>
+                        <span class="slot-time">{slot.time}</span>
+                      </template>
                       <template lwc:if={slot.label}>
                         <span class="slot-label">{slot.label}</span>
                       </template>
