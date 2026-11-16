@@ -58,13 +58,16 @@
         <!-- Who and where -->
         <template lwc:if={showFilters}>
           <div class="toolbar-filters">
-            <lightning-record-picker
+            <!-- Lists every provider and narrows as you type; "All providers" clears the pick -->
+            <c-emr-searchable-select
               label="Provider"
               placeholder="All providers"
-              object-api-name={practitionerObjectApiName}
+              all-label="All providers"
+              options={providerOptions}
               value={practitionerId}
+              data-id="provider-filter"
               onchange={handlePractitionerChange}
-            ></lightning-record-picker>
+            ></c-emr-searchable-select>
             <lightning-combobox
               name="location"
               label="Location"

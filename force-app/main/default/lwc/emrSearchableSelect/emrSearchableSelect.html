@@ -1,0 +1,97 @@
+<template>
+  <div class="slds-form-element">
+    <label class="slds-form-element__label" for="search-input">{label}</label>
+    <div class="slds-form-element__control">
+      <div class="slds-combobox_container">
+        <div class={comboboxClass}>
+          <div
+            class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right"
+            role="none"
+          >
+            <input
+              id="search-input"
+              type="text"
+              class="slds-input slds-combobox__input"
+              role="combobox"
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-haspopup="listbox"
+              aria-expanded={expanded}
+              aria-controls="option-list"
+              aria-activedescendant={activeDomId}
+              placeholder={inputPlaceholder}
+              value={inputValue}
+              disabled={disabled}
+              onfocus={handleFocus}
+              onclick={handleClick}
+              oninput={handleInput}
+              onkeydown={handleKeyDown}
+              onblur={handleBlur}
+            />
+            <template lwc:if={showClear}>
+              <button
+                type="button"
+                class="slds-button slds-button_icon slds-input__icon slds-input__icon_right clear-button"
+                title="Clear"
+                data-id="clear"
+                onmousedown={handleClear}
+              >
+                <lightning-icon
+                  icon-name="utility:clear"
+                  size="x-small"
+                  alternative-text="Clear"
+                ></lightning-icon>
+              </button>
+            </template>
+            <template lwc:else>
+              <lightning-icon
+                class="slds-input__icon slds-input__icon_right chevron"
+                icon-name="utility:down"
+                size="x-small"
+                aria-hidden="true"
+              ></lightning-icon>
+            </template>
+          </div>
+          <div
+            id="option-list"
+            class="slds-dropdown slds-dropdown_length-7 slds-dropdown_fluid"
+            role="listbox"
+            aria-label={label}
+          >
+            <ul class="slds-listbox slds-listbox_vertical" role="presentation">
+              <template for:each={rows} for:item="row">
+                <li key={row.key} role="presentation" class="slds-listbox__item">
+                  <div
+                    id={row.domId}
+                    class={row.className}
+                    role="option"
+                    aria-selected={row.selected}
+                    data-value={row.value}
+                    data-id="option"
+                    onmousedown={handleOptionMouseDown}
+                  >
+                    <span class="slds-media__body">
+                      <span class="slds-truncate option-label" title={row.label}
+                        >{row.label}</span
+                      >
+                      <template lwc:if={row.meta}>
+                        <span class="slds-truncate option-meta">{row.meta}</span>
+                      </template>
+                    </span>
+                  </div>
+                </li>
+              </template>
+              <template lwc:if={noRows}>
+                <li role="presentation" class="slds-listbox__item">
+                  <div class="no-match" role="status" data-id="no-match">
+                    No matches
+                  </div>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

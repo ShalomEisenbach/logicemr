@@ -8,6 +8,7 @@ import getGridForProviders from "@salesforce/apex/AppointmentCalendarController.
 import getActiveSchedules from "@salesforce/apex/AppointmentCalendarController.getActiveSchedules";
 import getActiveSchedulesForProviders from "@salesforce/apex/AppointmentCalendarController.getActiveSchedulesForProviders";
 import getNextAvailability from "@salesforce/apex/AppointmentCalendarController.getNextAvailability";
+import getProviders from "@salesforce/apex/AppointmentCalendarController.getProviders";
 import bookAppointment from "@salesforce/apex/AppointmentCalendarController.bookAppointment";
 import rescheduleAppointment from "@salesforce/apex/AppointmentCalendarController.rescheduleAppointment";
 import cancelAppointment from "@salesforce/apex/AppointmentCalendarController.cancelAppointment";
@@ -113,6 +114,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
   locationOptions = [{ label: "Any location", value: ANY_LOCATION }];
   schedules = [];
   nextAvailability = [];
+  providers = [];
   viewMode = VIEW_DAY;
   selectedDate;
   slotDurationMinutes = DEFAULT_DURATION;
@@ -169,6 +171,7 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
     if (this.embedded) {
       return;
     }
+    this.loadProviders();
     this.loadLocations();
     this.loadGrid();
     this.loadNextAvailability();
@@ -672,8 +675,10 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
     );
   }
 
+  /** The provider filter changed: a provider's Id, or nothing for all providers. */
   async handlePractitionerChange(event) {
-    this._practitionerId = event.detail.recordId;
+    this._practitionerId =
+      event.detail.value || event.detail.recordId || undefined;
     this.practitionerIds = this.practitionerId ? [this.practitionerId] : [];
     if (!this.practitionerId) {
       this.manageAvailability = false;
@@ -1147,6 +1152,25 @@ export default class EmrEnhancedCalendar extends NavigationMixin(
       return;
     }
     this[NavigationMixin.Navigate](recordViewPageRef(recordId, objectApiName));
+  }
+
+  /** Every active provider, for the filter's dropdown. A failure leaves only "All providers". */
+  async loadProviders() {
+    if (this.hideFilters) {
+      return;
+    }
+    try {
+      this.providers = (await getProviders()) || [];
+    } catch {
+      this.providers = [];
+    }
+  }
+
+  get providerOptions() {
+    return (this.providers || []).map((row) => ({
+      value: row.id,
+      label: row.name || "Provider"
+    }));
   }
 
   async loadNextAvailability() {

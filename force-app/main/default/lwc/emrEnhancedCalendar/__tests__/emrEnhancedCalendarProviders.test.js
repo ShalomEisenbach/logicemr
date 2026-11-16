@@ -4,6 +4,7 @@ import getGrid from "@salesforce/apex/AppointmentCalendarController.getGrid";
 import getLocations from "@salesforce/apex/AppointmentCalendarController.getLocations";
 import getActiveSchedules from "@salesforce/apex/AppointmentCalendarController.getActiveSchedules";
 import getNextAvailability from "@salesforce/apex/AppointmentCalendarController.getNextAvailability";
+import getProviders from "@salesforce/apex/AppointmentCalendarController.getProviders";
 import {
   ROW_HEIGHT,
   assignProviderLanes
@@ -26,6 +27,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/AppointmentCalendarController.getNextAvailability",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/AppointmentCalendarController.getProviders",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -66,6 +72,10 @@ async function mount(slots, props = {}) {
   getLocations.mockResolvedValue([]);
   getActiveSchedules.mockResolvedValue([]);
   getNextAvailability.mockResolvedValue([]);
+  getProviders.mockResolvedValue([
+    { id: "lee", name: "Lee, Jordan - Primary Care" },
+    { id: "patel", name: "Patel, Priya - Cardiology" }
+  ]);
   getGrid.mockResolvedValue({ slots });
   const element = createElement("c-emr-enhanced-calendar", {
     is: EmrEnhancedCalendar
@@ -187,5 +197,45 @@ describe("calendar day grouped by provider", () => {
     view.dispatchEvent(new CustomEvent("change", { detail: { value: "week" } }));
     await flush();
     expect(two.shadowRoot.querySelector('[data-id="provider-row"]')).toBeNull();
+  });
+
+  it("offers every provider in a searchable dropdown and filters the day by the pick", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-06T16:00:00Z"));
+    const element = await mount([
+      slot("f1", "lee", "Lee, Jordan", "14:00", "14:20"),
+      slot("p1", "patel", "Patel, Priya", "14:00", "14:30")
+    ]);
+    const filter = element.shadowRoot.querySelector(
+      '[data-id="provider-filter"]'
+    );
+    expect(filter.allLabel).toBe("All providers");
+    expect(filter.options).toEqual([
+      { value: "lee", label: "Lee, Jordan - Primary Care" },
+      { value: "patel", label: "Patel, Priya - Cardiology" }
+    ]);
+    expect(filter.value).toBeNull();
+    expect(element.shadowRoot.querySelector("lightning-record-picker")).toBeNull();
+
+    getGrid.mockClear();
+    filter.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "patel", label: "Patel" } })
+    );
+    await flush();
+    await flush();
+    expect(getGrid).toHaveBeenCalledWith(
+      expect.objectContaining({ practitionerId: "patel" })
+    );
+    expect(filter.value).toBe("patel");
+
+    // "All providers" goes back to everyone.
+    getGrid.mockClear();
+    filter.dispatchEvent(
+      new CustomEvent("change", { detail: { value: null, label: "All providers" } })
+    );
+    await flush();
+    await flush();
+    expect(getGrid).toHaveBeenCalledWith(
+      expect.objectContaining({ practitionerId: null })
+    );
   });
 });

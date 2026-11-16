@@ -1822,6 +1822,35 @@ private class AppointmentCalendarControllerTest {
     );
   }
 
+  @IsTest
+  static void getProvidersListsActivePractitionersByName() {
+    Practitioner__c zed = insertPractitioner('Synthetic', 'Zedprovider');
+    Practitioner__c able = insertPractitioner('Synthetic', 'Ableprovider');
+    Practitioner__c gone = insertPractitioner('Synthetic', 'Goneprovider');
+    update new List<Practitioner__c>{
+      new Practitioner__c(Id = zed.Id, Active__c = true),
+      new Practitioner__c(Id = able.Id, Active__c = true),
+      new Practitioner__c(Id = gone.Id, Active__c = false)
+    };
+
+    Test.startTest();
+    List<AppointmentCalendarController.ProviderOption> options = AppointmentCalendarController.getProviders();
+    Test.stopTest();
+
+    List<Id> ids = new List<Id>();
+    for (AppointmentCalendarController.ProviderOption option : options) {
+      ids.add(option.id);
+      System.assert(String.isNotBlank(option.name), 'Every option has a name');
+    }
+    System.assert(ids.contains(able.Id), 'Active practitioners are listed');
+    System.assert(ids.contains(zed.Id), 'Active practitioners are listed');
+    System.assert(!ids.contains(gone.Id), 'Inactive practitioners are left out');
+    System.assert(
+      ids.indexOf(able.Id) < ids.indexOf(zed.Id),
+      'Sorted by name'
+    );
+  }
+
   private static AppointmentCalendarController.NextAvailabilityView findNextAvailability(
     List<AppointmentCalendarController.NextAvailabilityView> rows,
     Id practitionerId
